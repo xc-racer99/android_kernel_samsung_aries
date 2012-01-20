@@ -94,7 +94,7 @@ start_do_transfer_checker:
 		}
 
 		//Gets the address of the td_t to have the channel to be interrupted.
-                if(!(get_td_info(do_try_cnt, &td_addr))) {
+		if(get_td_info(do_try_cnt, &td_addr) == USB_ERR_SUCCESS) {
 
                         done_td = (td_t *)td_addr;
 

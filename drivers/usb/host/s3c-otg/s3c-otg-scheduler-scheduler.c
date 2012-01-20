@@ -44,12 +44,12 @@ static	const	u8	perio_chnum_threshold 	= 14;
 static	u8		total_chnum_threshold	= 16;
 
  //Define global variables
-
-static	u32	perio_used_bustime = 0;
-static	u8	perio_used_chnum = 0;
-static	u8	nonperio_used_chnum = 0;
-static	u8	total_used_chnum = 0;
-static	u32	transferring_td_array[16]={0};
+// kevinh: add volatile
+static	volatile u32	perio_used_bustime = 0;
+static	volatile u8	perio_used_chnum = 0;
+static	volatile u8	nonperio_used_chnum = 0;
+static	volatile u8	total_used_chnum = 0;
+static	volatile u32	transferring_td_array[16]={0};
 
 
 int inc_perio_bus_time(u32 bus_time, u8 dev_speed)
@@ -281,7 +281,7 @@ start_sched_perio_transfer:
 				alloc_ch 	=	oci_start_transfer(otghost, &td->cur_stransfer);
 				if(alloc_ch<total_chnum_threshold) {
 					td->cur_stransfer.alloc_chnum = alloc_ch;
-					transferring_td_array[alloc_ch] = (u32)td;
+					set_transferring_td_array(alloc_ch, (u32)td);
 
 					scheduling_ed->ed_status.is_in_transferring		=	true;
 					scheduling_ed->ed_status.is_in_transfer_ready_q		=	false;
@@ -377,7 +377,7 @@ start_sched_nonperio_transfer:
 
 					if(alloc_ch<total_chnum_threshold) {
 						td->cur_stransfer.alloc_chnum 	= alloc_ch;
-						transferring_td_array[alloc_ch] 	= (u32)td;
+						set_transferring_td_array(alloc_ch, (u32)td);
 
 						inc_non_perio_chnum();
 

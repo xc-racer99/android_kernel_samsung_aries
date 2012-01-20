@@ -351,8 +351,8 @@ __inline__ int root_hub_feature(
 		desc->hub_characteristics = 0x08;
 		desc->power_on_to_power_good = 1;
 		desc->hub_control_current = 0;
-		desc->bitmap[0] = 0;
-		desc->bitmap[1] = 0xff;
+		desc->DeviceRemovable[0] = 0;
+		desc->DeviceRemovable[1] = 0xff;
 		break;
 
 	case GetHubStatus:

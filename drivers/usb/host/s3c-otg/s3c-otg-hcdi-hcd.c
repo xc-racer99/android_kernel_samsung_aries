@@ -130,7 +130,7 @@ int	s5pc110_otghcd_start(struct usb_hcd *usb_hcd_p)
 		return USB_ERR_FAIL;
 	}
 
-	usb_hcd_p->poll_rh = 1;
+	set_bit(HCD_FLAG_POLL_RH,&usb_hcd_p->flags);
 	usb_hcd_p->uses_new_polling = 1;
 
 	/* init bus state	before enable irq */
@@ -461,7 +461,7 @@ int s5pc110_otghcd_urb_dequeue(
 	struct sec_otghost *otghost = hcd_to_sec_otghost(_hcd);
 
 	unsigned long	spin_lock_flag = 0;
-	td_t *cancel_td = (td_t *)_urb->hcpriv;
+	td_t *cancel_td;
 
 	spin_lock_irq_save_otg(&otghost->lock, spin_lock_flag);
 
@@ -473,6 +473,9 @@ int s5pc110_otghcd_urb_dequeue(
 		usb_hcd_giveback_urb(_hcd, _urb, status);
 		return USB_ERR_SUCCESS;
 	}
+
+	//kevinh read this from inside the spinlock
+	cancel_td = (td_t *)_urb->hcpriv;
 
 	if (cancel_td == NULL) {
 		otg_err(OTG_DBG_OTGHCDI_HCD, "cancel_td is NULL\n");
@@ -501,11 +504,12 @@ int s5pc110_otghcd_urb_dequeue(
 	ret_val = cancel_transfer(otghost, cancel_td->parent_ed_p, cancel_td);
 	if(ret_val != USB_ERR_DEQUEUED && ret_val != USB_ERR_NOELEMENT) {
 		otg_err(OTG_DBG_OTGHCDI_HCD, "fail to cancel_transfer() \n");
-//		otg_usbcore_giveback(cancel_td);
+		otg_usbcore_giveback(cancel_td);
 		spin_unlock_irq_save_otg(&otghost->lock, spin_lock_flag);
 		return USB_ERR_FAIL;
 	}
-//	otg_usbcore_giveback(cancel_td);
+	otg_usbcore_giveback(cancel_td);
+	delete_td(otghost, cancel_td);
 	spin_unlock_irq_save_otg(&otghost->lock, spin_lock_flag);
 	return USB_ERR_SUCCESS;
 }

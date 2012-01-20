@@ -58,7 +58,7 @@ extern "C"
 #include <linux/kernel.h>	//for printk
 
 #define otg_err(is_active, msg...) \
-	do{ if ((is_active) == true)\
+	do{ if (/*(is_active) == */true)\
 		{\
 			pr_err("otg_err: in %s()::%05d ", __func__ , __LINE__); \
 			pr_err("=> " msg); \

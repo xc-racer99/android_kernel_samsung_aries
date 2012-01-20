@@ -64,6 +64,7 @@ static void otg_power_work(struct work_struct *work)
 		otg_err(true, "invalid otghost data\n");
 	}
 }
+extern void max8998_ldo3_8_control(int enable, unsigned int flag);
 
 static int s5pc110_otg_drv_probe (struct platform_device *pdev)
 {
@@ -73,6 +74,18 @@ static int s5pc110_otg_drv_probe (struct platform_device *pdev)
 	struct sec_otghost_data *otg_data = dev_get_platdata(&pdev->dev);
 
 	otg_dbg(OTG_DBG_OTGHCDI_DRIVER, "s3c_otg_drv_probe\n");
+
+	struct clk      *otg_clock;
+        otg_clock = clk_get(&pdev->dev, "otg");
+        if (otg_clock == NULL) {
+               otg_err(OTG_DBG_OTGHCDI_DRIVER, 
+                       "failed to find otg clock source\n");
+               return -ENOENT;
+        }
+        clk_enable(otg_clock);
+        // chul2
+        max8998_ldo3_8_control(1, 1);
+        mdelay(1);
 
 
 	/*init for host mode*/
