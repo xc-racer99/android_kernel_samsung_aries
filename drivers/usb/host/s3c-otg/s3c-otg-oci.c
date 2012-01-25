@@ -28,6 +28,7 @@
  ****************************************************************************/
 
 #include "s3c-otg-oci.h"
+#include "../../gadget/s3c_udc.h"
 
 static bool ch_enable[16];
 
@@ -237,6 +238,11 @@ int oci_host_init(void)
 	gintmsk.b.portintr = 1;
 	update_reg_32(GINTMSK,gintmsk.d32);
 
+	if ((s3c_is_otgmode()-1) & USB_OTG_DRIVER_S3CFSLS) {
+		hcfg.b.fslssupp = 1; // force USB 1.x mode
+	} else {
+		hcfg.b.fslssupp = 0;
+	}
 	hcfg.b.fslspclksel = HCFG_30_60_MHZ;
 	update_reg_32(HCFG, hcfg.d32);
 
@@ -453,6 +459,7 @@ int oci_channel_init( u8 ch_num, stransfer_t *st_t)
 	gintmsk_t	gintmsk = {.d32 = 0};
 	hcchar_t		hcchar = {.d32 = 0};
 	hctsiz_t		hctsiz = {.d32 = 0};
+	hcsplt_t	hcsplt = {.d32 = 0};
 
 	otg_dbg(OTG_DBG_OCI, "oci_channel_init \n");
 
@@ -542,6 +549,16 @@ int oci_channel_init( u8 ch_num, stransfer_t *st_t)
 
 	/* Wrote HCCHAR Register */
 	write_reg_32(HCCHAR(ch_num),hcchar.d32);
+
+	/* sztupy: Enable split transaction support */
+	if (st_t->ed_desc_p->is_do_split) {
+		hcsplt.b.spltena = 1;
+		hcsplt.b.hubaddr = st_t->ed_desc_p->hub_addr;
+		hcsplt.b.prtaddr = st_t->ed_desc_p->hub_port;
+		hcsplt.b.xactpos = st_t->ed_status_p->split_pos;
+		hcsplt.b.compsplt = st_t->ed_status_p->is_complete_split;
+	}
+	write_reg_32(HCSPLT(ch_num),hcsplt.d32);
 
 	return USB_ERR_SUCCESS;
 }
