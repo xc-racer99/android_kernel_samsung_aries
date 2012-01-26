@@ -1216,6 +1216,13 @@ int s3c_is_otgmode(void)
 }
 EXPORT_SYMBOL(s3c_is_otgmode);
 
+int s3c_get_drivermode(void)
+{
+	printk("drivermode = %d\n", atomic_read(&g_OtgDriver));
+	return atomic_read(&g_OtgDriver);
+}
+EXPORT_SYMBOL(s3c_get_drivermode);
+
 void set_otghost_mode(int mode) {
 //sztupy:
 // this function will determine what to do with the new information according to the current mode of operation

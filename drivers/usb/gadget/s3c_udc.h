@@ -161,4 +161,5 @@ extern struct platform_driver s5pc110_otg_driver;
 extern struct platform_driver dwc_otg_driver;
 #endif
 extern int s3c_is_otgmode(void);
+extern int s3c_get_drivermode(void);
 #endif
