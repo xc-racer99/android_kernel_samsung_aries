@@ -1355,7 +1355,7 @@ static ssize_t usbdriver_write(struct device *dev, struct device_attribute *attr
 static ssize_t usbversion_read(struct device *dev, struct device_attribute *attr, char *buf) {
   return sprintf(buf,"version: build 5\ndrivers:%s%s\n",
 #if defined CONFIG_USB_S3C_OTG_HOST
-	" S3C"
+	" S3CHS S3CFSLS"
 #else
 	""
 #endif
