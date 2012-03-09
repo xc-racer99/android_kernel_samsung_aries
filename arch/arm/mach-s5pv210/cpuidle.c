@@ -144,7 +144,7 @@ static int check_power_clock_gating(void)
 
 	/* check power gating */
 	val = __raw_readl(S5P_NORMAL_CFG);
-	if (val & (S5PV210_PD_LCD | S5PV210_PD_CAM | S5PV210_PD_TV
+	if (val & (S5PV210_PD_LCD | S5PV210_PD_TV /*| S5PV210_PD_CAM */
 				  | S5PV210_PD_MFC | S5PV210_PD_G3D))
 		return 1;
 
@@ -418,10 +418,7 @@ static int s5p_enter_idle_state(struct cpuidle_device *dev,
 
 	local_irq_disable();
 	do_gettimeofday(&before);
-// || check_usbotg_op()  OK
-//|| check_power_clock_gating() OK
-//|| loop_sdmmc_check() OK
-//|| check_rtcint() || check_idmapos() OK
+	
 #ifdef CONFIG_CPU_DIDLE
 #ifdef CONFIG_S5P_INTERNAL_DMA
 	if (!deepidle_is_enabled() || check_power_clock_gating() || suspend_ongoing() || loop_sdmmc_check() || check_usbotg_op() || check_rtcint() || check_idmapos()) {
@@ -429,16 +426,14 @@ static int s5p_enter_idle_state(struct cpuidle_device *dev,
 	if (!deepidle_is_enabled() || check_power_clock_gating() || suspend_ongoing() || loop_sdmmc_check() || check_usbotg_op() || check_rtcint()) {
 #endif
 	    s5p_enter_idle();
-/*	} else if (bt_is_running() || gps_is_running() || vibrator_is_running()) {
-	    //s5p_enter_didle(true);
-	    s5p_enter_idle();
-	    idle_state = 1;*/
+	} else if (bt_is_running() || gps_is_running() || vibrator_is_running()) {
+	    s5p_enter_didle(true);
+	    idle_state = 1;
 	} else {
-	    //s5p_enter_didle(false);
-	    s5p_enter_idle();
+	    s5p_enter_didle(false);
 	    idle_state = 2;
 	}
-#else   
+#else
 	s5p_enter_idle();
 #endif
 
@@ -447,7 +442,8 @@ static int s5p_enter_idle_state(struct cpuidle_device *dev,
 	idle_time = (after.tv_sec - before.tv_sec) * USEC_PER_SEC +
 	    (after.tv_usec - before.tv_usec);
 #ifdef CONFIG_CPU_DIDLE
-	report_idle_time(idle_state, idle_time);
+	if (dstats_is_enabled())
+		report_idle_time(idle_state, idle_time);
 #endif
 	return idle_time;
 }

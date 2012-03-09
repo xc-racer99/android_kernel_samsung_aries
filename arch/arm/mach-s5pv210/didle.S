@@ -215,3 +215,4 @@ ENTRY(s5pv210_didle_resume)
 
 	mov	pc, r2				@ go back to virtual address
 
+	.ltorg
