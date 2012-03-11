@@ -19,10 +19,17 @@
 
 static DEFINE_MUTEX(lock);
 
-static bool deepidle_enabled = true;
+static bool deepidle_enabled = false;
 static bool dstats_enabled = false;
+static bool ddebug_enabled = false;
+static unsigned int didle_flafs = 0;
 
 static unsigned long long num_idlecalls[NUM_IDLESTATES], time_in_idlestate[NUM_IDLESTATES];
+
+static ssize_t dflags_read(struct device * dev, struct device_attribute * attr, char * buf)
+{
+    return sprintf(buf, "%u\n", didle_flafs);
+}
 
 static ssize_t deepidle_status_read(struct device * dev, struct device_attribute * attr, char * buf)
 {
@@ -70,6 +77,34 @@ static ssize_t stats_enabled_write(struct device * dev, struct device_attribute 
 			pr_info("%s: DEEPIDLE stats disabled\n", __FUNCTION__);
 
 			dstats_enabled = false;
+		} else {
+			pr_info("%s: invalid input range %u\n", __FUNCTION__, data);
+		}
+	} else {
+		pr_info("%s: invalid input\n", __FUNCTION__);
+	}
+
+	return size;
+}
+
+static ssize_t ddebug_enabled_read(struct device * dev, struct device_attribute * attr, char * buf)
+{
+	return sprintf(buf, "%u\n", (ddebug_enabled ? 1 : 0));
+}
+
+static ssize_t ddebug_enabled_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+{
+	unsigned int data;
+
+	if(sscanf(buf, "%u\n", &data) == 1) {
+		if (data == 1) {
+			pr_info("%s: DEEPIDLE debug enabled\n", __FUNCTION__);
+
+			ddebug_enabled = true;
+		} else if (data == 0) {
+			pr_info("%s: DEEPIDLE debug disabled\n", __FUNCTION__);
+
+			ddebug_enabled = false;
 		} else {
 			pr_info("%s: invalid input range %u\n", __FUNCTION__, data);
 		}
@@ -148,7 +183,9 @@ static ssize_t deepidle_version(struct device * dev, struct device_attribute * a
 }
 
 static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO, deepidle_status_read, deepidle_status_write);
+static DEVICE_ATTR(dflags, S_IRUGO , dflags_read, NULL);
 static DEVICE_ATTR(stats_enabled, S_IRUGO | S_IWUGO, stats_enabled_read, stats_enabled_write);
+static DEVICE_ATTR(ddebug_enabled, S_IRUGO | S_IWUGO, ddebug_enabled_read, ddebug_enabled_write);
 static DEVICE_ATTR(idle_stats, S_IRUGO , show_idle_stats, NULL);
 static DEVICE_ATTR(reset_stats, S_IWUGO , NULL, reset_idle_stats);
 static DEVICE_ATTR(version, S_IRUGO , deepidle_version, NULL);
@@ -156,6 +193,8 @@ static DEVICE_ATTR(version, S_IRUGO , deepidle_version, NULL);
 static struct attribute *deepidle_attributes[] = 
     {
 	&dev_attr_enabled.attr,
+	&dev_attr_dflags.attr,
+	&dev_attr_ddebug_enabled.attr,
 	&dev_attr_stats_enabled.attr,
 	&dev_attr_idle_stats.attr,
 	&dev_attr_reset_stats.attr,
@@ -186,7 +225,13 @@ bool dstats_is_enabled(void)
 }
 EXPORT_SYMBOL(dstats_is_enabled);
 
-void report_idle_time(int idle_state, int idle_time)
+bool ddebug_is_enabled(void)
+{
+	return ddebug_enabled;
+}
+EXPORT_SYMBOL(ddebug_is_enabled);
+
+void report_idle_time(int idle_state, int idle_time, unsigned int dflags)
 {
     mutex_lock(&lock);
 
@@ -198,6 +243,7 @@ void report_idle_time(int idle_state, int idle_time)
 	    reset_stats();
 	}
 
+    didle_flafs = dflags;
     mutex_unlock(&lock);
 
     return;

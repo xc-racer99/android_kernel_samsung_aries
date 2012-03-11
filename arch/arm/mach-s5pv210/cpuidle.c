@@ -46,6 +46,20 @@ extern bool vibrator_is_running(void);
 static unsigned long vic_regs[4];
 static unsigned long *regs_save;
 static dma_addr_t phy_regs_save;
+static unsigned int dflags = 0;
+static bool ddebug = false;
+static bool dstats = false;
+static bool denabled = false;
+static unsigned int dcnt = 0;
+
+/*
+ *  dflags bits:
+ *  0 S5PV210_PD_LCD, 1 S5PV210_PD_CAM, 2 S5PV210_PD_TV, 3 S5PV210_PD_MFC
+ *  4 S5PV210_PD_G3D, 5 SND_S5P_RP, 6 S5P_CLKGATE_IP0, 7 S5P_CLKGATE_IP1
+ *  8 S5P_CLKGATE_IP3, 9 loop_sdmmc_check, 10 check_usbotg_op
+ *  11 check_rtcint, 12 check_idmapos
+ */
+
 
 #define MAX_CHK_DEV	0xf
 
@@ -66,7 +80,7 @@ static struct check_device_op chk_dev_op[] = {
 #if defined(CONFIG_S3C_DEV_HSMMC1)
 	{.base = 0, .pdev = &s3c_device_hsmmc1},
 #endif
-#if 0
+#if defined(CONFIG_S3C_DEV_HSMMC2)
 	{.base = 0, .pdev = &s3c_device_hsmmc2},
 #endif
 #if defined(CONFIG_S3C_DEV_HSMMC3)
@@ -109,8 +123,12 @@ static int loop_sdmmc_check(void)
 	unsigned int iter;
 
 	for (iter = 0; iter < sdmmc_dev_num + 1; iter++) {
-		if (check_sdmmc_op(iter))
+		if (check_sdmmc_op(iter)) {
+			if (ddebug)
+				dflags |= 1 << 9;
+
 			return 1;
+		}
 	}
 	return 0;
 }
@@ -125,10 +143,14 @@ static int loop_sdmmc_check(void)
 static int check_usbotg_op(void)
 {
 	unsigned int val;
+	bool ret;
 
 	val = __raw_readl(S3C_UDC_OTG_GOTGCTL);
 
-	return val & (B_SESSION_VALID);
+	ret = val & (B_SESSION_VALID);
+	if (ddebug && ret)
+		dflags |= 1 << 10;
+	return ret;
 }
 
 /*
@@ -145,27 +167,58 @@ static int check_power_clock_gating(void)
 	/* check power gating */
 	val = __raw_readl(S5P_NORMAL_CFG);
 	if (val & (S5PV210_PD_LCD | S5PV210_PD_TV /*| S5PV210_PD_CAM */
-				  | S5PV210_PD_MFC | S5PV210_PD_G3D))
+				  | S5PV210_PD_MFC | S5PV210_PD_G3D)) {
+		
+		if (ddebug) {
+			if (val & S5PV210_PD_LCD)
+				dflags |= 1 << 0;
+			if (val & S5PV210_PD_CAM)
+				dflags |= 1 << 1;
+			if (val & S5PV210_PD_TV)
+				dflags |= 1 << 2;
+			if (val & S5PV210_PD_MFC)
+				dflags |= 1 << 3;
+			if (val & S5PV210_PD_G3D)
+				dflags |= 1 << 4;
+		}
+		
 		return 1;
+	}
 
 #ifdef CONFIG_SND_S5P_RP
-	if (s5p_rp_get_op_level())
+	if (s5p_rp_get_op_level()) {
+		if (ddebug)
+			dflags |= 1 << 5;
+
 		return 1;
+	}
 #endif
 	/* check clock gating */
 	val = __raw_readl(S5P_CLKGATE_IP0);
 	if (val & (S5P_CLKGATE_IP0_MDMA | S5P_CLKGATE_IP0_PDMA0
-					| S5P_CLKGATE_IP0_PDMA1))
+					| S5P_CLKGATE_IP0_PDMA1)) {
+		if (ddebug)
+			dflags |= 1 << 6;
+
 		return 1;
+	}
 
 	val = __raw_readl(S5P_CLKGATE_IP1);
-	if (val & S5P_CLKGATE_IP1_USBHOST)
+	if (val & S5P_CLKGATE_IP1_USBHOST) {
+		if (ddebug)
+			dflags |= 1 << 7;
+		
 		return 1;
+	}
 
 	val = __raw_readl(S5P_CLKGATE_IP3);
 	if (val & (S5P_CLKGATE_IP3_I2C0 | S5P_CLKGATE_IP3_I2C_HDMI_DDC
-					| S5P_CLKGATE_IP3_I2C2))
+					| S5P_CLKGATE_IP3_I2C2)) {
+		if (ddebug)
+			dflags |= 1 << 8;
+
 		return 1;
+	}
 
 	return 0;
 }
@@ -177,21 +230,31 @@ static int check_power_clock_gating(void)
 #ifdef CONFIG_S5P_INTERNAL_DMA
 static int check_idmapos(void)
 {
+	bool ret;
+	
 	dma_addr_t src;
 
 	i2sdma_getpos(&src);
 	src = src & 0x3FFF;
 	src = 0x4000 - src;
 
-	return src < 0x150;
+	ret = src < 0x150;
+	if (ddebug && ret)
+		dflags |= 1 << 12;
+	return ret;
 }
 #endif
 
 static int check_rtcint(void)
 {
+	bool ret;
+	
 	unsigned int current_cnt = get_rtc_cnt();
 
-	return current_cnt < 0x40;
+	ret = current_cnt < 0x40;
+	if (ddebug && ret)
+		dflags |= 1 << 11;
+	return ret;
 }
 
 /*
@@ -406,6 +469,8 @@ static void s5p_enter_idle(void)
 	cpu_do_idle();
 }
 
+extern void bt_uart_rts_ctrl(int flag);
+
 /* Actual code that puts the SoC in different idle states */
 static int s5p_enter_idle_state(struct cpuidle_device *dev,
 				struct cpuidle_state *state)
@@ -414,36 +479,68 @@ static int s5p_enter_idle_state(struct cpuidle_device *dev,
 	int idle_time;
 #ifdef CONFIG_CPU_DIDLE
 	int idle_state = 0;
+	
+	dcnt++;
+	if (dcnt == 100) {
+		denabled = deepidle_is_enabled();
+		dstats = dstats_is_enabled();
+		ddebug = ddebug_is_enabled();
+		dcnt = 0;
+	}
+	
+	if (ddebug)
+		dflags = 0;
 #endif
-
-	local_irq_disable();
-	do_gettimeofday(&before);
 	
 #ifdef CONFIG_CPU_DIDLE
 #ifdef CONFIG_S5P_INTERNAL_DMA
-	if (!deepidle_is_enabled() || check_power_clock_gating() || suspend_ongoing() || loop_sdmmc_check() || check_usbotg_op() || check_rtcint() || check_idmapos()) {
+	if (!denabled || check_power_clock_gating() || suspend_ongoing() || loop_sdmmc_check() || check_usbotg_op() || check_rtcint() || check_idmapos()) {
 #else
-	if (!deepidle_is_enabled() || check_power_clock_gating() || suspend_ongoing() || loop_sdmmc_check() || check_usbotg_op() || check_rtcint()) {
+	if (!denabled || check_power_clock_gating() || suspend_ongoing() || loop_sdmmc_check() || check_usbotg_op() || check_rtcint()) {
 #endif
-	    s5p_enter_idle();
+		local_irq_disable();
+		do_gettimeofday(&before);
+
+		s5p_enter_idle();
+		
+		do_gettimeofday(&after);
+		local_irq_enable();
 	} else if (bt_is_running() || gps_is_running() || vibrator_is_running()) {
-	    s5p_enter_didle(true);
-	    idle_state = 1;
-	} else {
-	    s5p_enter_didle(false);
-	    idle_state = 2;
+		local_irq_disable();
+		do_gettimeofday(&before);
+
+		s5p_enter_didle(true);
+		idle_state = 1;
+		
+		do_gettimeofday(&after);
+		local_irq_enable();
+	} else {	 
+//#ifdef CONFIG_RFKILL
+		/* BT-UART RTS Control (RTS High) */
+//		bt_uart_rts_ctrl(1);
+//#endif
+		local_irq_disable();
+		do_gettimeofday(&before);
+
+		s5p_enter_didle(false);
+		idle_state = 2;
+
+//#ifdef CONFIG_RFKILL
+		/* BT-UART RTS Control (RTS Low) */
+//		bt_uart_rts_ctrl(0);
+//#endif
+		do_gettimeofday(&after);
+		local_irq_enable();
 	}
 #else
 	s5p_enter_idle();
 #endif
 
-	do_gettimeofday(&after);
-	local_irq_enable();
 	idle_time = (after.tv_sec - before.tv_sec) * USEC_PER_SEC +
 	    (after.tv_usec - before.tv_usec);
 #ifdef CONFIG_CPU_DIDLE
-	if (dstats_is_enabled())
-		report_idle_time(idle_state, idle_time);
+	if (dstats)
+		report_idle_time(idle_state, idle_time, dflags);
 #endif
 	return idle_time;
 }
