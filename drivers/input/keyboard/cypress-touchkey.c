@@ -479,13 +479,13 @@ static void cypress_touchkey_enable_led_notification(void){
     /* write to i2cbus, enable backlights */
     enable_touchkey_backlights();
   }
-  else
+  else 
 #ifdef CONFIG_TOUCH_WAKE
-      {
+  {
     enable_touchkey_backlights();
-      }
+  }
 #else
-      pr_info("%s: cannot set notification led, touchkeys are enabled\n",__FUNCTION__);
+  pr_info("%s: cannot set notification led, touchkeys are enabled\n",__FUNCTION__);
 #endif
 }
 
@@ -510,10 +510,9 @@ static void cypress_touchkey_disable_led_notification(void){
     #endif
   }
 #ifdef CONFIG_TOUCH_WAKE
-  else
-      {
+  else {
     disable_touchkey_backlights();
-      }
+  }
 #endif  
 }
 
