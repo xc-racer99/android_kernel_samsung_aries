@@ -114,6 +114,16 @@
 # define PR_SET_MM_START_BRK		6
 # define PR_SET_MM_BRK			7
 
+/*
+ * Set specific pid that is allowed to ptrace the current task.
+ * A value of 0 mean "no process".
+ */
+#define PR_SET_PTRACER 0x59616d61
+# define PR_SET_PTRACER_ANY ((unsigned long)-1)
+
+#define PR_SET_CHILD_SUBREAPER 36
+#define PR_GET_CHILD_SUBREAPER 37
+
 /* Sets the timerslack for arbitrary threads
  * arg2 slack value, 0 means "use default"
  * arg3 pid of the thread whose timer slack needs to be set
