@@ -2337,7 +2337,6 @@ dhd_stop(struct net_device *net)
 
 	/* Stop the protocol module */
 	dhd_prot_stop(&dhd->pub);
-
 	OLD_MOD_DEC_USE_COUNT;
 exit:
 #if defined(WL_CFG80211)
@@ -2346,7 +2345,6 @@ exit:
 #endif
 	dhd->pub.rxcnt_timeout = 0;
 	dhd->pub.txcnt_timeout = 0;
-
 	DHD_OS_WAKE_UNLOCK(&dhd->pub);
 	return 0;
 }
