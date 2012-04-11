@@ -254,6 +254,14 @@ void proximity_detected(void)
 }
 EXPORT_SYMBOL(proximity_detected);
 
+void proximity_off(void)
+{   
+    timed_out = true;
+
+    return;
+}
+EXPORT_SYMBOL(proximity_off);
+
 void powerkey_pressed(void)
 {   
     do_gettimeofday(&last_powerkeypress);
