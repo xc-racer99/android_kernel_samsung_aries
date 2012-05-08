@@ -23,14 +23,15 @@
 #include <linux/tick.h>
 #include <linux/ktime.h>
 #include <linux/sched.h>
+#include <linux/earlysuspend.h>
 
 /*
  * dbs is used in this file as a shortform for demandbased switching
  * It helps to keep variable names smaller, simpler
  */
 
-#define DEF_FREQUENCY_UP_THRESHOLD		(80)
-#define DEF_FREQUENCY_DOWN_THRESHOLD		(20)
+#define DEF_FREQUENCY_UP_THRESHOLD		(75)
+#define DEF_FREQUENCY_DOWN_THRESHOLD		(30)
 
 /*
  * The polling frequency of this governor depends on the capability of
@@ -46,11 +47,30 @@
 
 static unsigned int min_sampling_rate;
 
+static unsigned int sampling_rate_awake;
+static unsigned int up_threshold_awake;
+static unsigned int down_threshold_awake;
+#define SAMPLING_RATE_SLEEP_MULTIPLIER (3)
+#define UP_THRESHOLD_AT_SLEEP    (95)
+#define DOWN_THRESHOLD_AT_SLEEP	 (50)
+
 #define LATENCY_MULTIPLIER			(1000)
 #define MIN_LATENCY_MULTIPLIER			(100)
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
 #define MAX_SAMPLING_DOWN_FACTOR		(10)
 #define TRANSITION_LATENCY_LIMIT		(10 * 1000 * 1000)
+#define UP_THRESHOLD_AT_MIN_FREQ    (100)
+#define FREQ_FOR_RESPONSIVENESS      (400000)
+
+#ifdef CONFIG_DEVIL_TWEAKS
+extern unsigned int touch_state_val;
+extern bool smooth_ui();
+extern unsigned long cpuL3freq();
+extern bool smooth_governors();
+extern bool powersave_governors();
+static int status;
+static int status_old;
+#endif
 
 static void do_dbs_timer(struct work_struct *work);
 
@@ -87,12 +107,21 @@ static struct dbs_tuners {
 	unsigned int down_threshold;
 	unsigned int ignore_nice;
 	unsigned int freq_step;
+	unsigned int sleep_multiplier;
+	unsigned int up_threshold_min_freq;
+	unsigned int responsiveness_freq;
+
+	int early_suspend;
 } dbs_tuners_ins = {
+	.sleep_multiplier = SAMPLING_RATE_SLEEP_MULTIPLIER,
 	.up_threshold = DEF_FREQUENCY_UP_THRESHOLD,
 	.down_threshold = DEF_FREQUENCY_DOWN_THRESHOLD,
 	.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR,
 	.ignore_nice = 0,
 	.freq_step = 5,
+	.up_threshold_min_freq= UP_THRESHOLD_AT_MIN_FREQ,
+	.responsiveness_freq = FREQ_FOR_RESPONSIVENESS, 
+	.early_suspend = -1,
 };
 
 static inline cputime64_t get_cpu_idle_time_jiffy(unsigned int cpu,
@@ -182,6 +211,54 @@ show_one(up_threshold, up_threshold);
 show_one(down_threshold, down_threshold);
 show_one(ignore_nice_load, ignore_nice);
 show_one(freq_step, freq_step);
+show_one(sleep_multiplier, sleep_multiplier);
+show_one(up_threshold_min_freq, up_threshold_min_freq);
+show_one(responsiveness_freq, responsiveness_freq);
+
+static ssize_t store_sleep_multiplier(struct kobject *a, struct attribute *b,
+				  const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+
+	if (ret != 1 || input < 1 ||
+			input > 10) {
+		return -EINVAL;
+	}
+	dbs_tuners_ins.sleep_multiplier = input;
+	return count;
+}
+
+static ssize_t store_up_threshold_min_freq(struct kobject *a, struct attribute *b,
+				  const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+
+	if (ret != 1 || input <= dbs_tuners_ins.down_threshold || input > 100 || (input != 100 && input > dbs_tuners_ins.up_threshold)) 
+		return -EINVAL;
+
+	dbs_tuners_ins.up_threshold_min_freq = input;
+	return count;
+}
+
+
+static ssize_t store_responsiveness_freq(struct kobject *a, struct attribute *b,
+				  const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+
+	if (ret != 1 || input > 1400000 ||
+			input < 100000) {
+		return -EINVAL;
+	}
+	dbs_tuners_ins.responsiveness_freq = input;
+	return count;
+}
 
 static ssize_t store_sampling_down_factor(struct kobject *a,
 					  struct attribute *b,
@@ -236,7 +313,8 @@ static ssize_t store_down_threshold(struct kobject *a, struct attribute *b,
 
 	/* cannot be lower than 11 otherwise freq will not fall */
 	if (ret != 1 || input < 11 || input > 100 ||
-			input >= dbs_tuners_ins.up_threshold)
+			input >= dbs_tuners_ins.up_threshold ||
+			input >= dbs_tuners_ins.up_threshold_min_freq )
 		return -EINVAL;
 
 	dbs_tuners_ins.down_threshold = input;
@@ -300,6 +378,9 @@ define_one_global_rw(up_threshold);
 define_one_global_rw(down_threshold);
 define_one_global_rw(ignore_nice_load);
 define_one_global_rw(freq_step);
+define_one_global_rw(sleep_multiplier);
+define_one_global_rw(up_threshold_min_freq);
+define_one_global_rw(responsiveness_freq);
 
 static struct attribute *dbs_attributes[] = {
 	&sampling_rate_min.attr,
@@ -309,6 +390,9 @@ static struct attribute *dbs_attributes[] = {
 	&down_threshold.attr,
 	&ignore_nice_load.attr,
 	&freq_step.attr,
+	&sleep_multiplier.attr,
+	&up_threshold_min_freq.attr,
+	&responsiveness_freq.attr,
 	NULL
 };
 
@@ -327,6 +411,52 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 
 	struct cpufreq_policy *policy;
 	unsigned int j;
+
+#ifdef CONFIG_DEVIL_TWEAKS
+/*
+* change governor settings (only once), if governor mode got changed
+*/
+if(smooth_governors()){
+	status = 1;
+	if(status != status_old){
+	dbs_tuners_ins.sleep_multiplier = 5;
+	dbs_tuners_ins.up_threshold = 70;
+	dbs_tuners_ins.down_threshold = 25;
+	dbs_tuners_ins.sampling_down_factor = 5;
+	dbs_tuners_ins.freq_step = 25;
+	dbs_tuners_ins.up_threshold_min_freq = 60;
+	dbs_tuners_ins.responsiveness_freq = 400000;
+	}
+}
+else if(powersave_governors()){
+	status = 2;
+	if(status != status_old){
+	dbs_tuners_ins.sleep_multiplier = 5;
+	dbs_tuners_ins.up_threshold = 95;
+	dbs_tuners_ins.down_threshold = 40;
+	dbs_tuners_ins.sampling_down_factor = 1;
+	dbs_tuners_ins.freq_step = 10;
+	dbs_tuners_ins.up_threshold_min_freq = 100;
+	dbs_tuners_ins.responsiveness_freq = 400000;
+	}
+}
+else{
+	status = 0;
+	if(status != status_old){
+	dbs_tuners_ins.sleep_multiplier = SAMPLING_RATE_SLEEP_MULTIPLIER;
+	dbs_tuners_ins.up_threshold = DEF_FREQUENCY_UP_THRESHOLD;
+	dbs_tuners_ins.down_threshold = DEF_FREQUENCY_DOWN_THRESHOLD;
+	dbs_tuners_ins.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR;
+	dbs_tuners_ins.ignore_nice = 0;
+	dbs_tuners_ins.freq_step = 5;
+	dbs_tuners_ins.up_threshold_min_freq = UP_THRESHOLD_AT_MIN_FREQ;
+	dbs_tuners_ins.responsiveness_freq = FREQ_FOR_RESPONSIVENESS;
+	}
+}
+status_old = status;
+#endif
+
+int up_threshold = dbs_tuners_ins.up_threshold;
 
 	policy = this_dbs_info->cur_policy;
 
@@ -393,8 +523,35 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		return;
 
 	/* Check for frequency increase */
-	if (max_load > dbs_tuners_ins.up_threshold) {
+
+	if(dbs_tuners_ins.up_threshold_min_freq != 100){
+		/* set up_threshold if freq below defined value */
+  		if (policy->cur < dbs_tuners_ins.responsiveness_freq && dbs_tuners_ins.early_suspend == -1)
+	     		up_threshold = dbs_tuners_ins.up_threshold_min_freq;
+	}
+#ifdef CONFIG_DEVIL_TWEAKS
+	if (max_load > 75 && smooth_ui() && touch_state_val && policy->cur >= cpuL3freq()){
+		this_dbs_info->requested_freq = policy->max;
+	__cpufreq_driver_target(policy, this_dbs_info->requested_freq, CPUFREQ_RELATION_H);
+		return;
+	}
+	else if(smooth_ui() && touch_state_val) {
 		this_dbs_info->down_skip = 0;
+		if(policy->cur < cpuL3freq() && cpuL3freq() <= policy->max)
+			this_dbs_info->requested_freq = cpuL3freq();
+		else if(cpuL3freq() > policy->max)
+			this_dbs_info->requested_freq = policy->max;
+		else
+			this_dbs_info->requested_freq = cpuL3freq();
+	__cpufreq_driver_target(policy, this_dbs_info->requested_freq, CPUFREQ_RELATION_H);
+		return;
+	}
+
+	else if (max_load > up_threshold) {
+#else
+	if (max_load > up_threshold) {
+#endif
+			this_dbs_info->down_skip = 0;
 
 		/* if we are already at full speed then break out early */
 		if (this_dbs_info->requested_freq == policy->max)
@@ -409,7 +566,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		this_dbs_info->requested_freq += freq_target;
 		if (this_dbs_info->requested_freq > policy->max)
 			this_dbs_info->requested_freq = policy->max;
-
+	
 		__cpufreq_driver_target(policy, this_dbs_info->requested_freq,
 			CPUFREQ_RELATION_H);
 		return;
@@ -420,7 +577,16 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 	 * can support the current CPU usage without triggering the up
 	 * policy. To be safe, we focus 10 points under the threshold.
 	 */
+#ifdef CONFIG_DEVIL_TWEAKS
+	/*
+	* if touchscreen still pressed, don't reduce frequency
+	*/
+	if(smooth_ui() && touch_state_val)
+			return;
+	else if (max_load < (dbs_tuners_ins.down_threshold - 10)) {
+#else
 	if (max_load < (dbs_tuners_ins.down_threshold - 10)) {
+#endif
 		freq_target = (dbs_tuners_ins.freq_step * policy->max) / 100;
 
 		this_dbs_info->requested_freq -= freq_target;
@@ -474,6 +640,35 @@ static inline void dbs_timer_exit(struct cpu_dbs_info_s *dbs_info)
 	dbs_info->enable = 0;
 	cancel_delayed_work_sync(&dbs_info->work);
 }
+
+static void powersave_early_suspend(struct early_suspend *handler)
+{
+  mutex_lock(&dbs_mutex);
+  dbs_tuners_ins.early_suspend = 1;
+  sampling_rate_awake = dbs_tuners_ins.sampling_rate;
+  dbs_tuners_ins.sampling_rate *= dbs_tuners_ins.sleep_multiplier;
+  up_threshold_awake = dbs_tuners_ins.up_threshold;
+  dbs_tuners_ins.up_threshold = UP_THRESHOLD_AT_SLEEP;
+  down_threshold_awake = dbs_tuners_ins.down_threshold;
+  dbs_tuners_ins.down_threshold = DOWN_THRESHOLD_AT_SLEEP;
+  mutex_unlock(&dbs_mutex);
+}
+
+static void powersave_late_resume(struct early_suspend *handler)
+{
+  mutex_lock(&dbs_mutex);
+  dbs_tuners_ins.early_suspend = -1;
+  dbs_tuners_ins.sampling_rate = sampling_rate_awake;
+  dbs_tuners_ins.up_threshold = up_threshold_awake;
+  dbs_tuners_ins.down_threshold = down_threshold_awake;
+  mutex_unlock(&dbs_mutex);
+}
+
+static struct early_suspend _powersave_early_suspend = {
+  .suspend = powersave_early_suspend,
+  .resume = powersave_late_resume,
+  .level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
+};
 
 static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 				   unsigned int event)
@@ -531,14 +726,15 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			 * conservative does not implement micro like ondemand
 			 * governor, thus we are bound to jiffes/HZ
 			 */
-			min_sampling_rate =
-				MIN_SAMPLING_RATE_RATIO * jiffies_to_usecs(10);
+			min_sampling_rate = 10000;
 			/* Bring kernel and HW constraints together */
-			min_sampling_rate = max(min_sampling_rate,
-					MIN_LATENCY_MULTIPLIER * latency);
+
 			dbs_tuners_ins.sampling_rate =
 				max(min_sampling_rate,
 				    latency * LATENCY_MULTIPLIER);
+            sampling_rate_awake = dbs_tuners_ins.sampling_rate;
+            up_threshold_awake = dbs_tuners_ins.up_threshold;
+            down_threshold_awake = dbs_tuners_ins.down_threshold; 
 
 			cpufreq_register_notifier(
 					&dbs_cpufreq_notifier_block,
@@ -547,7 +743,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		mutex_unlock(&dbs_mutex);
 
 		dbs_timer_init(this_dbs_info);
-
+        register_early_suspend(&_powersave_early_suspend);
 		break;
 
 	case CPUFREQ_GOV_STOP:
@@ -571,6 +767,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			sysfs_remove_group(cpufreq_global_kobject,
 					   &dbs_attr_group);
 
+        unregister_early_suspend(&_powersave_early_suspend);
 		break;
 
 	case CPUFREQ_GOV_LIMITS:
