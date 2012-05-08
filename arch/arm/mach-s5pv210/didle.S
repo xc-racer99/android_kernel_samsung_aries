@@ -131,7 +131,7 @@ resume_with_mmu:
 
 	mov	r0, #1
 	/* delete added mmu table list */
-	ldr	r9 , =(PAGE_OFFSET - PHYS_OFFSET)
+	ldr	r9 , =(PAGE_OFFSET - PLAT_PHYS_OFFSET)
 	add	r4, r4, r9
 	str	r12, [r4]
 
@@ -215,4 +215,3 @@ ENTRY(s5pv210_didle_resume)
 
 	mov	pc, r2				@ go back to virtual address
 
-	.ltorg
