@@ -59,3 +59,4 @@ obj-$(CONFIG_SAMSUNG_MODEMCTL) += samsung_modemctl/
 obj-$(CONFIG_CUSTOM_VOLTAGE)   += custom_voltage.o
 obj-$(CONFIG_LIVE_OC)    += live_oc.o
 obj-$(CONFIG_DEVIL_TWEAKS)	+= devil.o
+obj-$(CONFIG_GENERIC_BLN)  += bln.o
