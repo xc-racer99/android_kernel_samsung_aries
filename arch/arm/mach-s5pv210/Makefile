@@ -55,6 +55,8 @@ obj-$(CONFIG_MACH_P1)		+= dev-p1-phone.o
 obj-$(CONFIG_MACH_P1) 		+= level.o
 obj-$(CONFIG_MACH_P1) 		+= p1-sec_switch.o
 
+obj-$(CONFIG_FORCE_FAST_CHARGE)         += fastchg.o
+
 # device support
 
 obj-y				+= dev-audio.o
