@@ -330,7 +330,7 @@ static void cpufreq_smartass_timer(unsigned long cpu)
 	// Scale up if load is above max or if there where no idle cycles since coming out of idle,
 	// additionally, if we are at or above the ideal_speed, verify we have been at this frequency
 	// for at least up_rate_us:
-	if (cpu_load > max_cpu_load || delta_idle == 0)
+	if ((smooth_ui() && touch_state_val) || cpu_load > max_cpu_load || delta_idle == 0)
 	{
 		if (old_freq < policy->max &&
 			 (old_freq < this_smartass->ideal_speed || delta_idle == 0 ||
