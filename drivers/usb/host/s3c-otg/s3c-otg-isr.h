@@ -45,7 +45,8 @@ extern "C"
 #include "s3c-otg-roothub.h"
 #include "s3c-otg-oci.h"
 
-__inline__ void otg_handle_interrupt(struct usb_hcd *hcd);
+//__inline__ 
+void otg_handle_interrupt(struct usb_hcd *hcd);
 
 void process_port_intr(struct usb_hcd *hcd);
 
