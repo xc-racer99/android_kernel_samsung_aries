@@ -20,7 +20,7 @@
 static DEFINE_MUTEX(lock);
 
 static bool deepidle_enabled = false;
-static bool dstats_enabled = false;
+static bool dstats_enabled = true;
 static bool ddebug_enabled = false;
 static unsigned int didle_flafs = 0;
 
