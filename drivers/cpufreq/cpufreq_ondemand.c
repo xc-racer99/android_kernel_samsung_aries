@@ -650,21 +650,24 @@ status_old = status;
 				(dbs_tuners_ins.up_threshold -
 				 dbs_tuners_ins.down_differential);
 
-  #ifdef CONFIG_DEVIL_TWEAKS
-  /*
-  * if touchscreen still pressed, don't reduce frequency
-  */
-    if(smooth_ui() && touch_state_val) {
-      if(cpuL3freq() > policy->max)
-      freq_next = policy->max;
-      else
-      freq_next = cpuL3freq();
-    }
+	#ifdef CONFIG_DEVIL_TWEAKS
+	/*
+	* if touchscreen still pressed, don't reduce frequency
+	*/
+		if(smooth_ui() && touch_state_val) {
+			if(cpuL3freq() > policy->max)
+			freq_next = policy->max;
+			else
+			freq_next = cpuL3freq();
+		}
 
-    else
-  #endif
-	if (dbs_tuners_ins.boosted && freq_next < boostfreq) {
-      	freq_next = boostfreq;
+		else if (dbs_tuners_ins.boosted &&
+				freq_next < policy->max) {
+	#else
+		if (dbs_tuners_ins.boosted &&
+				freq_next < policy->max) {
+	#endif
+			freq_next = policy->max;
 		}
 		/* No longer fully busy, reset rate_mult */
 		this_dbs_info->rate_mult = 1;
