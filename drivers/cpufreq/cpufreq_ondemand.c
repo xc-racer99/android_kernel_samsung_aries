@@ -22,7 +22,6 @@
 #include <linux/tick.h>
 #include <linux/ktime.h>
 #include <linux/sched.h>
-#include <linux/earlysuspend.h>
 
 /*
  * dbs is used in this file as a shortform for demandbased switching
@@ -39,19 +38,9 @@
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 #define DEFAULT_FREQ_BOOST_TIME			(500000)
-#define MAX_FREQ_BOOST_TIME			(5000000)
+#define MAX_FREQ_BOOST_TIME				(5000000)
 
 u64 freq_boosted_time;
-
-#ifdef CONFIG_DEVIL_TWEAKS
-extern unsigned int touch_state_val;
-extern bool smooth_ui();
-extern unsigned long cpuL3freq();
-extern bool smooth_governors();
-extern bool powersave_governors();
-static int status;
-static int status_old;
-#endif
 
 /*
  * The polling frequency of this governor depends on the capability of
@@ -473,40 +462,6 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 
 	this_dbs_info->freq_lo = 0;
 	policy = this_dbs_info->cur_policy;
-
-
-#ifdef CONFIG_DEVIL_TWEAKS
-/*
-* change governor settings (only once), if governor mode got changed
-*/
-if(smooth_governors()){
-  status= 1;
-  if(status != status_old){
-                dbs_tuners_ins.up_threshold = 70;
-                dbs_tuners_ins.sampling_down_factor = 2;
-                dbs_tuners_ins.down_differential = 15;
-  }
-}
-else if(powersave_governors()){
-  status= 2;
-  if(status != status_old){
-                dbs_tuners_ins.up_threshold = 95;
-                dbs_tuners_ins.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR;
-                dbs_tuners_ins.down_differential =  MICRO_FREQUENCY_DOWN_DIFFERENTIAL;
-  }
-}
-else{
-  status= 0;
-  if(status != status_old){
-                dbs_tuners_ins.up_threshold = MICRO_FREQUENCY_UP_THRESHOLD;
-                dbs_tuners_ins.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR;
-                dbs_tuners_ins.down_differential = MICRO_FREQUENCY_DOWN_DIFFERENTIAL;
-  }
-}
-status_old = status;
-#endif
-
-
 	/* Only core0 controls the boost */
 	if (dbs_tuners_ins.boosted && policy->cpu == 0) {
 		if (ktime_to_us(ktime_get()) - freq_boosted_time >=
@@ -599,26 +554,8 @@ status_old = status;
 	}
 
 	/* Check for frequency increase */
-
-#ifdef CONFIG_DEVIL_TWEAKS
- if(smooth_ui() && touch_state_val){
-    if(policy->cur < cpuL3freq() && cpuL3freq() <= policy->max)
-    dbs_freq_increase(policy, cpuL3freq());
-    else if(cpuL3freq() > policy->max){
-    this_dbs_info->rate_mult = dbs_tuners_ins.sampling_down_factor;
-    dbs_freq_increase(policy, policy->max);
-    }
-    else
-    dbs_freq_increase(policy, cpuL3freq());
-  return;
-  }
-
-  else
-#endif
-  if (max_load_freq > dbs_tuners_ins.up_threshold * policy->cur) {
-
-
-	/* If switching to max speed, apply sampling_down_factor */
+	if (max_load_freq > dbs_tuners_ins.up_threshold * policy->cur) {
+		/* If switching to max speed, apply sampling_down_factor */
 		if (policy->cur < policy->max)
 			this_dbs_info->rate_mult =
 				dbs_tuners_ins.sampling_down_factor;
@@ -629,6 +566,7 @@ status_old = status;
 	/* check for frequency boost */
 	if (dbs_tuners_ins.boosted && policy->cur < boostfreq) {
 		dbs_freq_increase(policy, boostfreq);
+		dbs_tuners_ins.boostfreq = policy->cur;
 		return;
 	}
 
@@ -650,24 +588,9 @@ status_old = status;
 				(dbs_tuners_ins.up_threshold -
 				 dbs_tuners_ins.down_differential);
 
-	#ifdef CONFIG_DEVIL_TWEAKS
-	/*
-	* if touchscreen still pressed, don't reduce frequency
-	*/
-		if(smooth_ui() && touch_state_val) {
-			if(cpuL3freq() > policy->max)
-			freq_next = policy->max;
-			else
-			freq_next = cpuL3freq();
-		}
-
-		else if (dbs_tuners_ins.boosted &&
-				freq_next < policy->max) {
-	#else
 		if (dbs_tuners_ins.boosted &&
-				freq_next < policy->max) {
-	#endif
-			freq_next = policy->max;
+				freq_next < boostfreq) {
+			freq_next = boostfreq;
 		}
 		/* No longer fully busy, reset rate_mult */
 		this_dbs_info->rate_mult = 1;
