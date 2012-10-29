@@ -629,7 +629,6 @@ status_old = status;
 	/* check for frequency boost */
 	if (dbs_tuners_ins.boosted && policy->cur < boostfreq) {
 		dbs_freq_increase(policy, boostfreq);
-		dbs_tuners_ins.boostfreq = policy->cur;
 		return;
 	}
 
