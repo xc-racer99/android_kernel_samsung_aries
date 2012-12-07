@@ -36,6 +36,7 @@
 #include <mach/gpio.h>
 #include <mach/gpio-aries.h>
 #include <mach/regs-gpio.h>
+#endif
 
 #ifdef CONFIG_GENERIC_BLN
 #include <linux/bln.h>
