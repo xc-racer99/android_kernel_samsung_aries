@@ -18,12 +18,19 @@ done
 /lvm/sbin/lvm vgchange -aly --ignorelockingfailure
 
 busybox mount -t ext4 /dev/lvpool/system /system
+busybox mount -t ext4 /dev/lvpool/userdata /data
 busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 
 image=/stage1/ramdisk.img
 
-if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmdline ; then
-	# recovery boot
+busybox echo "starting bootmode detection..."
+if busybox test -e /cache/.startrecovery ||
+	busybox grep -q bootmode=2 /proc/cmdline || # normal mode
+	busybox grep -q bootmode=5 /proc/cmdline || # xl mem
+	busybox grep -q bootmode=9 /proc/cmdline; then # big mem
+    # recovery boot
+    busybox echo "found recovery command, preparing boot..."
+
 	busybox rm -fr /cache/.startrecovery
 	image=/stage1/ramdisk-recovery.img
 
@@ -51,11 +58,46 @@ elif ! busybox test -e /system/build.prop ; then
 fi
 
 busybox umount /cache
-busybox umount /system
 busybox umount /sdcard
 busybox rmdir /sdcard
 
 busybox zcat $image | busybox cpio -i
+
+
+################ apply bigmem at first boot ##################################################################
+
+bigmem=0
+
+	if busybox [ -e /data/local/devil/bigmem ] ; then
+	bigmem=`busybox cat /data/local/devil/bigmem`
+		if busybox grep -q bootmode=0 /proc/cmdline; then
+			if busybox [ "$bigmem" -eq 1 ] || busybox [ "$bigmem" -eq 2 ] ; then
+				busybox echo $bigmem > /sys/kernel/bigmem/enable
+    				busybox umount /data
+				/system/bin/toolbox reboot
+			fi
+		fi
+	fi
+
+##############################################################################################################	
+
+	if busybox grep -q bootmode=3 /proc/cmdline || 
+		busybox grep -q bootmode=5 /proc/cmdline; then
+    		busybox echo "copying XL_mem libs"
+    			busybox cp bigmem_libs/*.so /system/lib/
+    		busybox echo 1 > /sys/kernel/bigmem/enable
+
+	elif busybox grep -q bootmode=7 /proc/cmdline || 
+		busybox grep -q bootmode=9 /proc/cmdline; then
+    		busybox echo "copying XL_mem libs"
+    			busybox cp bigmem_libs/*.so /system/lib/
+    		busybox echo 2 > /sys/kernel/bigmem/enable
+	else
+    		busybox echo "copying cm default libs"
+    			busybox cp default_libs/*.so /system/lib/
+	fi
+busybox umount /system
+busybox umount /data
 
 if busybox grep -q 1 /sys/class/power_supply/battery/charging_mode_booting ; then
 	# low power mode
