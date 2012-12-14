@@ -584,4 +584,35 @@ config PN544
 	help
 	  NXP PN544 Near Field Communication controller support.
 
+config CUSTOM_VOLTAGE
+       bool "Support for Custom Voltage"
+       default n
+       help
+         Say Y here to enable Custom Voltage
+
+config LIVE_OC
+       bool "Support for Live OC"
+       default n
+       help
+         Say Y here to enable Live OC
+
+config DEVIL_TWEAKS
+       bool "Enables special Devil Kernel Tweaks"
+       default y
+       help
+         Say Y here to enable Devil Tweaks
+
+config GENERIC_BLN
+       bool "Generic BLN support for backlight notification"
+       default y
+       help
+         Say Y here to enable the backlight notification
+         for android led-notification (modified liblight needed)
+
+config TOUCH_WAKE
+  bool "Support for Touch Wake"
+  default y
+  help
+    Say Y here to enable Touch Wake
+
 endif # MISC_DEVICES

@@ -15,7 +15,7 @@
 #include <linux/cpufreq.h>
 
 enum perf_level {
-	OC0, L0, L1, L2, L3, L4, MAX_PERF_LEVEL = L4,
+	L0, L1, L2, L3, L4, L5, L6, L7, MAX_PERF_LEVEL = L7,
 };
 
 /* For cpu-freq driver */
@@ -52,3 +52,5 @@ extern void s5pv210_unlock_dvfs_high_level(unsigned int nToken);
 extern void s5pv210_cpufreq_set_platdata(struct s5pv210_cpufreq_data *pdata);
 
 #endif /* __ASM_ARCH_CPU_FREQ_H */
+void s5pv210_bus_limit_true(void);
+void s5pv210_bus_limit_false(void);

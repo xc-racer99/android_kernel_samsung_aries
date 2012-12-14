@@ -25,6 +25,10 @@
 #include <linux/input/mxt224.h>
 #include <asm/unaligned.h>
 
+#ifdef CONFIG_TOUCH_WAKE
+#include <linux/touch_wake.h>
+#endif
+
 #define OBJECT_TABLE_START_ADDRESS	7
 #define OBJECT_TABLE_ELEMENT_SIZE	6
 
@@ -310,18 +314,25 @@ static void report_input_data(struct mxt224_data *data)
 	for (i = 0; i < data->num_fingers; i++) {
 		if (data->fingers[i].z == -1)
 			continue;
-
-		input_report_abs(data->input_dev, ABS_MT_POSITION_X,
-					data->fingers[i].x);
-		input_report_abs(data->input_dev, ABS_MT_POSITION_Y,
-					data->fingers[i].y);
-		input_report_abs(data->input_dev, ABS_MT_PRESSURE,
-					data->fingers[i].z);
-		input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR,
-					data->fingers[i].w);
-		input_report_abs(data->input_dev, ABS_MT_TRACKING_ID, i);
-		input_mt_sync(data->input_dev);
-		num_fingers_down++;
+#ifdef CONFIG_TOUCH_WAKE
+        if (!device_is_suspended())
+        {
+#endif
+            input_report_abs(data->input_dev, ABS_MT_POSITION_X,
+                        data->fingers[i].x);
+            input_report_abs(data->input_dev, ABS_MT_POSITION_Y,
+                        data->fingers[i].y);
+            input_report_abs(data->input_dev, ABS_MT_PRESSURE,
+                        data->fingers[i].z);
+            input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR,
+                        data->fingers[i].w);
+            input_report_abs(data->input_dev, ABS_MT_TRACKING_ID, i);
+            input_mt_sync(data->input_dev);
+            num_fingers_down++;
+#ifdef CONFIG_TOUCH_WAKE
+        }
+        touch_press();
+#endif
 	}
 	data->finger_mask = 0;
 
@@ -426,19 +437,46 @@ static int mxt224_internal_resume(struct mxt224_data *data)
 
 static void mxt224_early_suspend(struct early_suspend *h)
 {
+#ifndef CONFIG_TOUCH_WAKE
 	struct mxt224_data *data = container_of(h, struct mxt224_data,
 								early_suspend);
 	disable_irq(data->client->irq);
 	mxt224_internal_suspend(data);
+#endif
 }
 
 static void mxt224_late_resume(struct early_suspend *h)
 {
+#ifndef CONFIG_TOUCH_WAKE    
 	struct mxt224_data *data = container_of(h, struct mxt224_data,
 								early_suspend);
 	mxt224_internal_resume(data);
 	enable_irq(data->client->irq);
+#endif
 }
+
+#ifdef CONFIG_TOUCH_WAKE
+static struct mxt224_data * touchwake_data;
+
+void touchscreen_disable(void)
+{
+    disable_irq(touchwake_data->client->irq);
+    mxt224_internal_suspend(touchwake_data);
+
+    return;
+}
+EXPORT_SYMBOL(touchscreen_disable);
+
+void touchscreen_enable(void)
+{
+    mxt224_internal_resume(touchwake_data);
+    enable_irq(touchwake_data->client->irq);
+
+    return;
+}
+EXPORT_SYMBOL(touchscreen_enable);
+#endif
+
 #else
 static int mxt224_suspend(struct device *dev)
 {
@@ -579,6 +617,9 @@ static int __devinit mxt224_probe(struct i2c_client *client,
 	register_early_suspend(&data->early_suspend);
 #endif
 
+#ifdef CONFIG_TOUCH_WAKE
+    touchwake_data = data;
+#endif
 	return 0;
 
 err_irq:

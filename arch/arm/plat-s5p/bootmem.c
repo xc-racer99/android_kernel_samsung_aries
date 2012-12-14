@@ -97,7 +97,9 @@ void s5p_reserve_bootmem(struct s5p_media_device *mdevs,
 	struct s5p_media_device *mdev;
 	u64 start, end;
 	int i, ret;
-
+//#ifdef CONFIG_S5PV210_BIGMEM
+	dma_addr_t mfc_paddr;
+//#endif
 	media_devs = mdevs;
 	nr_media_devs = nr_mdevs;
 
@@ -108,7 +110,11 @@ void s5p_reserve_bootmem(struct s5p_media_device *mdevs,
 		mdev = &media_devs[i];
 		if (mdev->memsize <= 0)
 			continue;
-
+//#ifdef CONFIG_S5PV210_BIGMEM
+		if (!strcmp(mdev->name, "jpeg"))
+			mdev->paddr = mfc_paddr;
+		else
+//#endif
 		if (!mdev->paddr) {
 			start = meminfo.bank[mdev->bank].start;
 			end = start + meminfo.bank[mdev->bank].size;
@@ -127,7 +133,10 @@ void s5p_reserve_bootmem(struct s5p_media_device *mdevs,
 
 		if (media_base[mdev->bank] > mdev->paddr)
 			media_base[mdev->bank] = mdev->paddr;
-
+//#ifdef CONFIG_S5PV210_BIGMEM
+		if (!strcmp(mdev->name, "mfc") && mdev->bank == 0)
+		mfc_paddr = mdev->paddr;
+//#endif
 		printk(KERN_INFO "s5p: %lu bytes system memory reserved "
 			"for %s at 0x%08x, %d-bank base(0x%08x)\n",
 			(unsigned long) mdev->memsize, mdev->name, mdev->paddr,
@@ -140,5 +149,3 @@ int dma_needs_bounce(struct device *dev, dma_addr_t addr, size_t size)
 {
 	return 0;
 }
-
-
