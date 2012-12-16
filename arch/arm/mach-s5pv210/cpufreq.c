@@ -26,7 +26,6 @@
 #include <mach/regs-clock.h>
 #include <mach/cpu-freq-v210.h>
 #include <mach/voltages.h>
-#include <linux/earlysuspend.h>
 
 static struct clk *cpu_clk;
 static struct clk *dmc0_clk;
@@ -34,10 +33,7 @@ static struct clk *dmc1_clk;
 static struct cpufreq_freqs freqs;
 static DEFINE_MUTEX(set_freq_lock);
 
-bool bus_limit_enable = false;
-bool bus_limit_automatic = false;
 bool user_min_max_enable = false;
-static int bus_limit = 0;
 extern bool proximity_active();
 
 /* APLL M,P,S values for 1.4GHz/1.3GHz/1.2GHz/1.0GHz/800MHz */
@@ -209,7 +205,6 @@ static unsigned long original_fclk[] = {1400000, 1300000, 1200000, 1000000, 8000
 static u32 apll_values[sizeof(original_fclk) / sizeof(unsigned long)];
 static int apll_old;
 static int bus_speed_old;
-int early_suspend = -1;
 #endif
 
 /*
@@ -1126,53 +1121,6 @@ static struct platform_driver s5pv210_cpufreq_drv = {
 	},
 };
 
-static ssize_t bus_limit_show(struct device * dev, struct device_attribute * attr, char * buf)
-{
-    return sprintf(buf, "%u\n", bus_limit);
-}
-
-
-static ssize_t bus_limit_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
-{
-    unsigned int data;
-
-    if(sscanf(buf, "%u\n", &data) == 1) 
-	{
-	    if (data == 1) 
-		{
-		    pr_info("%s: bus_limit automatic enabled\n", __FUNCTION__);
-    		    bus_limit_automatic = true;
-    		    bus_limit_enable = false;
-		    bus_limit = data;
-		} 
-	    else if (data == 2) 
-		{
-		    pr_info("%s: bus_limit permanent enabled\n", __FUNCTION__);
-    		    bus_limit_automatic = false;
-    		    bus_limit_enable = true;
-		    bus_limit = data;
-		} 
-	    else 
-		{
-		    pr_info("%s: bus_limit disabled\n", __FUNCTION__);
-    		    bus_limit_automatic = false;
-    		    bus_limit_enable = false;
-		    bus_limit = 0;
-		}
-    		if (bus_limit_enable && !bus_limit_automatic) {
-      			s5pv210_bus_limit_true();
-    		} else if(!bus_limit_enable && !bus_limit_automatic) {
-      			s5pv210_bus_limit_false();
-    		} 
-	} 
-    else 
-	{
-	    pr_info("%s: invalid input\n", __FUNCTION__);
-	}
-
-    return size;
-}
-
 
 static ssize_t user_max_read(struct device * dev, struct device_attribute * attr, char * buf)
 {
@@ -1277,14 +1225,12 @@ EXPORT_SYMBOL(min_max_enable);
 
  
 static DEVICE_ATTR(user_min_max_enable, S_IRUGO | S_IWUGO , user_min_max_enable_show, user_min_max_enable_store);
-static DEVICE_ATTR(bus_limit, S_IRUGO | S_IWUGO , bus_limit_show, bus_limit_store);
 static DEVICE_ATTR(user_max, S_IRUGO | S_IWUGO , user_max_read, user_max_write);
 static DEVICE_ATTR(user_min, S_IRUGO | S_IWUGO , user_min_read, user_min_write);
 
  
 static struct attribute *devil_idle_attributes[] = {
     &dev_attr_user_min_max_enable.attr,
-    &dev_attr_bus_limit.attr,
     &dev_attr_user_max.attr,
     &dev_attr_user_min.attr,
     NULL
@@ -1299,99 +1245,10 @@ static struct miscdevice devil_idle_device = {
     .name = "devil_idle",
 };
 
-static void powersave_early_suspend(struct early_suspend *handler)
-{
-  early_suspend = 1;
-  if (bus_limit_automatic){
-  s5pv210_bus_limit_true();
-  }
-}
-
-
-static void powersave_late_resume(struct early_suspend *handler)
-{
-  early_suspend = -1;
-  if (bus_limit_automatic){
-  s5pv210_bus_limit_false();
-  }
-}
-
-static struct early_suspend _powersave_early_suspend = {
-  .suspend = powersave_early_suspend,
-  .resume = powersave_late_resume,
-  .level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
-};
-
-void s5pv210_bus_limit_true(void)
-{
- int i; 
-if(proximity_active() && bus_limit_automatic){
-// only save the actual voltages
-  L4_int_volt = dvs_conf[4].int_volt;
-  L5_int_volt = dvs_conf[5].int_volt;
-  L6_int_volt = dvs_conf[6].int_volt;
-
-    for (i = 0; i < num_freqs; i++) {
-	dvs_conf[i].arm_screenon_volt = dvs_conf[i].arm_volt;
-    	}
-
-} else {
-  mutex_lock(&set_freq_lock);
-  clkdiv_val[4][2] = 7;
-  clkdiv_val[5][2] = 3;
-  clkdiv_val[6][2] = 1;
-  clkdiv_val[4][3] = 0;
-  clkdiv_val[5][3] = 0;
-  clkdiv_val[6][3] = 0;
-  L4_int_volt = dvs_conf[4].int_volt;
-  L5_int_volt = dvs_conf[5].int_volt;
-  L6_int_volt = dvs_conf[6].int_volt;
-  dvs_conf[4].int_volt = L4_int_volt - 50000;
-  dvs_conf[5].int_volt = L5_int_volt - 50000;
-  dvs_conf[6].int_volt = L6_int_volt - 50000;
-pr_info("lowered int_volt");
-  if (bus_limit_automatic){
-    for (i = 0; i < num_freqs; i++) {
-	dvs_conf[i].arm_screenon_volt = dvs_conf[i].arm_volt;
-	dvs_conf[i].arm_volt = dvs_conf[i].arm_screenoff_volt;
-	pr_info("dvs_conf[i].arm_volt while screen off, set to %lu\n", dvs_conf[i].arm_volt);
-    	}
-  }
-  bus_speed_old = 0;
-  mutex_unlock(&set_freq_lock);
-}
-}
-
-void s5pv210_bus_limit_false(void)
-{
-int i;
-  mutex_lock(&set_freq_lock);
-  clkdiv_val[4][2] = 3;
-  clkdiv_val[5][2] = 1;
-  clkdiv_val[6][2] = 0;
-  clkdiv_val[4][3] = 1;
-  clkdiv_val[5][3] = 1;
-  clkdiv_val[6][3] = 1;
-  dvs_conf[4].int_volt = L4_int_volt;
-  dvs_conf[5].int_volt = L5_int_volt;
-  dvs_conf[6].int_volt = L6_int_volt;
-
-  if (bus_limit_automatic){
-    for (i = 0; i < num_freqs; i++) {
-	dvs_conf[i].arm_volt = dvs_conf[i].arm_screenon_volt;
-	pr_info("dvs_conf[i].arm_volt set to %lu\n", dvs_conf[i].arm_volt);
-    	}
-  }
-  bus_speed_old = 0;
-  mutex_unlock(&set_freq_lock);
-}
-
-
 
 static int __init s5pv210_cpufreq_init(void)
 {
 	int ret;
-	register_early_suspend(&_powersave_early_suspend);
 	misc_register(&devil_idle_device);
     	if (sysfs_create_group(&devil_idle_device.this_device->kobj, &devil_idle_group) < 0)
     	{

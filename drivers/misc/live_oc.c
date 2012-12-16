@@ -10,7 +10,6 @@
 #include <linux/init.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
-#include <linux/earlysuspend.h>
 
 #define LIVEOC_VERSION 1
 
@@ -22,7 +21,6 @@ extern void liveoc_update(unsigned int oc_value, unsigned int oc_low_freq, unsig
 static int oc_value = 100;
 static int oc_value_on = 100;
 static int selective_oc = 0;
-extern bool bus_limit_automatic;
 
 /* Apply Live OC to 800MHz and above */
 static int oc_low_freq = 800000;
@@ -217,37 +215,10 @@ static struct miscdevice liveoc_device =
 	.name = "liveoc",
     };
 
-static void powersave_early_suspend(struct early_suspend *handler)
-{
-	if(bus_limit_automatic){
-  		if(oc_value > 100){
-  		oc_value_on = oc_value;
-  		oc_value = 100;
-  		liveoc_update(oc_value, oc_low_freq, oc_high_freq, selective_oc);
-  		}
-	}
-}
-
-
-static void powersave_late_resume(struct early_suspend *handler)
-{
-  if(oc_value_on > 100){
-  oc_value = oc_value_on;
-  liveoc_update(oc_value, oc_low_freq, oc_high_freq, selective_oc);
-  }
-}
-
-static struct early_suspend _powersave_early_suspend = {
-  .suspend = powersave_early_suspend,
-  .resume = powersave_late_resume,
-  .level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
-};
-
 static int __init liveoc_init(void)
 {
 
     int ret;
-    register_early_suspend(&_powersave_early_suspend);
     pr_info("%s misc_register(%s)\n", __FUNCTION__, liveoc_device.name);
     ret = misc_register(&liveoc_device);
 
