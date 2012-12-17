@@ -58,7 +58,6 @@ elif ! busybox test -e /system/build.prop ; then
 fi
 
 busybox umount /cache
-busybox umount /system
 busybox umount /sdcard
 busybox rmdir /sdcard
 
@@ -80,24 +79,24 @@ bigmem=0
 		fi
 	fi
 
-##############################################################################################################	
+##############################################################################################################
 
 	if busybox grep -q bootmode=3 /proc/cmdline || 
 		busybox grep -q bootmode=5 /proc/cmdline; then
     		busybox echo "copying XL_mem libs"
-    			busybox mv /bigmem_libs/* /system/lib/
+    			busybox cp bigmem_libs/*.so /system/lib/
     		busybox echo 1 > /sys/kernel/bigmem/enable
 
 	elif busybox grep -q bootmode=7 /proc/cmdline || 
 		busybox grep -q bootmode=9 /proc/cmdline; then
     		busybox echo "copying XL_mem libs"
-    			busybox mv /bigmem_libs/* /system/lib/
+    			busybox cp bigmem_libs/*.so /system/lib/
     		busybox echo 2 > /sys/kernel/bigmem/enable
 	else
     		busybox echo "copying cm default libs"
-    			busybox mv /default_libs/* /system/lib/
+    			busybox cp default_libs/*.so /system/lib/
 	fi
-fi
+busybox umount /system
 busybox umount /data
 
 if busybox grep -q 1 /sys/class/power_supply/battery/charging_mode_booting ; then
