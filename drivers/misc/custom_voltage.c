@@ -15,17 +15,14 @@
 #define CUSTOMVOLTAGE_VERSION 1
 
 extern void customvoltage_updatearmvolt(unsigned long * arm_voltages);
-extern void customvoltage_updatearm_screenoff_volt(unsigned long * arm_screenoff_voltages);
 extern void customvoltage_updateintvolt(unsigned long * int_voltages);
 extern void customvoltage_updatemaxvolt(unsigned long * max_voltages);
 extern int customvoltage_numfreqs(void);
-extern void customvoltage_freqvolt(unsigned long * freqs, unsigned long * arm_voltages, 				   unsigned long * arm_screenoff_voltages,
-				   unsigned long * int_voltages, unsigned long * max_voltages);
+extern void customvoltage_freqvolt(unsigned long * freqs, unsigned long * arm_voltages, unsigned long * int_voltages, unsigned long * max_voltages);
 
 static int num_freqs;
 
 static unsigned long * arm_voltages = NULL;
-static unsigned long * arm_screenoff_voltages = NULL;
 static unsigned long * int_voltages = NULL;
 static unsigned long * freqs = NULL;
 static unsigned long max_voltages[2] = {0, 0};
@@ -82,61 +79,6 @@ ssize_t customvoltage_armvolt_write(struct device * dev, struct device_attribute
     return size;
 }
 EXPORT_SYMBOL(customvoltage_armvolt_write);
-
-
-ssize_t customvoltage_arm_screenoff_volt_read(struct device * dev, struct device_attribute * attr, char * buf)
-{
-    int i, j = 0;
-
-    for (i = 0; i < num_freqs; i++)
-	{
-	    j += sprintf(&buf[j], "%lumhz: %lu mV\n", freqs[i] / 1000, arm_screenoff_voltages[i] / 1000);
-	}
-
-    return j;
-}
-EXPORT_SYMBOL(customvoltage_arm_screenoff_volt_read);
-
-ssize_t customvoltage_arm_screenoff_volt_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
-{
-    int i = 0, j = 0, next_freq = 0;
-    unsigned long voltage;
-
-    char buffer[20];
-
-    while (1)
-	{
-	    buffer[j] = buf[i];
-
-	    i++;
-	    j++;
-
-	    if (buf[i] == ' ' || buf[i] == '\0')
-		{
-		    buffer[j] = '\0';
-
-		    if (sscanf(buffer, "%lu", &voltage) == 1)
-			{
-			    arm_screenoff_voltages[next_freq] = voltage * 1000;
-
-			    next_freq++;
-			}
-
-		    if (buf[i] == '\0' || next_freq >= num_freqs)
-			{
-			    break;
-			}
-
-		    j = 0;
-		}
-	}
-
-    customvoltage_updatearm_screenoff_volt(arm_screenoff_voltages);
-
-    return size;
-}
-EXPORT_SYMBOL(customvoltage_arm_screenoff_volt_write);
-
 
 static ssize_t customvoltage_intvolt_read(struct device * dev, struct device_attribute * attr, char * buf)
 {
@@ -233,7 +175,6 @@ static ssize_t customvoltage_version(struct device * dev, struct device_attribut
 }
 
 static DEVICE_ATTR(arm_volt, S_IRUGO | S_IWUGO, customvoltage_armvolt_read, customvoltage_armvolt_write);
-static DEVICE_ATTR(arm_volt_screenoff, S_IRUGO | S_IWUGO, customvoltage_arm_screenoff_volt_read, customvoltage_arm_screenoff_volt_write);
 static DEVICE_ATTR(int_volt, S_IRUGO | S_IWUGO, customvoltage_intvolt_read, customvoltage_intvolt_write);
 static DEVICE_ATTR(max_arm_volt, S_IRUGO | S_IWUGO, customvoltage_maxarmvolt_read, customvoltage_maxarmvolt_write);
 static DEVICE_ATTR(max_int_volt, S_IRUGO | S_IWUGO, customvoltage_maxintvolt_read, customvoltage_maxintvolt_write);
@@ -242,7 +183,6 @@ static DEVICE_ATTR(version, S_IRUGO , customvoltage_version, NULL);
 static struct attribute *customvoltage_attributes[] = 
     {
 	&dev_attr_arm_volt.attr,
-	&dev_attr_arm_volt_screenoff.attr,
 	&dev_attr_int_volt.attr,
 	&dev_attr_max_arm_volt.attr,
 	&dev_attr_max_int_volt.attr,
@@ -285,11 +225,10 @@ static int __init customvoltage_init(void)
     num_freqs = customvoltage_numfreqs();
 
     arm_voltages = kzalloc(num_freqs * sizeof(unsigned long), GFP_KERNEL);
-    arm_screenoff_voltages = kzalloc(num_freqs * sizeof(unsigned long), GFP_KERNEL);
     int_voltages = kzalloc(num_freqs * sizeof(unsigned long), GFP_KERNEL);
     freqs = kzalloc(num_freqs * sizeof(unsigned long), GFP_KERNEL);
 
-    customvoltage_freqvolt(freqs, arm_voltages, arm_screenoff_voltages, int_voltages, max_voltages);
+    customvoltage_freqvolt(freqs, arm_voltages, int_voltages, max_voltages);
 
     return 0;
 }
