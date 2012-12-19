@@ -182,8 +182,6 @@ static bool pllbus_changing = false;
 extern int get_oc_value(void); 
 extern unsigned long get_oc_low_freq(void);
 extern unsigned long get_oc_high_freq(void);
-static unsigned long user_max = 1000000;
-static unsigned long user_min = 100000;
 static unsigned long sleep_freq;
 
 static unsigned long original_fclk[] = {1400000, 1300000, 1200000, 1000000, 800000, 800000, 800000, 800000};
