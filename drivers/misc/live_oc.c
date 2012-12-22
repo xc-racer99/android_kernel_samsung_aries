@@ -10,18 +10,16 @@
 #include <linux/init.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
-#include <linux/slab.h>
 
-#define LIVEOC_VERSION 2
+#define LIVEOC_VERSION 1
 
 #define MAX_OCVALUE 150
 
 
 extern void liveoc_update(unsigned int oc_value, unsigned int oc_low_freq, unsigned int oc_high_freq, unsigned int selective_oc);
 
-static int * oc_value = NULL;
-static int * oc_value_on = NULL;
-static const int num_freqs = 8;
+static int oc_value = 100;
+static int oc_value_on = 100;
 static int selective_oc = 0;
 
 /* Apply Live OC to 800MHz and above */
@@ -32,15 +30,7 @@ static int oc_high_freq = 1400000;
 
 static ssize_t liveoc_ocvalue_read(struct device * dev, struct device_attribute * attr, char * buf)
 {
-    //return sprintf(buf, "%u\n", oc_value);
-    
-    int i, j = 0;
-    for (i = 0; i < num_freqs; i++)
-	{
-	    j += sprintf(&buf[j], "%lu: %u OC\n", i, oc_value[i]); //Could output pretier.
-	}
-
-    return j;    
+    return sprintf(buf, "%u\n", oc_value);
 }
 
 static ssize_t liveoc_octarget_low_read(struct device * dev, struct device_attribute * attr, char * buf)
@@ -60,52 +50,32 @@ static ssize_t liveoc_selectiveoc_enable_read(struct device * dev, struct device
 
 static ssize_t liveoc_ocvalue_write(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
-    int i = 0, j = 0, next_freq = 0;
     unsigned int data;
 
-    char buffer[20];
-
-    while (1)
+    if(sscanf(buf, "%u\n", &data) == 1) 
 	{
-	    buffer[j] = buf[i];
-
-	    i++;
-	    j++;
-
-	    if (buf[i] == ' ' || buf[i] == '\0')
+	    if (data >= 90 && data <= MAX_OCVALUE)
 		{
-		    buffer[j] = '\0';
+		    if (data != oc_value)
+			{
+			    oc_value = data;
+			    oc_value_on = data;
 
-		    if (sscanf(buffer, "%u", &data) == 1)
-                        {
-	    			if (data >= 90 && data <= MAX_OCVALUE)
-				{
-		    			if (data != oc_value[next_freq])
-					{
-			    			oc_value[next_freq] = data;
-			    			oc_value_on[next_freq] = data;
-						//liveoc_update(oc_value, oc_low_freq, oc_high_freq, selective_oc);
-					}
+			    liveoc_update(oc_value, oc_low_freq, oc_high_freq, selective_oc);
+			}
 
-		    			pr_info("LIVEOC oc-value[%i] set to %u\n", next_freq, oc_value[next_freq]);
-				}
-	    			else
-					{
-		    			pr_info("%s: invalid input range %u\n", __FUNCTION__, data);
-				}
-		} 
-
-		next_freq++;
-
-		if (buf[i] == '\0' || next_freq > num_freqs)
-		{
-			break;
+		    pr_info("LIVEOC oc-value set to %u\n", oc_value);
 		}
-
-		j = 0;
-	    }
+	    else
+		{
+		    pr_info("%s: invalid input range %u\n", __FUNCTION__, data);
+		}
+	} 
+    else 
+	{
+	    pr_info("%s: invalid input\n", __FUNCTION__);
 	}
-    liveoc_update(oc_value, oc_low_freq, oc_high_freq, selective_oc);
+
     return size;
 }
 
@@ -264,17 +234,6 @@ static int __init liveoc_init(void)
 	    pr_err("%s sysfs_create_group fail\n", __FUNCTION__);
 	    pr_err("Failed to create sysfs group for device (%s)!\n", liveoc_device.name);
 	}
-
-    oc_value = kzalloc(num_freqs * sizeof(int), GFP_KERNEL);
-    int i;
-    for (i=0; i<num_freqs; i++) {
-        oc_value[i] = 100;
-    }
-    oc_value_on = kzalloc(num_freqs * sizeof(int), GFP_KERNEL);
-    int j;
-    for (j=0; j<num_freqs; j++) {
-        oc_value_on[j] = 100;
-    }
 
     return 0;
 }
