@@ -10,6 +10,7 @@
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
 
+extern bool nocam;
 extern bool bigmem;
 extern bool xlmem;
 static int  mem = 0;
@@ -29,18 +30,28 @@ static ssize_t enable_store(struct kobject *kobj, struct kobj_attribute *attr, c
 		mem = input;
 		xlmem = true;
 		bigmem = false;
+		nocam = false;
 		}
 	    else if (input == 2) 
 		{
 		mem = input;
 		xlmem = false;
 		bigmem = true;
+		nocam = false;
+		}
+	    else if (input == 3) 
+		{
+		mem = input;
+		xlmem = false;
+		bigmem = false;
+		nocam = true;
 		}
 	    else
 		{
 		mem = 0;
 		xlmem = false;
 		bigmem = false;
+		nocam = false;
 		}
 
 		return count;

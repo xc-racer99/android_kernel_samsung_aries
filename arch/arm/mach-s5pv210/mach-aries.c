@@ -143,6 +143,8 @@ struct wifi_mem_prealloc {
 	unsigned long size;
 };
 
+bool nocam;
+EXPORT_SYMBOL(nocam);
 bool bigmem;
 EXPORT_SYMBOL(bigmem);
 bool xlmem;
@@ -152,20 +154,26 @@ static int aries_notifier_call(struct notifier_block *this,
 					unsigned long code, void *_cmd)
 {
 	int mode = REBOOT_MODE_NONE;
-	if (bigmem)
+	if (nocam)
+		mode = 11;
+	else if (bigmem)
 		mode = 7;
 	else if (xlmem)
 		mode = 3;
 	if ((code == SYS_RESTART) && _cmd) {
 		if (!strcmp((char *)_cmd, "recovery"))
-			if (bigmem)
+			if (nocam)
+				mode = 13;
+			else if (bigmem)
 				mode = 9;
 			else if (xlmem)
 				mode = 5;
 			else
 				mode = 2; // It's not REBOOT_MODE_RECOVERY, blame Samsung
 		else {
-			if (bigmem)
+			if (nocam)
+				mode = 11;
+			else if (bigmem)
 				mode = 7;
 			else if (xlmem)
 				mode = 3;
@@ -334,37 +342,13 @@ static struct s3cfb_lcd s6e63m0 = {
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0_XL (11264 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1_XL (11264 * SZ_1K)
 
-#ifdef CONFIG_S5PV210_XL
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (11264 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (11264 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (11264 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (11264 * SZ_1K)
-
-#elif defined CONFIG_S5PV210_TESTMEM
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (8688 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (8688 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (13312 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (21504 * SZ_1K)
-
-#elif defined CONFIG_S5PV210_XL_BIGMEM
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (5000 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (5000 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (11264 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (11264 * SZ_1K)
-
-#elif defined CONFIG_S5PV210_XL_HUGHMEM
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (0 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (0 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (11264 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (11264 * SZ_1K)
-
-#else
+#define S5PV210_VIDEO_SAMSUNG_MEMSIZE_NOCAM (0 * SZ_1K)
 
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (11264 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (11264 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (14336 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (21504 * SZ_1K)
-#endif
+
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMD (S5PV210_LCD_WIDTH * \
 					     S5PV210_LCD_HEIGHT * 4 * \
 					     (CONFIG_FB_S3C_NR_BUFFERS + \
@@ -5208,8 +5192,19 @@ static struct platform_device *aries_devices[] __initdata = {
 
 static void check_bigmem(void) {
 	int bootmode = __raw_readl(S5P_INFORM6);
+	if ((bootmode == 11) || (bootmode == 13)) {
+		nocam = true;
+		bigmem = false;
+		xlmem = false;
+		aries_media_devs[2].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_NOCAM;
+		aries_media_devs[4].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_NOCAM;
+		aries_media_devs[0].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_NOCAM;
+		aries_media_devs[1].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_NOCAM;
+	}
 	if ((bootmode == 7) || (bootmode == 9)) {
 		bigmem = true;
+		nocam = false;
+		xlmem = false;
 		aries_media_devs[2].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0_BM;
 		aries_media_devs[4].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0_BM;
 		aries_media_devs[0].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0_XL; 
@@ -5217,6 +5212,8 @@ static void check_bigmem(void) {
 	}
 	else if ((bootmode == 3) || (bootmode == 5)) {
 		xlmem = true;
+		bigmem = false;
+		nocam = false;
 		aries_media_devs[2].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0;
 		aries_media_devs[4].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0;
 		aries_media_devs[0].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0_XL; 
@@ -5427,7 +5424,7 @@ static void __init aries_inject_cmdline(void) {
 
 	// Only write bootmode when less than 10 to prevent confusion with watchdog
 	// reboot (0xee = 238)
-	if (bootmode < 10) {
+	if (bootmode < 15) {
 		size += sprintf(new_command_line + size, " bootmode=%d", bootmode);
 	}
 
