@@ -696,12 +696,12 @@ static void liveoc_init(void)
     return;
 }
 
-void liveoc_update(unsigned int oc_value, unsigned int oc_low_freq, unsigned int oc_high_freq)
+void liveoc_update(unsigned int * oc_value, unsigned int oc_low_freq, unsigned int oc_high_freq)
 {
     int i, index, index_min = L0, index_max = L0, divider;
 
     unsigned long fclk;
-pr_info("LIVEOC oc-value set to %u\n", oc_value);
+pr_info("LIVEOC oc-value set to %u\n", oc_value[i]);
     struct cpufreq_policy * policy = cpufreq_cpu_get(0);
 
     mutex_lock(&set_freq_lock);
@@ -723,7 +723,7 @@ pr_info("LIVEOC oc-value set to %u\n", oc_value);
 	else if ((original_fclk[index] ) / (clkdiv_val[index][0] + 1) > oc_high_freq)
 	fclk = original_fclk[index];
 	else
-	fclk = (original_fclk[index] * oc_value) / 100;	
+	fclk = (original_fclk[index] * oc_value[i]) / 100;
 
 	s5pv210_freq_table[i].frequency = fclk / (clkdiv_val[index][0] + 1);
 
