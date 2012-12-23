@@ -5201,7 +5201,7 @@ static void check_bigmem(void) {
 		aries_media_devs[0].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_NOCAM;
 		aries_media_devs[1].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_NOCAM;
 	}
-	if ((bootmode == 7) || (bootmode == 9)) {
+	else if ((bootmode == 7) || (bootmode == 9)) {
 		bigmem = true;
 		nocam = false;
 		xlmem = false;
@@ -5222,6 +5222,7 @@ static void check_bigmem(void) {
 	else {
 		bigmem = false;
 		xlmem = false;
+		nocam = false;
 		aries_media_devs[2].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0;
 		aries_media_devs[4].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0;
 		aries_media_devs[0].memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0; 
