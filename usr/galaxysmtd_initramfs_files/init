@@ -19,13 +19,32 @@ busybox sleep 1
 fi
 done
 
-
 /lvm/sbin/lvm vgscan --mknodes --ignorelockingfailure
 /lvm/sbin/lvm vgchange -aly --ignorelockingfailure
 
-busybox mount -t ext4 /dev/lvpool/system /system
-busybox mount -t ext4 /dev/lvpool/userdata /data
-busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
+$BB mount -t ext4 /dev/lvpool/userdata /data
+
+####################################################################
+########## mount system partition depending on selection ###########
+####################################################################
+if $BB test -f /data/dualboot/rom ; then
+	if $BB grep -q secondary /data/dualboot/rom ; then
+		$BB mount -t ext4 /dev/lvpool/secondary_system /system
+	elif $BB grep -q primary /data/dualboot/rom ; then
+		$BB mount -t ext4 /dev/lvpool/system /system
+	else 
+		echo "no rom selected..."
+		echo "booting to recovery"
+	fi
+else
+		$BB mkdir -p /data/dualboot
+		$BB touch /data/dualboot/rom
+		$BB echo "emergency" > /data/dualboot/rom
+		echo "no rom selected..."
+		echo "booting to recovery"
+fi
+
+#####################################################################	
 
 image=/stage1/ramdisk.img
 
@@ -33,6 +52,7 @@ busybox echo "starting bootmode detection..."
 busybox echo "command line:"
 busybox cat /proc/cmdline
 if busybox test -e /cache/.startrecovery ||
+	busybox grep -q emergency /data/dualboot/rom ||
 	busybox grep -q bootmode=2 /proc/cmdline || # normal mode
 	busybox grep -q bootmode=5 /proc/cmdline || # xl mem
 	busybox grep -q bootmode=9 /proc/cmdline || # big mem
@@ -71,6 +91,12 @@ busybox umount /sdcard
 busybox rmdir /sdcard
 
 busybox zcat $image | busybox cpio -i
+
+	if busybox grep -q secondary /data/dualboot/rom ; then
+		busybox mv fstab.aries.secondary fstab.aries
+	else 
+		busybox mv fstab.aries.primary fstab.aries
+	fi 
 
 
 ################ apply bigmem at first boot ##################################################################
