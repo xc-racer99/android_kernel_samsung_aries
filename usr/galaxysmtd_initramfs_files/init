@@ -10,7 +10,7 @@ busybox mount -t proc proc /proc
 busybox mount -t sysfs sysfs /sys
 
 for i in $(busybox seq 1 5) ; do
-if busybox test -d /sys/dev/block/179:01 ; then
+if busybox test -d /sys/dev/block/179:0 ; then
 break
 else
 echo "Waiting for internal mmc..."
@@ -22,24 +22,27 @@ done
 /lvm/sbin/lvm vgscan --mknodes --ignorelockingfailure
 /lvm/sbin/lvm vgchange -aly --ignorelockingfailure
 
-$BB mount -t ext4 /dev/lvpool/userdata /data
+busybox mount -t ext4 /dev/lvpool/userdata /data
+busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
+
+bootmode=nothing
 
 ####################################################################
 ########## mount system partition depending on selection ###########
 ####################################################################
-if $BB test -f /data/dualboot/rom ; then
-	if $BB grep -q secondary /data/dualboot/rom ; then
-		$BB mount -t ext4 /dev/lvpool/secondary_system /system
-	elif $BB grep -q primary /data/dualboot/rom ; then
-		$BB mount -t ext4 /dev/lvpool/system /system
+if busybox test -f /data/dualboot/rom ; then
+	if busybox grep -q secondary /data/dualboot/rom ; then
+		busybox mount -t ext4 /dev/lvpool/secondary_system /system
+	elif busybox grep -q primary /data/dualboot/rom ; then
+		busybox mount -t ext4 /dev/lvpool/system /system
 	else 
 		echo "no rom selected..."
 		echo "booting to recovery"
 	fi
 else
-		$BB mkdir -p /data/dualboot
-		$BB touch /data/dualboot/rom
-		$BB echo "emergency" > /data/dualboot/rom
+		busybox mkdir -p /data/dualboot
+		busybox touch /data/dualboot/rom
+		busybox echo "emergency" > /data/dualboot/rom
 		echo "no rom selected..."
 		echo "booting to recovery"
 fi
@@ -47,6 +50,7 @@ fi
 #####################################################################	
 
 image=/stage1/ramdisk.img
+bootmode=system
 
 busybox echo "starting bootmode detection..."
 busybox echo "command line:"
@@ -62,6 +66,7 @@ if busybox test -e /cache/.startrecovery ||
 
 	busybox rm -fr /cache/.startrecovery
 	image=/stage1/ramdisk-recovery.img
+	bootmode=recovery
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
@@ -81,6 +86,7 @@ elif ! busybox test -e /system/build.prop ; then
 	fi
 
 	image=/stage1/ramdisk-recovery.img
+	bootmode=recovery
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
@@ -92,11 +98,25 @@ busybox rmdir /sdcard
 
 busybox zcat $image | busybox cpio -i
 
-	if busybox grep -q secondary /data/dualboot/rom ; then
-		busybox mv fstab.aries.secondary fstab.aries
-	else 
-		busybox mv fstab.aries.primary fstab.aries
-	fi 
+	if busybox [ "$bootmode" = "system" ] ; then
+		if busybox grep -q secondary /data/dualboot/rom ; then
+			busybox mv fstab.aries.secondary fstab.aries
+		else 
+			busybox mv fstab.aries.primary fstab.aries
+		fi
+	elif busybox [ "$bootmode" = "recovery" ] ; then
+		busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
+		if busybox test -e /cache/dualboot/unsecure_recovery ; then
+			if busybox grep -q secondary /cache/dualboot/unsecure ; then
+				busybox mv etc/recovery.fstab.secondary etc/recovery.fstab
+			elif busybox grep -q primary /cache/dualboot/unsecure ; then
+				busybox mv etc/recovery.fstab.primary etc/recovery.fstab
+			fi
+			
+			busybox rm -rf /cache/dualboot/unsecure_recovery
+			busybox umount /cache
+		fi
+	fi
 
 
 ################ apply bigmem at first boot ##################################################################
