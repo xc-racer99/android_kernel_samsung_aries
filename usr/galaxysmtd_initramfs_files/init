@@ -25,16 +25,16 @@ done
 busybox mount -t ext4 /dev/lvpool/userdata /data
 busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 
-bootmode=nothing
-
 ####################################################################
 ########## mount system partition depending on selection ###########
 ####################################################################
 if busybox test -f /data/dualboot/rom ; then
 	if busybox grep -q secondary /data/dualboot/rom ; then
 		busybox mount -t ext4 /dev/lvpool/secondary_system /system
+		busybox mkdir -p /data/secondary_system
 	elif busybox grep -q primary /data/dualboot/rom ; then
 		busybox mount -t ext4 /dev/lvpool/system /system
+		busybox mkdir -p /data/primary_system
 	else 
 		echo "no rom selected..."
 		echo "booting to recovery"
