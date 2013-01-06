@@ -1087,7 +1087,7 @@ static ssize_t incall_boost_rcv_store( struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size )
 {
-	unsigned short newval = 2;
+	unsigned short newval = 1;
 
 	if ( sscanf( buf, "%hd", &newval ) == 1 )
 	{
@@ -1113,7 +1113,7 @@ static ssize_t incall_boost_bt_store( struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size )
 {
-	unsigned short newval = 2;
+	unsigned short newval = 1;
 
 	if ( sscanf( buf, "%hd", &newval ) == 1 )
 	{
@@ -1139,7 +1139,7 @@ static ssize_t incall_boost_spk_store( struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size )
 {
-	unsigned short newval = 2;
+	unsigned short newval = 1;
 
 	if ( sscanf( buf, "%hd", &newval ) == 1 )
 	{
@@ -1165,7 +1165,7 @@ static ssize_t incall_boost_hp_store( struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size )
 {
-	unsigned short newval = 2;
+	unsigned short newval = 1;
 
 	if ( sscanf( buf, "%hd", &newval ) == 1 )
 	{

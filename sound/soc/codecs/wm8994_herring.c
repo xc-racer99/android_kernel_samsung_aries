@@ -44,10 +44,10 @@
 // 1 (+6db  = quiet),
 // 2 (+12db = loud),
 // 3 (+18db = holy shit)
-unsigned short incall_boost_rcv  = (2 << WM8994_AIF2DAC_BOOST_SHIFT);
-unsigned short incall_boost_bt   = (2 << WM8994_AIF2DAC_BOOST_SHIFT);
+unsigned short incall_boost_rcv  = (1 << WM8994_AIF2DAC_BOOST_SHIFT);
+unsigned short incall_boost_bt   = (1 << WM8994_AIF2DAC_BOOST_SHIFT);
 unsigned short incall_boost_spk  = (1 << WM8994_AIF2DAC_BOOST_SHIFT);
-unsigned short incall_boost_hp   = (2 << WM8994_AIF2DAC_BOOST_SHIFT);
+unsigned short incall_boost_hp   = (1 << WM8994_AIF2DAC_BOOST_SHIFT);
 
 // valid values for in-call mic gain are 0 .. 0x1f (31 decimal)
 // 0 means -16.5db
