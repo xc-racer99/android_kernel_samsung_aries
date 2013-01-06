@@ -54,6 +54,8 @@
 #define HDMI_USE_AUDIO
 #endif
 
+bool _dockredir = false;
+
 //extern const u16 wm8994_reg_defaults[WM8994_CACHE_SIZE];
 
 /*
@@ -133,7 +135,7 @@ select_route universal_wm8994_voicecall_paths[] = {
 	wm8994_set_voicecall_speaker, wm8994_set_voicecall_headset,
 	wm8994_set_voicecall_headphone, wm8994_set_voicecall_bluetooth,
 	wm8994_set_voicecall_tty_vco, wm8994_set_voicecall_tty_hco,
-	wm8994_set_voicecall_tty_full,
+	wm8994_set_voicecall_tty_full, wm8994_set_voicecall_dock_speaker,
 };
 
 select_mic_route universal_wm8994_mic_paths[] = {
@@ -294,7 +296,7 @@ static const char *playback_path[] = {
 };
 static const char *voicecall_path[] = { "OFF", "RCV", "SPK", "HP",
 					"HP_NO_MIC", "BT", "TTY_VCO",
-					"TTY_HCO", "TTY_FULL"};
+					"TTY_HCO", "TTY_FULL", "DOCK_SPEAKER"};
 static const char *fmradio_path[] = {
 	"FMR_OFF", "FMR_SPK", "FMR_HP", "FMR_DUAL_MIX"
 };
@@ -384,6 +386,8 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 	if (fsa9480_get_dock_status())
 		path_num = 11;
 #endif
+	if (path_num == 4 && _dockredir)
+		path_num = 11;
 
 	switch (path_num) {
 	case OFF:
@@ -565,6 +569,38 @@ static int wm8994_set_codec_status(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static ssize_t get_dockredir_kernel_support(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf,"%u\n",1);
+}
+
+static ssize_t store_usedock(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned short enable;
+	if (sscanf(buf, "%hu", &enable) == 1)
+	{
+		_dockredir = enable == 0 ? false : true;
+	}
+	return size;
+}
+
+static DEVICE_ATTR(usedock, S_IWUGO , NULL, store_usedock);
+static DEVICE_ATTR(dockredir_support, S_IRUGO , get_dockredir_kernel_support, NULL);
+
+static struct attribute *dockredir_attributes[] = {
+	&dev_attr_usedock.attr,
+	&dev_attr_dockredir_support.attr,
+	NULL
+};
+
+static struct attribute_group dockredir_group = {
+	.attrs = dockredir_attributes,
+};
+
+static struct miscdevice dockredir_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "dockredir",
+};
 
 static int wm8994_get_voice_path(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
@@ -591,6 +627,9 @@ static int wm8994_set_voice_path(struct snd_kcontrol *kcontrol,
 		return -ENODEV;
 	}
 
+	if(_dockredir && path_num == CALL_HP_NO_MIC)
+		path_num = CALL_DOCK_SPEAKER;
+
 	switch (path_num) {
 	case CALL_OFF:
 		DEBUG_LOG("Switching off output path\n");
@@ -603,6 +642,7 @@ static int wm8994_set_voice_path(struct snd_kcontrol *kcontrol,
 	case CALL_TTY_VCO:
 	case CALL_TTY_HCO:
 	case CALL_TTY_FULL:
+        case CALL_DOCK_SPEAKER:
 		DEBUG_LOG("routing  voice path to %s\n", mc->texts[path_num]);
 		break;
 	default:
@@ -815,7 +855,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x1F00);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0x86C2);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x00E5);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x00e5);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -3209,6 +3249,9 @@ static int wm8994_codec_probe(struct snd_soc_codec *codec)
 		dev_err(codec->dev, "failed to initialize WM8994\n");
 		goto err_init;
 	}
+
+	misc_register(&dockredir_device);
+	sysfs_create_group(&dockredir_device.this_device->kobj, &dockredir_group);
 
 	return ret;
 
