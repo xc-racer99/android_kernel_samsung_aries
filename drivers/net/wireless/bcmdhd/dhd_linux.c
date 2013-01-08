@@ -329,6 +329,14 @@ module_param(dhd_console_ms, uint, 0644);
 
 /* ARP offload agent mode : enable ARP Peer Auto-Reply */
 uint dhd_arp_mode = ARP_OL_AGENT | ARP_OL_PEER_AUTO_REPLY;
+
+/* Controls Status off wiffi Power on SleepMode
+   sys/module/bcmdhd/parameters/uiFastWifi      */
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+uint uiFastWifi = 1;
+module_param(uiFastWifi, uint, 0664);
+#endif /* defined(CONFIG_HAS_EARLYSUSPEND) */
+
 module_param(dhd_arp_mode, uint, 0);
 
 /* ARP offload enable */
@@ -528,11 +536,15 @@ static void dhd_set_packet_filter(int value, dhd_pub_t *dhd)
 
 static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 {
-	int power_mode = PM_MAX;
-	/* wl_pkt_filter_enable_t	enable_parm; */
+	int power_mode = PM_FAST;
+	/* wl_pkt_filter_enable_t enable_parm; */
 	char iovbuf[32];
 	int bcn_li_dtim = 3;
 	uint roamvar = 1;
+
+  /* Don't allow low power if uiFastWifi is set */
+  if (uiFastWifi == 1)
+          power_mode = PM_FAST;
 
 	DHD_TRACE(("%s: enter, value = %d in_suspend=%d\n",
 		__FUNCTION__, value, dhd->in_suspend));

@@ -34,6 +34,8 @@
 #include <linux/mfd/max8998.h>
 #include <linux/mfd/max8998-private.h>
 
+
+
 struct max8998_data {
 	struct device		*dev;
 	struct max8998_dev	*iodev;
@@ -960,7 +962,6 @@ static __devinit int max8998_pmic_probe(struct platform_device *pdev)
 		}
 	}
 
-
 	return 0;
 err:
 	for (i = 0; i < max8998->num_regulators; i++)
@@ -1021,3 +1022,5 @@ module_exit(max8998_pmic_cleanup);
 MODULE_DESCRIPTION("MAXIM 8998 voltage regulator driver");
 MODULE_AUTHOR("Kyungmin Park <kyungmin.park@samsung.com>");
 MODULE_LICENSE("GPL");
+
+

@@ -32,6 +32,10 @@
 #include <linux/skbuff.h>
 #include <linux/console.h>
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+#include <linux/fastchg.h>
+#endif
+
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <asm/setup.h>
@@ -121,6 +125,9 @@ EXPORT_SYMBOL(sec_set_param_value);
 
 void (*sec_get_param_value)(int idx, void *value);
 EXPORT_SYMBOL(sec_get_param_value);
+
+// local prototype
+static void fsa9480_charger_cb(bool attached);
 
 #define KERNEL_REBOOT_MASK      0xFFFFFFFF
 #define REBOOT_MODE_FAST_BOOT		7
@@ -1500,8 +1507,8 @@ EXPORT_SYMBOL(HWREV);
 /* in revisions before 0.9, there is a common mic bias gpio */
 
 static DEFINE_SPINLOCK(mic_bias_lock);
-static bool wm8994_mic_bias;
-static bool jack_mic_bias;
+static bool wm8994_mic_bias = false;
+static bool jack_mic_bias = false;
 static void set_shared_mic_bias(void)
 {
 #if defined(CONFIG_SAMSUNG_CAPTIVATE)
@@ -1518,7 +1525,7 @@ static void set_shared_mic_bias(void)
     gpio_set_value(GPIO_EARPATH_SEL, jack_mic_bias);
 #else
 	gpio_set_value(GPIO_MICBIAS_EN, wm8994_mic_bias || jack_mic_bias);
-    gpio_set_value(GPIO_EARPATH_SEL, wm8994_mic_bias || jack_mic_bias);
+    gpio_set_value(GPIO_EARPATH_SEL, jack_mic_bias);
 #endif
 }
 
@@ -2544,18 +2551,29 @@ static struct i2c_board_info i2c_devs8[] __initdata = {
 
 static void fsa9480_usb_cb(bool attached)
 {
-	struct usb_gadget *gadget = platform_get_drvdata(&s3c_device_usbgadget);
+#ifdef CONFIG_FORCE_FAST_CHARGE
+  if ( force_fast_charge != 0 )
+  {
+      fsa9480_charger_cb(attached);
+  }
+  else
+  {
+#endif
+    struct usb_gadget *gadget = platform_get_drvdata(&s3c_device_usbgadget);
 
-	if (gadget) {
-		if (attached)
-			usb_gadget_vbus_connect(gadget);
-		else
-			usb_gadget_vbus_disconnect(gadget);
-	}
+    if (gadget) {
+      if (attached)
+        usb_gadget_vbus_connect(gadget);
+      else
+        usb_gadget_vbus_disconnect(gadget);
+    }
 
-	set_cable_status = attached ? CABLE_TYPE_USB : CABLE_TYPE_NONE;
-	if (charger_callbacks && charger_callbacks->set_cable)
-		charger_callbacks->set_cable(charger_callbacks, set_cable_status);
+    set_cable_status = attached ? CABLE_TYPE_USB : CABLE_TYPE_NONE;
+    if (charger_callbacks && charger_callbacks->set_cable)
+      charger_callbacks->set_cable(charger_callbacks, set_cable_status);
+#ifdef CONFIG_FORCE_FAST_CHARGE
+  }
+#endif
 }
 
 static void fsa9480_charger_cb(bool attached)
@@ -2571,23 +2589,34 @@ static struct switch_dev switch_dock = {
 
 static void fsa9480_deskdock_cb(bool attached)
 {
-	struct usb_gadget *gadget = platform_get_drvdata(&s3c_device_usbgadget);
+#ifdef CONFIG_FORCE_FAST_CHARGE
+  if ( force_fast_charge != 0 )
+  {
+    fsa9480_charger_cb( attached );
+  }
+  else
+  {
+#endif
+    struct usb_gadget *gadget = platform_get_drvdata(&s3c_device_usbgadget);
 
-	if (attached)
-		switch_set_state(&switch_dock, 1);
-	else
-		switch_set_state(&switch_dock, 0);
+    if (attached)
+      switch_set_state(&switch_dock, 1);
+    else
+      switch_set_state(&switch_dock, 0);
 
-	if (gadget) {
-		if (attached)
-			usb_gadget_vbus_connect(gadget);
-		else
-			usb_gadget_vbus_disconnect(gadget);
-	}
+    if (gadget) {
+      if (attached)
+        usb_gadget_vbus_connect(gadget);
+      else
+        usb_gadget_vbus_disconnect(gadget);
+    }
 
-	set_cable_status = attached ? CABLE_TYPE_USB : CABLE_TYPE_NONE;
-	if (charger_callbacks && charger_callbacks->set_cable)
-		charger_callbacks->set_cable(charger_callbacks, set_cable_status);
+    set_cable_status = attached ? CABLE_TYPE_USB : CABLE_TYPE_NONE;
+    if (charger_callbacks && charger_callbacks->set_cable)
+      charger_callbacks->set_cable(charger_callbacks, set_cable_status);
+#ifdef CONFIG_FORCE_FAST_CHARGE
+  }
+#endif
 }
 
 static void fsa9480_cardock_cb(bool attached)
@@ -5122,6 +5151,12 @@ static struct platform_device *aries_devices[] __initdata = {
 #if defined (CONFIG_SAMSUNG_CAPTIVATE)
 	&s3c_device_i2c13,
 #endif
+#if defined CONFIG_USB_S3C_OTG_HOST
+	&s3c_device_usb_otghcd,
+#endif
+#if defined CONFIG_USB_DWC_OTG
+	&s3c_device_usb_dwcotg,
+#endif
 #ifdef CONFIG_USB_GADGET
 	&s3c_device_usbgadget,
 #endif
@@ -5672,6 +5707,48 @@ void usb_host_phy_off(void)
 			S5P_USB_PHY_CONTROL);
 }
 EXPORT_SYMBOL(usb_host_phy_off);
+
+#if defined CONFIG_USB_S3C_OTG_HOST || defined CONFIG_USB_DWC_OTG
+
+/* Initializes OTG Phy */
+void otg_host_phy_init(void) 
+{
+	__raw_writel(__raw_readl(S5P_USB_PHY_CONTROL)
+		|(0x1<<0), S5P_USB_PHY_CONTROL); /*USB PHY0 Enable */
+// from galaxy tab otg host:
+	__raw_writel((__raw_readl(S3C_USBOTG_PHYPWR)
+		&~(0x3<<3)&~(0x1<<0))|(0x1<<5), S3C_USBOTG_PHYPWR);
+// from galaxy s2 otg host:
+//	__raw_writel((__raw_readl(S3C_USBOTG_PHYPWR)
+//        	&~(0x7<<3)&~(0x1<<0)), S3C_USBOTG_PHYPWR);
+
+	__raw_writel((__raw_readl(S3C_USBOTG_PHYCLK)
+		&~(0x1<<4))|(0x7<<0), S3C_USBOTG_PHYCLK);
+
+	__raw_writel((__raw_readl(S3C_USBOTG_RSTCON)
+		&~(0x3<<1))|(0x1<<0), S3C_USBOTG_RSTCON);
+	mdelay(1);
+	__raw_writel((__raw_readl(S3C_USBOTG_RSTCON)
+		&~(0x7<<0)), S3C_USBOTG_RSTCON);
+	mdelay(1);
+
+	__raw_writel((__raw_readl(S3C_UDC_OTG_GUSBCFG)
+		|(0x3<<8)), S3C_UDC_OTG_GUSBCFG);
+
+//	smb136_set_otg_mode(1);
+
+	printk("otg_host_phy_int : USBPHYCTL=0x%x,PHYPWR=0x%x,PHYCLK=0x%x,USBCFG=0x%x\n", 
+		readl(S5P_USB_PHY_CONTROL), 
+		readl(S3C_USBOTG_PHYPWR),
+		readl(S3C_USBOTG_PHYCLK), 
+		readl(S3C_UDC_OTG_GUSBCFG)
+		);
+}
+EXPORT_SYMBOL(otg_host_phy_init);
+
+
+#endif
+
 #endif
 
 MACHINE_START(ARIES, "aries")

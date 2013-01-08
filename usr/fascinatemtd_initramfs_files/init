@@ -10,7 +10,7 @@ busybox mount -t proc proc /proc
 busybox mount -t sysfs sysfs /sys
 
 for i in $(busybox seq 1 5) ; do
-if busybox test -d /sys/dev/block/179:01 ; then
+if busybox test -d /sys/dev/block/179:0 ; then
 break
 else
 echo "Waiting for internal mmc..."

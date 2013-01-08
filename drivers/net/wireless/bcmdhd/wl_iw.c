@@ -5161,7 +5161,10 @@ wl_iw_set_power(
 	int error, pm;
 
 	WL_TRACE(("%s: SIOCSIWPOWER\n", dev->name));
-
+  /* Don't allow low power if uiFastWifi is set */
+  if (uiFastWifi == 1)
+        pm = vwrq->disabled ? PM_OFF : PM_FAST;
+  else
 	pm = vwrq->disabled ? PM_OFF : PM_MAX;
 
 	pm = htod32(pm);
