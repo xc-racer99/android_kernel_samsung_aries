@@ -173,6 +173,13 @@ config CPU_FREQ_DEFAULT_GOV_SMARTASS2
         help
             Use the CPUFreq governor 'smartassV2' as default.
 
+config CPU_FREQ_DEFAULT_GOV_WHEATLEY
+  	bool "wheatley"
+  	select CPU_FREQ_GOV_WHEATLEY
+  	select CPU_FREQ_GOV_PERFORMANCE
+  	help
+          Use the CPUFreq governor 'wheatley' as default.
+
 config CPU_FREQ_DEFAULT_GOV_LAZY
   bool "lazy"
   select CPU_FREQ_GOV_LAZY
@@ -393,6 +400,11 @@ config CPU_FREQ_GOV_LAGFREE
           For details, take a look at linux/Documentation/cpu-freq.
 
           If in doubt, say N.
+
+
+config CPU_FREQ_GOV_WHEATLEY
+  	tristate "'wheatley' cpufreq governor"
+  	depends on CPU_FREQ
 
 
 config CPU_FREQ_MIN_TICKS
