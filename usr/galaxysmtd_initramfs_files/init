@@ -23,6 +23,12 @@ done
 /lvm/sbin/lvm vgchange -aly --ignorelockingfailure
 
 busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
+busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
+
+busybox mv /data/previous_boot.log /cache/old_boot.log
+busybox mv /data/boot.log /cache/previous_boot.log
+busybox date >>/cache/boot.log
+exec >>/cache/boot.log 2>&1
 
 ####################################################################
 ########## mount system partition depending on selection ###########
@@ -30,14 +36,7 @@ busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 if busybox test -f /cache/dualboot/rom ; then
 	if busybox grep -q secondary /cache/dualboot/rom ; then
 		busybox mount -t ext4 /dev/lvpool/secondary_system /system
-
-   		busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
-   		if busybox test -f /sdcard/data.img ; then
-   		   data=/sdcard/data.img
-		   busybox losetup /dev/block/loop7 $data
-		   busybox mount /dev/block/loop7 /data
-		fi
-
+		busybox mount -t ext4 /sdcard/data.img /data
 	elif busybox grep -q primary /cache/dualboot/rom ; then
 		busybox mount -t ext4 /dev/lvpool/system /system
 		busybox mount -t ext4 /dev/lvpool/userdata /data
@@ -52,6 +51,8 @@ else
 		echo "no rom selected..."
 		echo "booting to recovery"
 fi
+
+busybox mount
 
 #####################################################################	
 
@@ -82,9 +83,7 @@ elif ! busybox test -e /system/build.prop ; then
 	erase_image cache
 	busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 	busybox mkdir /cache/recovery
-
-	busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard	
-
+	
 	UPDATE=$(busybox cat /sdcard/cyanogenmod.cfg)
 
 	if busybox test -n "$UPDATE" && busybox test -e $UPDATE ; then
@@ -116,7 +115,6 @@ busybox zcat $image | busybox cpio -i
 			fi
 			
 			busybox rm -rf /cache/dualboot/unsecure_recovery
-			busybox umount /cache
 		fi
 	fi
 
@@ -156,11 +154,12 @@ bigmem=0
     		busybox echo "copying cm default libs"
     			busybox cp default_libs/*.so /system/lib/
 	fi
-busybox umount /system
-busybox umount /data
+
 busybox umount /cache
 busybox umount /sdcard
 busybox rmdir /sdcard
+busybox umount /system
+busybox umount /data
 
 if busybox grep -q 1 /sys/class/power_supply/battery/charging_mode_booting ; then
 	# low power mode
