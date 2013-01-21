@@ -37,6 +37,7 @@ exec >>/cache/boot.log 2>&1
 ####################################################################
 ########## mount partitions depending on rom selection ###########
 ####################################################################
+busybox mkdir -p /cache/dualboot
 if busybox test -f /cache/dualboot/rom ; then
 	if busybox grep -q primary /cache/dualboot/rom ; then # primary/normal boot
 		SYSTEM=/dev/lvpool/system
