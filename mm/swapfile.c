@@ -2114,7 +2114,7 @@ int swapon(char *name, int swap_flags)
 	if (swap_flags & SWAP_FLAG_PREFER)
 		prio =
 		    (swap_flags & SWAP_FLAG_PRIO_MASK) >> SWAP_FLAG_PRIO_SHIFT;
-	enable_swap_info(p, prio, swap_map, frontswap_map_get(p));
+	enable_swap_info(p, prio, swap_map);
 
 	printk(KERN_INFO "Adding %uk swap on %s.  "
 	       "Priority:%d extents:%d across:%lluk %s%s\n",
