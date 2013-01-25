@@ -52,5 +52,3 @@ extern void s5pv210_unlock_dvfs_high_level(unsigned int nToken);
 extern void s5pv210_cpufreq_set_platdata(struct s5pv210_cpufreq_data *pdata);
 
 #endif /* __ASM_ARCH_CPU_FREQ_H */
-void s5pv210_bus_limit_true(void);
-void s5pv210_bus_limit_false(void);
