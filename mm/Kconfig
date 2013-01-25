@@ -350,7 +350,7 @@ config NEED_PER_CPU_KM
 
 config CLEANCACHE
 	bool "Enable cleancache driver to cache clean pages if tmem is present"
-	default n
+	default y
 	help
 	  Cleancache can be thought of as a page-granularity victim cache
 	  for clean pages that the kernel's pageframe replacement algorithm

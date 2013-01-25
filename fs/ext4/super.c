@@ -252,6 +252,7 @@ static void ext4_put_nojournal(handle_t *handle)
 	current->journal_info = handle;
 }
 
+
 /*
  * Wrappers for jbd2_journal_start/end.
  *
@@ -4698,6 +4699,76 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
 	}
 
 	return dquot_quota_on(sb, type, format_id, path);
+}
+
+static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
+			     unsigned int flags)
+{
+	int err;
+	struct inode *qf_inode;
+	unsigned long qf_inums[MAXQUOTAS] = {
+		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
+		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
+	};
+
+	BUG_ON(!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA));
+
+	if (!qf_inums[type])
+		return -EPERM;
+
+	qf_inode = ext4_iget(sb, qf_inums[type]);
+	if (IS_ERR(qf_inode)) {
+		ext4_error(sb, "Bad quota inode # %lu", qf_inums[type]);
+		return PTR_ERR(qf_inode);
+	}
+
+	err = dquot_enable(qf_inode, type, format_id, flags);
+	iput(qf_inode);
+
+	return err;
+}
+
+
+/* Enable usage tracking for all quota types. */
+static int ext4_enable_quotas(struct super_block *sb)
+{
+	int type, err = 0;
+	unsigned long qf_inums[MAXQUOTAS] = {
+		le32_to_cpu(EXT4_SB(sb)->s_es->s_usr_quota_inum),
+		le32_to_cpu(EXT4_SB(sb)->s_es->s_grp_quota_inum)
+	};
+    
+	sb_dqopt(sb)->flags |= DQUOT_QUOTA_SYS_FILE;
+	for (type = 0; type < MAXQUOTAS; type++) {
+		if (qf_inums[type]) {
+			err = ext4_quota_enable(sb, type, QFMT_VFS_V1,
+                                    DQUOT_USAGE_ENABLED);
+			if (err) {
+				ext4_warning(sb,
+                             "Failed to enable quota (type=%d) "
+                             "tracking. Please run e2fsck to fix.",
+                             type);
+				return err;
+			}
+		}
+	}
+	return 0;
+}
+
+
+/*
+ * quota_on function that is used when QUOTA feature is set.
+ */
+static int ext4_quota_on_sysfile(struct super_block *sb, int type,
+				 int format_id)
+{
+	if (!EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_QUOTA))
+		return -EINVAL;
+
+	/*
+	 * USAGE was enabled at mount time. Only need to enable LIMITS now.
+	 */
+	return ext4_quota_enable(sb, type, format_id, DQUOT_LIMITS_ENABLED);
 }
 
 static int ext4_quota_off(struct super_block *sb, int type)

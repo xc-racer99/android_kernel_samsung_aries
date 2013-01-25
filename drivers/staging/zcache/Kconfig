@@ -4,7 +4,7 @@ config ZCACHE
 	select XVMALLOC
 	select LZO_COMPRESS
 	select LZO_DECOMPRESS
-	default n
+	default y
 	help
 	  Zcache doubles RAM efficiency while providing a significant
 	  performance boosts on many workloads.  Zcache uses lzo1x
