@@ -586,7 +586,7 @@ config PN544
 
 config CUSTOM_VOLTAGE
        bool "Support for Custom Voltage"
-       default n
+       default y
        help
          Say Y here to enable Custom Voltage
 

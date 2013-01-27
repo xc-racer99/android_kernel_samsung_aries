@@ -173,7 +173,7 @@ irqreturn_t bt_host_wake_irq_handler(int irq, void *dev_id)
 	pr_debug("[BT] bt_host_wake_irq_handler start\n");
 
 	bt_running = true;
-	
+
 	if (gpio_get_value(GPIO_BT_HOST_WAKE))
 		wake_lock(&rfkill_wake_lock);
 	else

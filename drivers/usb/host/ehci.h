@@ -772,6 +772,22 @@ static inline unsigned ehci_read_frame_index(struct ehci_hcd *ehci)
 
 /*-------------------------------------------------------------------------*/
 
+#ifdef CONFIG_PCI
+
+/* For working around the MosChip frame-index-register bug */
+static unsigned ehci_read_frame_index(struct ehci_hcd *ehci);
+
+#else
+
+static inline unsigned ehci_read_frame_index(struct ehci_hcd *ehci)
+{
+	return ehci_readl(ehci, &ehci->regs->frame_index);
+}
+
+#endif
+
+/*-------------------------------------------------------------------------*/
+
 #ifndef DEBUG
 #define STUB_DEBUG_FILES
 #endif	/* DEBUG */
