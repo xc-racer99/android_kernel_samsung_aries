@@ -15,6 +15,7 @@ void blk_rq_bio_prep(struct request_queue *q, struct request *rq,
 			struct bio *bio);
 int blk_rq_append_bio(struct request_queue *q, struct request *rq,
 		      struct bio *bio);
+void blk_drain_queue(struct request_queue *q);
 void blk_dequeue_request(struct request *rq);
 void __blk_queue_free_tags(struct request_queue *q);
 
@@ -28,6 +29,7 @@ void __generic_unplug_device(struct request_queue *);
  */
 enum rq_atomic_flags {
 	REQ_ATOM_COMPLETE = 0,
+	REQ_ATOM_URGENT = 1,
 };
 
 /*
@@ -42,6 +44,16 @@ static inline int blk_mark_rq_complete(struct request *rq)
 static inline void blk_clear_rq_complete(struct request *rq)
 {
 	clear_bit(REQ_ATOM_COMPLETE, &rq->atomic_flags);
+}
+
+static inline int blk_mark_rq_urgent(struct request *rq)
+{
+	return test_and_set_bit(REQ_ATOM_URGENT, &rq->atomic_flags);
+}
+
+static inline void blk_clear_rq_urgent(struct request *rq)
+{
+	clear_bit(REQ_ATOM_URGENT, &rq->atomic_flags);
 }
 
 /*
@@ -83,7 +95,7 @@ static inline struct request *__elv_next_request(struct request_queue *q)
 			return NULL;
 		}
 		if (test_bit(QUEUE_FLAG_DEAD, &q->queue_flags) ||
-		    !q->elevator->ops->elevator_dispatch_fn(q, 0))
+		    !q->elevator->type->ops.elevator_dispatch_fn(q, 0))
 			return NULL;
 	}
 }
@@ -92,16 +104,16 @@ static inline void elv_activate_rq(struct request_queue *q, struct request *rq)
 {
 	struct elevator_queue *e = q->elevator;
 
-	if (e->ops->elevator_activate_req_fn)
-		e->ops->elevator_activate_req_fn(q, rq);
+	if (e->type->ops.elevator_activate_req_fn)
+		e->type->ops.elevator_activate_req_fn(q, rq);
 }
 
 static inline void elv_deactivate_rq(struct request_queue *q, struct request *rq)
 {
 	struct elevator_queue *e = q->elevator;
 
-	if (e->ops->elevator_deactivate_req_fn)
-		e->ops->elevator_deactivate_req_fn(q, rq);
+	if (e->type->ops.elevator_deactivate_req_fn)
+		e->type->ops.elevator_deactivate_req_fn(q, rq);
 }
 
 #ifdef CONFIG_FAIL_IO_TIMEOUT

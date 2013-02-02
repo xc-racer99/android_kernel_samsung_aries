@@ -21,6 +21,9 @@ typedef int (elevator_dispatch_fn) (struct request_queue *, int);
 
 typedef void (elevator_add_req_fn) (struct request_queue *, struct request *);
 typedef int (elevator_queue_empty_fn) (struct request_queue *); // SIO
+typedef int (elevator_reinsert_req_fn) (struct request_queue *, struct request *);
+typedef bool (elevator_is_urgent_fn) (struct request_queue *);
+
 typedef struct request *(elevator_request_list_fn) (struct request_queue *, struct request *);
 typedef void (elevator_completed_req_fn) (struct request_queue *, struct request *);
 typedef int (elevator_may_queue_fn) (struct request_queue *, int);
@@ -43,7 +46,10 @@ struct elevator_ops
 
 	elevator_dispatch_fn *elevator_dispatch_fn;
 	elevator_add_req_fn *elevator_add_req_fn;
-    elevator_queue_empty_fn *elevator_queue_empty_fn; // SIO
+        elevator_queue_empty_fn *elevator_queue_empty_fn; // SIO
+	elevator_reinsert_req_fn *elevator_reinsert_req_fn;
+	elevator_is_urgent_fn *elevator_is_urgent_fn;
+
 	elevator_activate_req_fn *elevator_activate_req_fn;
 	elevator_deactivate_req_fn *elevator_deactivate_req_fn;
 
@@ -75,11 +81,11 @@ struct elv_fs_entry {
  */
 struct elevator_type
 {
-	struct list_head list;
 	struct elevator_ops ops;
 	struct elv_fs_entry *elevator_attrs;
 	char elevator_name[ELV_NAME_MAX];
 	struct module *elevator_owner;
+	struct list_head list;
 };
 
 /*
@@ -87,10 +93,9 @@ struct elevator_type
  */
 struct elevator_queue
 {
-	struct elevator_ops *ops;
+	struct elevator_type *type;
 	void *elevator_data;
 	struct kobject kobj;
-	struct elevator_type *elevator_type;
 	struct mutex sysfs_lock;
 	struct hlist_head *hash;
 	unsigned int registered:1;
@@ -111,6 +116,7 @@ extern void elv_merged_request(struct request_queue *, struct request *, int);
 extern void elv_bio_merged(struct request_queue *q, struct request *,
 				struct bio *);
 extern void elv_requeue_request(struct request_queue *, struct request *);
+extern int elv_reinsert_request(struct request_queue *, struct request *);
 extern struct request *elv_former_request(struct request_queue *, struct request *);
 extern struct request *elv_latter_request(struct request_queue *, struct request *);
 extern int elv_register_queue(struct request_queue *q);
@@ -148,7 +154,7 @@ extern struct request *elv_rb_latter_request(struct request_queue *, struct requ
 /*
  * rb support functions.
  */
-extern struct request *elv_rb_add(struct rb_root *, struct request *);
+extern void elv_rb_add(struct rb_root *, struct request *);
 extern void elv_rb_del(struct rb_root *, struct request *);
 extern struct request *elv_rb_find(struct rb_root *, sector_t);
 
