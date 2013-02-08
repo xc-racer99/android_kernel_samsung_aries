@@ -140,7 +140,9 @@ bigmem=0
 			if busybox [ "$bigmem" -eq 1 ] || busybox [ "$bigmem" -eq 2 ] || busybox [ "$bigmem" -eq 3 ] ; then
 				busybox echo $bigmem > /sys/kernel/bigmem/enable
     				busybox umount /data
+				if busybox [ "$bootmode" = "system" ] ; then
 				/system/bin/toolbox reboot
+				fi
 			fi
 		fi
 	fi
