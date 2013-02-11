@@ -3,7 +3,7 @@ config ZCACHE
 	depends on (CLEANCACHE || FRONTSWAP) && CRYPTO
 	select XVMALLOC
 	select CRYPTO_LZO
-	default y
+	default n
 	help
 	  Zcache doubles RAM efficiency while providing a significant
 	  performance boosts on many workloads.  Zcache uses
