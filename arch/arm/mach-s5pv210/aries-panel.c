@@ -163,7 +163,11 @@ static const struct tl2796_gamma_adj_points gamma_adj_points = {
 	.v255 = BV_255,
 };
 
+#ifdef CONFIG_FB_VOODOO
+struct gamma_entry gamma_table[] = {
+#else
 static const struct gamma_entry gamma_table[] = {
+#endif
 	{       BV_0, { 4200000, 4200000, 4200000, }, },
 	{          1, { 3994200, 4107600, 3910200, }, },
 	{ 0x00000400, { 3669486, 3738030, 3655093, }, },
@@ -353,8 +357,27 @@ struct s5p_panel_data aries_panel_data = {
 		0x0b8,
 		0x0fc,
 	},
+	.color_adj = {
+		/* Convert from 8500K to D65, assuming:
+		 * Rx 0.66950, Ry 0.33100
+		 * Gx 0.18800, Gy 0.74350
+		 * Bx 0.14142, By 0.04258
+		 */
+		.mult = {
+			2318372099U,
+			2117262806U,
+			2082349739U,
+		},
+		.rshift = 31,
+	},
+
 	.gamma_adj_points = &gamma_adj_points,
 	.gamma_table = gamma_table,
 	.gamma_table_size = ARRAY_SIZE(gamma_table),
+};
+
+static const u16 brightness_setting_table[] = {
+	0x051, 0x17f,
+	ENDDEF, 0x0000
 };
 
