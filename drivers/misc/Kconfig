@@ -602,17 +602,17 @@ config DEVIL_TWEAKS
        help
          Say Y here to enable Devil Tweaks
 
+config TOUCH_WAKE
+  bool "Support for Touch Wake"
+  default y
+  help
+    Say Y here to enable Touch Wake
+
 config GENERIC_BLN
        bool "Generic BLN support for backlight notification"
        default y
        help
          Say Y here to enable the backlight notification
          for android led-notification (modified liblight needed)
-
-config TOUCH_WAKE
-  bool "Support for Touch Wake"
-  default y
-  help
-    Say Y here to enable Touch Wake
 
 endif # MISC_DEVICES
