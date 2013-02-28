@@ -39,6 +39,8 @@
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
+#define DEF_SAMPLING_RATE			(30000)
+#define DEF_SLEEP_SAMPLING_RATE			(100000)
 
 #define DEFAULT_FREQ_BOOST_TIME			(500000)
 #define MAX_FREQ_BOOST_TIME			(5000000)
@@ -124,6 +126,7 @@ static DEFINE_MUTEX(dbs_mutex);
 
 static struct dbs_tuners {
 	unsigned int sampling_rate;
+	unsigned int sleep_sampling_rate;
 	unsigned int up_threshold;
 	unsigned int down_differential;
 	unsigned int ignore_nice;
@@ -147,6 +150,8 @@ static struct dbs_tuners {
 	.boostfreq = 0,
 	.grad_up_threshold = DEF_GRAD_UP_THRESHOLD,
 	.early_demand = 0,
+	.sampling_rate = DEF_SAMPLING_RATE,
+	.sleep_sampling_rate = DEF_SLEEP_SAMPLING_RATE,
 };
 
 static inline cputime64_t get_cpu_idle_time_jiffy(unsigned int cpu,
@@ -281,6 +286,7 @@ static ssize_t show_##file_name						\
 	return sprintf(buf, "%u\n", dbs_tuners_ins.object);		\
 }
 show_one(sampling_rate, sampling_rate);
+show_one(sleep_sampling_rate, sleep_sampling_rate);
 show_one(io_is_busy, io_is_busy);
 show_one(up_threshold, up_threshold);
 show_one(sampling_down_factor, sampling_down_factor);
@@ -301,6 +307,18 @@ static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
 		return -EINVAL;
 	dbs_tuners_ins.sampling_rate = max(input, min_sampling_rate);
 	orig_sampling_rate = dbs_tuners_ins.sampling_rate;
+	return count;
+}
+
+static ssize_t store_sleep_sampling_rate(struct kobject *a, struct attribute *b,
+				   const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+	if (ret != 1)
+		return -EINVAL;
+	dbs_tuners_ins.sleep_sampling_rate = max(input, min_sampling_rate);
 	return count;
 }
 
@@ -329,10 +347,8 @@ static ssize_t store_up_threshold(struct kobject *a, struct attribute *b,
 		return -EINVAL;
 	}
 
-
-
-
 	dbs_tuners_ins.up_threshold = input;
+	//dbs_tuners_ins.orig_threshold = input;
 	return count;
 }
 
@@ -368,10 +384,8 @@ static ssize_t store_ignore_nice_load(struct kobject *a, struct attribute *b,
 	ret = sscanf(buf, "%u", &input);
 	if (ret != 1)
 		return -EINVAL;
-
 	if (input > 1)
 		input = 1;
-
 	if (input == dbs_tuners_ins.ignore_nice) { /* nothing to do */
 		return count;
 	}
@@ -470,6 +484,7 @@ static ssize_t store_early_demand(struct kobject *a, struct attribute *b,
 }
 
 define_one_global_rw(sampling_rate);
+define_one_global_rw(sleep_sampling_rate);
 define_one_global_rw(io_is_busy);
 define_one_global_rw(up_threshold);
 define_one_global_rw(sampling_down_factor);
@@ -483,6 +498,7 @@ define_one_global_rw(early_demand);
 static struct attribute *dbs_attributes[] = {
 	&sampling_rate_min.attr,
 	&sampling_rate.attr,
+	&sleep_sampling_rate.attr,
 	&up_threshold.attr,
 	&sampling_down_factor.attr,
 	&ignore_nice_load.attr,
@@ -535,6 +551,7 @@ if(smooth_governors()){
   status= 1;
   if(status != status_old){
                 dbs_tuners_ins.up_threshold = 70;
+                //dbs_tuners_ins.orig_threshold = 70;
                 dbs_tuners_ins.sampling_down_factor = 2;
                 dbs_tuners_ins.down_differential = 15;
   }
@@ -543,6 +560,7 @@ else if(powersave_governors()){
   status= 2;
   if(status != status_old){
                 dbs_tuners_ins.up_threshold = 95;
+                //dbs_tuners_ins.orig_threshold = 95;
                 dbs_tuners_ins.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR;
                 dbs_tuners_ins.down_differential =  MICRO_FREQUENCY_DOWN_DIFFERENTIAL;
   }
@@ -551,6 +569,7 @@ else{
   status= 0;
   if(status != status_old){
                 dbs_tuners_ins.up_threshold = MICRO_FREQUENCY_UP_THRESHOLD;
+                //dbs_tuners_ins.orig_threshold = MICRO_FREQUENCY_UP_THRESHOLD;
                 dbs_tuners_ins.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR;
                 dbs_tuners_ins.down_differential = MICRO_FREQUENCY_DOWN_DIFFERENTIAL;
   }
@@ -839,7 +858,7 @@ static int should_io_be_busy(void)
 
 static void powersave_early_suspend(struct early_suspend *handler)
 {
-	dbs_tuners_ins.sampling_rate *= 4;
+	dbs_tuners_ins.sampling_rate = dbs_tuners_ins.sleep_sampling_rate;
 }
 
 static void powersave_late_resume(struct early_suspend *handler)
@@ -908,9 +927,12 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			/* Bring kernel and HW constraints together */
 			min_sampling_rate = max(min_sampling_rate,
 					MIN_LATENCY_MULTIPLIER * latency);
+
+			if (dbs_tuners_ins.sampling_rate < min_sampling_rate) {
 			dbs_tuners_ins.sampling_rate =
 				max(min_sampling_rate,
 				    latency * LATENCY_MULTIPLIER);
+			}
 			orig_sampling_rate = dbs_tuners_ins.sampling_rate;
 			dbs_tuners_ins.io_is_busy = should_io_be_busy();
 
