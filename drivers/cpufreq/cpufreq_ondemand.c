@@ -726,7 +726,7 @@ status_old = status;
     	dbs_freq_increase(policy, policy->max);
     }
     else {
-      	freq_next = min(cpuL3freq(), policy->max);
+      	freq_next = cpuL3freq();
     	dbs_freq_increase(policy, freq_next);
    }
 
@@ -774,7 +774,11 @@ status_old = status;
   * if touchscreen still pressed, don't go below: min(cpuL3freq(), policy->max);
   */
     if(smooth_ui() && touch_state_val) {
-      freq_next = min(cpuL3freq(), policy->max);
+	if(cpuL3freq() > policy->max)
+        freq_next = policy->max;
+	else
+        freq_next = cpuL3freq();
+	 
       touched = true;
     } else {
       touched = false;
