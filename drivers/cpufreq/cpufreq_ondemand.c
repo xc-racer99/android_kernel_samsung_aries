@@ -56,6 +56,7 @@ extern bool smooth_governors();
 extern bool powersave_governors();
 static int status;
 static int status_old = -1;
+static bool touched = false;
 #endif
 
 /*
@@ -73,6 +74,7 @@ static int status_old = -1;
 static unsigned int min_sampling_rate;
 static unsigned int orig_sampling_rate;
 static unsigned int orig_up_threshold;
+static unsigned int freq_next;
 
 #define LATENCY_MULTIPLIER			(1000)
 #define MIN_LATENCY_MULTIPLIER			(100)
@@ -710,16 +712,25 @@ status_old = status;
 	/* Check for frequency increase */
 
 #ifdef CONFIG_DEVIL_TWEAKS
- if((smooth_ui() && touch_state_val) || boost_freq) {
-    if(policy->cur < cpuL3freq() && cpuL3freq() <= policy->max)
-    dbs_freq_increase(policy, cpuL3freq());
-    else if(cpuL3freq() > policy->max){
-    /* If switching to max speed, apply sampling_down_factor */
-    this_dbs_info->rate_mult = dbs_tuners_ins.sampling_down_factor;
-    dbs_freq_increase(policy, policy->max);
+ if(smooth_ui() && touch_state_val) {
+    if(policy->cur < cpuL3freq() && 
+	cpuL3freq() < policy->max && 
+	!touched) {
+    	dbs_freq_increase(policy, cpuL3freq());
     }
-    else
-    dbs_freq_increase(policy, cpuL3freq());
+    else if(cpuL3freq() > policy->max ||
+	(max_load_freq > dbs_tuners_ins.up_threshold * policy->cur && 
+		touched)){
+    	/* If switching to max speed, apply sampling_down_factor */
+    	this_dbs_info->rate_mult = dbs_tuners_ins.sampling_down_factor;
+    	dbs_freq_increase(policy, policy->max);
+    }
+    else {
+      	freq_next = min(cpuL3freq(), policy->max);
+    	dbs_freq_increase(policy, freq_next);
+   }
+
+  touched = true;
   return;
   }
   else
@@ -754,26 +765,22 @@ status_old = status;
 	if (max_load_freq <
 	    (dbs_tuners_ins.up_threshold - dbs_tuners_ins.down_differential) *
 	     policy->cur) {
-		unsigned int freq_next;
 		freq_next = max_load_freq /
 				(dbs_tuners_ins.up_threshold -
 				 dbs_tuners_ins.down_differential);
 
   #ifdef CONFIG_DEVIL_TWEAKS
   /*
-  * if touchscreen still pressed, don't reduce frequency
+  * if touchscreen still pressed, don't go below: min(cpuL3freq(), policy->max);
   */
     if(smooth_ui() && touch_state_val) {
-      if(cpuL3freq() > policy->max)
-      freq_next = policy->max;
-      else
-      freq_next = cpuL3freq();
+      freq_next = min(cpuL3freq(), policy->max);
+      touched = true;
+    } else {
+      touched = false;
     }
-
-    else
   #endif
 	if (dbs_tuners_ins.boosted && freq_next < boostfreq) {
-
       	freq_next = boostfreq;
 		}
 		/* No longer fully busy, reset rate_mult */
