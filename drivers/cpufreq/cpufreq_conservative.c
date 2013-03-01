@@ -584,15 +584,16 @@ int up_threshold = dbs_tuners_ins.up_threshold;
 		else if(cpuL3freq() > policy->max)
 			this_dbs_info->requested_freq = policy->max;
 		else
-			this_dbs_info->requested_freq = cpuL3freq();
+			this_dbs_info->requested_freq = min(cpuL3freq(), policy->max);
+
 	__cpufreq_driver_target(policy, this_dbs_info->requested_freq, CPUFREQ_RELATION_H);
 		return;
 	}
 
-	else if (max_load > up_threshold) {
-#else
-	if (max_load > up_threshold) {
+	else
 #endif
+	if (max_load > up_threshold) {
+
 			this_dbs_info->down_skip = 0;
 
 		/* if we are already at full speed then break out early */
@@ -616,10 +617,10 @@ int up_threshold = dbs_tuners_ins.up_threshold;
 	*/
 	if(smooth_ui() && touch_state_val)
 			return;
-	else if (max_load < (dbs_tuners_ins.down_threshold - 10)) {
-#else
-	if (max_load < (dbs_tuners_ins.down_threshold - 10)) {
+	else
 #endif
+	if (max_load < (dbs_tuners_ins.down_threshold - 10)) {
+
 
 		/*
 		 * if we cannot reduce the frequency anymore, break out early
