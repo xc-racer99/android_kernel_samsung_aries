@@ -58,9 +58,9 @@ static unsigned int up_threshold_awake;
 static unsigned int down_threshold_awake;
 static unsigned int smooth_up_awake;
 
-#define SAMPLING_RATE_SLEEP_MULTIPLIER (3)
-#define UP_THRESHOLD_AT_SLEEP    (95)
-#define DOWN_THRESHOLD_AT_SLEEP	 (50)
+#define SAMPLING_RATE_AT_SLEEP 		(90000)
+#define UP_THRESHOLD_AT_SLEEP    	(90)
+#define DOWN_THRESHOLD_AT_SLEEP	 	(50)
 
 #define LATENCY_MULTIPLIER			(1000)
 #define MIN_LATENCY_MULTIPLIER			(100)
@@ -113,13 +113,13 @@ static struct dbs_tuners {
 	unsigned int down_threshold;
 	unsigned int ignore_nice;
 	unsigned int freq_step;
-	unsigned int sleep_multiplier;
+	unsigned int sleep_sampling_rate;
     	unsigned int smooth_up;
     	unsigned int smooth_up_enabled;
+	unsigned int sleep_up_threshold;
 
 	int early_suspend;
 } dbs_tuners_ins = {
-	.sleep_multiplier = SAMPLING_RATE_SLEEP_MULTIPLIER,
 	.up_threshold = DEF_FREQUENCY_UP_THRESHOLD,
 	.down_threshold = DEF_FREQUENCY_DOWN_THRESHOLD,
 	.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR,
@@ -128,6 +128,8 @@ static struct dbs_tuners {
 	.early_suspend = -1,
     	.smooth_up = DEF_SMOOTH_UP,
 	.smooth_up_enabled = 0,
+	.sleep_up_threshold = UP_THRESHOLD_AT_SLEEP,
+	.sleep_sampling_rate = SAMPLING_RATE_AT_SLEEP,
 };
 
 /**
@@ -276,29 +278,16 @@ static ssize_t show_##file_name						\
 	return sprintf(buf, "%u\n", dbs_tuners_ins.object);		\
 }
 show_one(sampling_rate, sampling_rate);
+show_one(sleep_sampling_rate, sleep_sampling_rate);
 show_one(sampling_down_factor, sampling_down_factor);
 show_one(up_threshold, up_threshold);
 show_one(down_threshold, down_threshold);
 show_one(ignore_nice_load, ignore_nice);
 show_one(freq_step, freq_step);
-show_one(sleep_multiplier, sleep_multiplier);
 show_one(smooth_up, smooth_up);
 show_one(smooth_up_enabled, smooth_up_enabled);
+show_one(sleep_up_threshold, sleep_up_threshold);
 
-static ssize_t store_sleep_multiplier(struct kobject *a, struct attribute *b,
-				  const char *buf, size_t count)
-{
-	unsigned int input;
-	int ret;
-	ret = sscanf(buf, "%u", &input);
-
-	if (ret != 1 || input < 1 ||
-			input > 10) {
-		return -EINVAL;
-	}
-	dbs_tuners_ins.sleep_multiplier = input;
-	return count;
-}
 
 static ssize_t store_sampling_down_factor(struct kobject *a,
 					  struct attribute *b,
@@ -329,6 +318,20 @@ static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
 	return count;
 }
 
+static ssize_t store_sleep_sampling_rate(struct kobject *a, struct attribute *b,
+				   const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+
+	if (ret != 1)
+		return -EINVAL;
+
+	dbs_tuners_ins.sleep_sampling_rate = max(input, min_sampling_rate);
+	return count;
+}
+
 static ssize_t store_up_threshold(struct kobject *a, struct attribute *b,
 				  const char *buf, size_t count)
 {
@@ -342,6 +345,21 @@ static ssize_t store_up_threshold(struct kobject *a, struct attribute *b,
 
 	dbs_tuners_ins.up_threshold = input;
         up_threshold_awake = input;
+	return count;
+}
+
+static ssize_t store_sleep_up_threshold(struct kobject *a, struct attribute *b,
+				  const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+
+	if (ret != 1 || input > 100 ||
+			input <= dbs_tuners_ins.down_threshold)
+		return -EINVAL;
+
+	dbs_tuners_ins.sleep_up_threshold = input;
 	return count;
 }
 
@@ -448,26 +466,28 @@ static ssize_t store_smooth_up_enabled(struct kobject *a,
 
 
 define_one_global_rw(sampling_rate);
+define_one_global_rw(sleep_sampling_rate);
 define_one_global_rw(sampling_down_factor);
 define_one_global_rw(up_threshold);
 define_one_global_rw(down_threshold);
 define_one_global_rw(ignore_nice_load);
 define_one_global_rw(freq_step);
-define_one_global_rw(sleep_multiplier);
 define_one_global_rw(smooth_up);
 define_one_global_rw(smooth_up_enabled);
+define_one_global_rw(sleep_up_threshold);
 
 static struct attribute *dbs_attributes[] = {
 	&sampling_rate_min.attr,
 	&sampling_rate.attr,
+	&sleep_sampling_rate.attr,
 	&sampling_down_factor.attr,
 	&up_threshold.attr,
 	&down_threshold.attr,
 	&ignore_nice_load.attr,
 	&freq_step.attr,
-	&sleep_multiplier.attr,
 	&smooth_up.attr,
 	&smooth_up_enabled.attr,
+	&sleep_up_threshold.attr,
 	NULL
 };
 
@@ -494,7 +514,6 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 if(smooth_governors()){
 	status = 1;
 	if(status != status_old){
-	dbs_tuners_ins.sleep_multiplier = 5;
 	dbs_tuners_ins.up_threshold = 70;
 	dbs_tuners_ins.down_threshold = 25;
 	dbs_tuners_ins.sampling_down_factor = 5;
@@ -504,7 +523,6 @@ if(smooth_governors()){
 else if(powersave_governors()){
 	status = 2;
 	if(status != status_old){
-	dbs_tuners_ins.sleep_multiplier = 5;
 	dbs_tuners_ins.up_threshold = 95;
 	dbs_tuners_ins.down_threshold = 40;
 	dbs_tuners_ins.sampling_down_factor = 1;
@@ -514,7 +532,6 @@ else if(powersave_governors()){
 else{
 	status = 0;
 	if(status != status_old){
-	dbs_tuners_ins.sleep_multiplier = SAMPLING_RATE_SLEEP_MULTIPLIER;
 	dbs_tuners_ins.up_threshold = DEF_FREQUENCY_UP_THRESHOLD;
 	dbs_tuners_ins.down_threshold = DEF_FREQUENCY_DOWN_THRESHOLD;
 	dbs_tuners_ins.sampling_down_factor = DEF_SAMPLING_DOWN_FACTOR;
@@ -653,7 +670,6 @@ int up_threshold = dbs_tuners_ins.up_threshold;
 #endif
 	if (max_load < (dbs_tuners_ins.down_threshold - 10)) {
 
-
 		/*
 		 * if we cannot reduce the frequency anymore, break out early
 		 */
@@ -715,9 +731,9 @@ static void powersave_early_suspend(struct early_suspend *handler)
   dbs_tuners_ins.early_suspend = 1;
   sampling_rate_awake = dbs_tuners_ins.sampling_rate;
   smooth_up_awake = dbs_tuners_ins.smooth_up;
-  dbs_tuners_ins.sampling_rate *= dbs_tuners_ins.sleep_multiplier;
+  dbs_tuners_ins.sampling_rate = dbs_tuners_ins.sleep_sampling_rate;
   up_threshold_awake = dbs_tuners_ins.up_threshold;
-  dbs_tuners_ins.up_threshold = UP_THRESHOLD_AT_SLEEP;
+  dbs_tuners_ins.up_threshold = dbs_tuners_ins.sleep_up_threshold;
   down_threshold_awake = dbs_tuners_ins.down_threshold;
   dbs_tuners_ins.down_threshold = DOWN_THRESHOLD_AT_SLEEP;
   dbs_tuners_ins.smooth_up = 100;
