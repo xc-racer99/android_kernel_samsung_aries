@@ -65,12 +65,10 @@ static DEFINE_SEMAPHORE(i2c_sem);
 
 struct cypress_touchkey_devdata *bl_devdata;
 
-static int bl_timeout = 1600; // This gets overridden by userspace
+static int bl_timeout = 1600; // This gets overridden by userspace AriesParts
 static struct timer_list bl_timer;
 static void bl_off(struct work_struct *bl_off_work);
 static DECLARE_WORK(bl_off_work, bl_off);
-
-extern bool bln_enabled;
 
 struct cypress_touchkey_devdata {
 	struct i2c_client *client;
@@ -359,8 +357,7 @@ static void cypress_touchkey_early_suspend(struct early_suspend *h)
 
 	disable_irq(devdata->client->irq);
 
-if (bln_enabled) {
-
+#ifdef CONFIG_GENERIC_BLN
   /*
    * Disallow powering off the touchkey controller
    * while a led notification is ongoing
@@ -369,11 +366,10 @@ if (bln_enabled) {
     devdata->pdata->touchkey_onoff(TOUCHKEY_OFF);
     devdata->pdata->touchkey_sleep_onoff(TOUCHKEY_OFF);
   }
-} else {
+#else
 	if (!bl_on)
 		devdata->pdata->touchkey_onoff(TOUCHKEY_OFF);
-}
-
+#endif
 	all_keys_up(devdata);
 	devdata->is_sleeping = true;
 
@@ -484,13 +480,13 @@ static void cypress_touchkey_enable_led_notification(void){
     /* write to i2cbus, enable backlights */
     enable_touchkey_backlights();
   }
-  else
+  else 
 #ifdef CONFIG_TOUCH_WAKE
-      {
+  {
     enable_touchkey_backlights();
-      }
+  }
 #else
-      pr_info("%s: cannot set notification led, touchkeys are enabled\n",__FUNCTION__);
+  pr_info("%s: cannot set notification led, touchkeys are enabled\n",__FUNCTION__);
 #endif
 }
 
@@ -515,10 +511,9 @@ static void cypress_touchkey_disable_led_notification(void){
     #endif
   }
 #ifdef CONFIG_TOUCH_WAKE
-  else
-      {
+  else {
     disable_touchkey_backlights();
-      }
+  }
 #endif  
 }
 
