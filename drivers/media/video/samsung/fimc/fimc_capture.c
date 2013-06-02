@@ -299,6 +299,7 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 			return ret;
 		}
 	} else {
+#ifndef CONFIG_SAMSUNG_GALAXYS4G
 #if defined (CONFIG_MACH_ARIES) && !defined (CONFIG_SAMSUNG_YPG1)
 		if (vtmode == 1 && device_id != 0 && (ctrl->cap->rotate == 90 || ctrl->cap->rotate == 270)) {
 #else // CONFIG_MACH_P1/CONFIG_SAMSUNG_YPG1
@@ -380,6 +381,17 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 #endif
 		}
 	}
+#else //CONFIG_SAMSUNG_GALAXYS4G
+ 	}
+ 
+    ctrl->cam->width = cam_frmsize.discrete.width;
+    ctrl->cam->height = cam_frmsize.discrete.height;
+
+    ctrl->cam->window.left = 0;
+    ctrl->cam->window.top = 0;
+    ctrl->cam->window.width = ctrl->cam->width;
+    ctrl->cam->window.height = ctrl->cam->height;
+#endif
 
 	cam_ctrl.id = V4L2_CID_CAM_PREVIEW_ONOFF;
 	cam_ctrl.value = 1;
@@ -1803,6 +1815,7 @@ int fimc_streamon_capture(void *fh)
 		if(ret != -ENOIOCTLCMD)
 			return ret;
 	} else {
+#ifndef CONFIG_SAMSUNG_GALAXYS4G
 #if defined (CONFIG_MACH_ARIES) && !defined (CONFIG_SAMSUNG_YPG1)
 		if (vtmode == 1 && device_id != 0 && (cap->rotate == 90 || cap->rotate == 270)) {
 #else // CONFIG_MACH_P1/CONFIG_SAMUSNG_YPG1
@@ -1883,7 +1896,14 @@ int fimc_streamon_capture(void *fh)
 #endif
 		}
 	}
-
+#else
+ 	}
+ 
+    ctrl->cam->window.left = 0;
+    ctrl->cam->window.top = 0;
+    ctrl->cam->width = ctrl->cam->window.width = cam_frmsize.discrete.width;
+    ctrl->cam->height = ctrl->cam->window.height = cam_frmsize.discrete.height;
+#endif
 	if (ctrl->id != 2 &&
 			ctrl->cap->fmt.colorspace != V4L2_COLORSPACE_JPEG) {
 		ret = fimc_camera_start(ctrl);
@@ -1917,7 +1937,7 @@ int fimc_streamon_capture(void *fh)
 			fimc_hwset_output_yuv(ctrl, cap->fmt.pixelformat);
 
 		fimc_hwset_output_size(ctrl, cap->fmt.width, cap->fmt.height);
-#if defined (CONFIG_MACH_ARIES) && !defined (CONFIG_SAMSUNG_YPG1)
+#if defined (CONFIG_MACH_ARIES) && !defined (CONFIG_SAMSUNG_YPG1) && !defined (CONFIG_SAMSUNG_GALAXYS4G)
 		if ((device_id != 0) && (vtmode != 1)) {
 			ctrl->cap->rotate = 90;
 			dev_err(ctrl->dev, "%s, rotate 90", __func__);
