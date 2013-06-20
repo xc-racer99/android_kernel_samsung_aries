@@ -2454,16 +2454,6 @@ static void mxt224_power_off(void)
 	gpio_direction_output(GPIO_TOUCH_EN, 0);
 }
 
-#ifdef CONFIG_S2W
-void mxt224_gpio_sleep_mode(bool enable)
-{
-	if (enable)
-		s3c_gpio_slp_cfgpin(GPIO_TOUCH_EN, S3C_GPIO_SLP_PREV);
-	else
-		s3c_gpio_slp_cfgpin(GPIO_TOUCH_EN, S3C_GPIO_SLP_OUT0);
-}
-#endif
-
 #define MXT224_MAX_MT_FINGERS 10
 
 static u8 t7_config[] = {GEN_POWERCONFIG_T7,
@@ -4573,7 +4563,7 @@ static unsigned int aries_sleep_gpio_table[][3] = {
 #endif
 	{ S5PV210_GPJ1(1), S3C_GPIO_SLP_OUT0,	S3C_GPIO_PULL_NONE},
 	{ S5PV210_GPJ1(2), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN},	//GPIO_GPJ12
-	{ S5PV210_GPJ1(3), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_NONE}, /* MXT224 */
+	{ S5PV210_GPJ1(3), S3C_GPIO_SLP_OUT0,	S3C_GPIO_PULL_NONE},
 	{ S5PV210_GPJ1(4), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE},
 	{ S5PV210_GPJ1(5), S3C_GPIO_SLP_OUT0,	S3C_GPIO_PULL_NONE},
 
