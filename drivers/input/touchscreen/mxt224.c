@@ -84,6 +84,53 @@ struct mxt224_data {
 	struct finger_info fingers[];
 };
 
+
+static struct input_dev *slide2wake_dev;
+extern void request_suspend_state(int);
+extern int get_suspend_state(void);
+static DEFINE_MUTEX(s2w_lock);
+static DEFINE_SEMAPHORE(s2w_sem);
+bool s2w_enabled = true;
+extern bool s2w_prox_near;
+
+static void slide2wake_force_wakeup(void)
+{
+  int state;
+
+  mutex_lock(&s2w_lock);
+  state = get_suspend_state();
+  printk(KERN_ERR "[TSP] suspend state: %d\n", state);
+  if (state != 0)
+    request_suspend_state(0);
+  msleep(100);
+  mutex_unlock(&s2w_lock);
+}
+
+void slide2wake_setdev(struct input_dev *input_device)
+{
+  slide2wake_dev = input_device;
+}
+
+static void slide2wake_presspwr(struct work_struct *slide2wake_presspwr_work)
+{
+  printk(KERN_ERR "[TSP] %s\n", __func__);
+  input_event(slide2wake_dev, EV_KEY, KEY_POWER, 1);
+  input_event(slide2wake_dev, EV_SYN, 0, 0);
+  msleep(100);
+  input_event(slide2wake_dev, EV_KEY, KEY_POWER, 0);
+  input_event(slide2wake_dev, EV_SYN, 0, 0);
+  msleep(1000);
+  mutex_unlock(&s2w_lock);
+}
+
+static DECLARE_WORK(slide2wake_presspwr_work, slide2wake_presspwr);
+
+void slide2wake_pwrtrigger(void)
+{
+  if (mutex_trylock(&s2w_lock))
+    schedule_work(&slide2wake_presspwr_work);
+}
+
 static int read_mem(struct mxt224_data *data, u16 reg, u8 len, u8 *buf)
 {
 	int ret;
@@ -619,6 +666,10 @@ static int __devinit mxt224_probe(struct i2c_client *client,
 
 #ifdef CONFIG_TOUCH_WAKE
     touchwake_data = data;
+#endif
+
+#ifdef CONFIG_S2W
+    s2w_data = data;
 #endif
 	return 0;
 

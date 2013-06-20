@@ -26,6 +26,10 @@
 #include <linux/workqueue.h>
 #include <linux/gpio.h>
 
+#ifdef CONFIG_S2W
+#include <linux/s2w.h>
+#endif
+
 struct gpio_button_data {
 	struct gpio_keys_button *button;
 	struct input_dev *input;
@@ -504,6 +508,10 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 			wakeup = 1;
 
 		input_set_capability(input, type, button->code);
+
+#ifdef CONFIG_S2W
+		slide2wake_setdev(input);
+#endif
 	}
 
 	error = sysfs_create_group(&pdev->dev.kobj, &gpio_keys_attr_group);
