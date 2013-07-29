@@ -102,6 +102,32 @@ const unsigned long arm_volt_max = 1350000;
 const unsigned long int_volt_max = 1250000;
 
 static struct s5pv210_dvs_conf dvs_conf[] = {
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+	[OC0] = {
+		.arm_volt   = 1325000,
+		.int_volt   = 1100000,
+	},
+	[L0] = {
+		.arm_volt   = 1325000,
+		.int_volt   = 1100000,
+	},
+	[L1] = {
+		.arm_volt   = 1250000,
+		.int_volt   = 1100000,
+	},
+	[L2] = {
+		.arm_volt   = 1100000,
+		.int_volt   = 1100000,
+	},
+	[L3] = {
+		.arm_volt   = 1000000,
+		.int_volt   = 1100000,
+	},
+	[L4] = {
+		.arm_volt   = 1000000,
+		.int_volt   = 1000000,
+	},
+#else
 	[OC0] = {
 		.arm_volt   = 1275000,
 		.int_volt   = 1100000,
@@ -126,6 +152,7 @@ static struct s5pv210_dvs_conf dvs_conf[] = {
 		.arm_volt   = 950000,
 		.int_volt   = 1000000,
 	},
+#endif
 };
 #else // CONFIG_MACH_P1
 const unsigned long arm_volt_max = 1450000;

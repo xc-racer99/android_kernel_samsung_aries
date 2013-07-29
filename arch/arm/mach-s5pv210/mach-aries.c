@@ -415,6 +415,33 @@ static struct s5p_media_device aries_media_devs[] = {
 
 #ifdef CONFIG_CPU_FREQ
 static struct s5pv210_cpufreq_voltage smdkc110_cpufreq_volt[] = {
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+        {
+                .freq   = 1200000,
+                .varm   = 1325000,
+                .vint   = 1100000,
+        }, {
+                .freq   = 1000000,
+                .varm   = 1325000,
+                .vint   = 1100000,
+        }, {
+                .freq   =  800000,
+                .varm   = 1250000,
+                .vint   = 1100000,
+        }, {
+                .freq   =  400000,
+                .varm   = 1100000,
+                .vint   = 1100000,
+        }, {
+                .freq   =  200000,
+                .varm   = 1000000,
+                .vint   = 1100000,
+        }, {
+                .freq   =  100000,
+                .varm   = 1000000,
+                .vint   = 1000000,
+        },
+#else
 	{
 		.freq	= 1200000,
 		.varm	= 1275000,
@@ -440,6 +467,7 @@ static struct s5pv210_cpufreq_voltage smdkc110_cpufreq_volt[] = {
 		.varm	=  950000,
 		.vint	= 1000000,
 	},
+#endif
 };
 
 static struct s5pv210_cpufreq_data smdkc110_cpufreq_plat = {
@@ -1006,10 +1034,17 @@ static struct max8998_platform_data max8998_pdata = {
 	.regulators     = aries_regulators,
 	.charger        = &aries_charger,
 	/* Preloads must be in increasing order of voltage value */
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+	.buck1_voltage4 = 1000000,
+	.buck1_voltage3 = 1100000,
+	.buck1_voltage2 = 1250000,
+	.buck1_voltage1 = 1325000,
+#else
 	.buck1_voltage4	= 950000,
 	.buck1_voltage3	= 1050000,
 	.buck1_voltage2	= 1200000,
 	.buck1_voltage1	= 1275000,
+#endif
 	.buck2_voltage2	= 1000000,
 	.buck2_voltage1	= 1100000,
 	.buck1_set1	= GPIO_BUCK_1_EN_A,
