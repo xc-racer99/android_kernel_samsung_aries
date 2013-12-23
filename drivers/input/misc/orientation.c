@@ -75,6 +75,7 @@ orientation_delay_store(struct device *dev, struct device_attribute *attr,
 	data->delay = value;
 	input_report_rel(input_data, REL_CONTROL_REPORT,
 				(data->enabled << 16) | value);
+	input_sync(input_data);
 	mutex_unlock(&data->mutex);
 
 	return count;
@@ -110,6 +111,7 @@ orientation_enable_store(struct device *dev, struct device_attribute *attr,
 	data->enabled = value;
 	input_report_rel(input_data, REL_CONTROL_REPORT,
 				(value << 16) | data->delay);
+	input_sync(input_data);
 	mutex_unlock(&data->mutex);
 
 	return count;
@@ -123,6 +125,7 @@ orientation_wake_store(struct device *dev, struct device_attribute *attr,
 	static int cnt = 1;
 
 	input_report_rel(input_data, REL_WAKE, cnt++);
+	input_sync(input_data);
 
 	return count;
 }
