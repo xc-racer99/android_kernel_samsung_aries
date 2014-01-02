@@ -142,7 +142,7 @@ static int s3c_jpeg_open(struct inode *inode, struct file *file)
 		jpg_err("JPG Mutex Lock Fail\r\n");
 		unlock_jpg_mutex();
 		kfree(jpg_reg_ctx);
-		return FALSE;
+		return -EBUSY;
 	}
 
 	if (instanceNo > MAX_INSTANCE_NUM) {
@@ -150,7 +150,15 @@ static int s3c_jpeg_open(struct inode *inode, struct file *file)
 				instance number is %d\n", instanceNo);
 		unlock_jpg_mutex();
 		kfree(jpg_reg_ctx);
-		return FALSE;
+		return -EBUSY;
+	}
+
+	if (instanceNo == 0) {
+		if (s5p_alloc_media_memory_bank(S5P_MDEV_JPEG, 0) < 0) {
+			unlock_jpg_mutex();
+			kfree(jpg_reg_ctx);
+			return -ENOMEM;
+		}
 	}
 
 	instanceNo++;
@@ -190,6 +198,10 @@ static int s3c_jpeg_release(struct inode *inode, struct file *file)
 
 	if ((--instanceNo) < 0)
 		instanceNo = 0;
+
+	if (instanceNo == 0) {
+		s5p_release_media_memory_bank(S5P_MDEV_JPEG, 0);
+	}
 
 	unlock_jpg_mutex();
 	kfree(jpg_reg_ctx);

@@ -14,6 +14,7 @@
 #include <linux/memblock.h>
 #include <linux/mm.h>
 #include <linux/swap.h>
+#include <linux/dma-contiguous.h>
 #include <asm/setup.h>
 #include <linux/io.h>
 #include <mach/memory.h>
@@ -80,6 +81,73 @@ size_t s5p_get_media_memsize_bank(int dev_id, int bank)
 }
 EXPORT_SYMBOL(s5p_get_media_memsize_bank);
 
+int s5p_alloc_media_memory_bank(int dev_id, int bank)
+{
+	struct s5p_media_device *mdev;
+
+	mdev = s5p_get_media_device(dev_id, bank);
+	if (!mdev) {
+		printk(KERN_ERR "invalid media device\n");
+		return -EINVAL;
+	}
+
+	if (!mdev->cmadev) {
+		// Not a CMA allocation
+		return 0;
+	}
+
+	if (mdev->cmapages) {
+		printk(KERN_ERR "s5p-cma: attempt to double allocate pages for %s\n", mdev->name);
+		return -EBUSY;
+	}
+
+	mdev->cmapages = dma_alloc_from_contiguous(
+			mdev->cmadev, mdev->memsize / PAGE_SIZE, 1);
+	if (!mdev->cmapages) {
+		printk(KERN_ERR "s5p-cma: unable to alloc pages for %s\n", mdev->name);
+		return -ENOMEM;
+	}
+
+	if (page_to_phys(mdev->cmapages) != mdev->paddr) {
+		// XXX: would work in normal cases... but we sometimes set paddr at init
+		printk(KERN_ERR "s5p-cma: allocated page does not match paddr for %s\n", mdev->name);
+		//mdev->paddr = page_to_phys(mdev->cmapages);
+		s5p_release_media_memory_bank(dev_id, bank);
+		return -ENOMEM;
+	}
+
+	printk(KERN_INFO "s5p-cma: allocated pages for %s\n", mdev->name);
+	return 0;
+}
+EXPORT_SYMBOL(s5p_alloc_media_memory_bank);
+
+int s5p_release_media_memory_bank(int dev_id, int bank)
+{
+	struct s5p_media_device *mdev;
+
+	mdev = s5p_get_media_device(dev_id, bank);
+	if (!mdev) {
+		printk(KERN_ERR "invalid media device\n");
+		return -EINVAL;
+	}
+
+	if (!mdev->cmadev) {
+		// Not a CMA allocation
+		return 0;
+	}
+
+	if (!dma_release_from_contiguous(mdev->cmadev,
+			mdev->cmapages, mdev->memsize / PAGE_SIZE)) {
+		printk(KERN_ERR "s5p-cma: unable to release pages for %s\n", mdev->name);
+		return -EINVAL;
+	}
+	mdev->cmapages = 0;
+
+	printk(KERN_INFO "s5p-cma: released pages for %s\n", mdev->name);
+	return 0;
+}
+EXPORT_SYMBOL(s5p_release_media_memory_bank);
+
 dma_addr_t s5p_get_media_membase_bank(int bank)
 {
 	if (bank > meminfo.nr_banks) {
@@ -96,10 +164,13 @@ void s5p_reserve_bootmem(struct s5p_media_device *mdevs,
 {
 	struct s5p_media_device *mdev;
 	u64 start, end;
-	int i, ret;
+	int i, ret, cma_align;
 
 	media_devs = mdevs;
 	nr_media_devs = nr_mdevs;
+
+	// From drivers/base/dma-contiguous.c
+	cma_align = PAGE_SIZE << max(MAX_ORDER, pageblock_order);
 
 	for (i = 0; i < meminfo.nr_banks; i++)
 		media_base[i] = meminfo.bank[i].start + meminfo.bank[i].size;
@@ -117,21 +188,26 @@ void s5p_reserve_bootmem(struct s5p_media_device *mdevs,
 				start = end - boundary;
 
 			mdev->paddr = memblock_find_in_range(start, end,
-						mdev->memsize, PAGE_SIZE);
+						mdev->memsize, mdev->cmadev ? cma_align : PAGE_SIZE);
 		}
 
-		ret = memblock_remove(mdev->paddr, mdev->memsize);
-		if (ret < 0)
-			pr_err("memblock_reserve(%x, %x) failed\n",
-				mdev->paddr, mdev->memsize);
+		if (mdev->cmadev) {
+			if (dma_declare_contiguous(mdev->cmadev, mdev->memsize, mdev->paddr, 0))
+				pr_err("dma_declare_contiguous for %s failed\n", mdev->name);
+		} else {
+			ret = memblock_remove(mdev->paddr, mdev->memsize);
+			if (ret < 0)
+				pr_err("memblock_reserve(%x, %x) failed\n",
+					mdev->paddr, mdev->memsize);
+		}
 
 		if (media_base[mdev->bank] > mdev->paddr)
 			media_base[mdev->bank] = mdev->paddr;
 
 		printk(KERN_INFO "s5p: %lu bytes system memory reserved "
-			"for %s at 0x%08x, %d-bank base(0x%08x)\n",
+			"for %s at 0x%08x, %d-bank base(0x%08x) cmadev=%p\n",
 			(unsigned long) mdev->memsize, mdev->name, mdev->paddr,
-			mdev->bank, media_base[mdev->bank]);
+			mdev->bank, media_base[mdev->bank], mdev->cmadev);
 	}
 }
 

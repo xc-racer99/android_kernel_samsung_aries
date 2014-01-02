@@ -13,6 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/platform_device.h>
+#include <linux/dma-mapping.h>
 #include <mach/map.h>
 #include <asm/irq.h>
 #include <plat/mfc.h>
@@ -48,6 +49,34 @@ struct platform_device s3c_device_mfc = {
 	.resource       = s3c_mfc_resources,
 	.dev		= {
 		.platform_data = &s3c_mfc_pdata,
+	},
+};
+
+/*
+ * MFC hardware has 2 memory interfaces which are modelled as two separate
+ * platform devices to let dma-mapping distinguish between them.
+ *
+ * MFC parent device (s3c_device_mfc) must be registered before memory
+ * interface specific devices (s3c_device_mfc_l and s3c_device_mfc_r).
+ */
+
+struct platform_device s3c_device_mfc_l = {
+	.name		= "s3c-mfc-l",
+	.id		= -1,
+	.dev		= {
+		.parent			= &s3c_device_mfc.dev,
+		.dma_mask		= &s3c_device_mfc_l.dev.coherent_dma_mask,
+		.coherent_dma_mask	= DMA_BIT_MASK(32),
+	},
+};
+
+struct platform_device s3c_device_mfc_r = {
+	.name		= "s3c-mfc-r",
+	.id		= -1,
+	.dev		= {
+		.parent			= &s3c_device_mfc.dev,
+		.dma_mask		= &s3c_device_mfc_r.dev.coherent_dma_mask,
+		.coherent_dma_mask	= DMA_BIT_MASK(32),
 	},
 };
 
