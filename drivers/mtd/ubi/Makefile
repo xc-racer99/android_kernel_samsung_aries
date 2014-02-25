@@ -5,3 +5,4 @@ ubi-y += misc.o
 
 ubi-$(CONFIG_MTD_UBI_DEBUG) += debug.o
 obj-$(CONFIG_MTD_UBI_GLUEBI) += gluebi.o
+ubi-$(CONFIG_MTD_UBI_BLOCK) += block.o
