@@ -584,8 +584,8 @@ static long vol_cdev_ioctl(struct file *file, unsigned int cmd,
 		break;
 	}
 
-	/* Attach a block device to an UBI volume */
-	case UBI_IOCVOLATTBLK:
+	/* Create a R/O block device on top of the UBI volume */
+	case UBI_IOCVOLCRBLK:
 	{
 		struct ubi_volume_info vi;
 
@@ -594,8 +594,8 @@ static long vol_cdev_ioctl(struct file *file, unsigned int cmd,
 		break;
 	}
 
-	/* Dettach a block device from an UBI volume */
-	case UBI_IOCVOLDETBLK:
+	/* Remove the R/O block device */
+	case UBI_IOCVOLRMBLK:
 	{
 		struct ubi_volume_info vi;
 
