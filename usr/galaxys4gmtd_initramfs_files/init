@@ -11,12 +11,12 @@ busybox mount -t sysfs sysfs /sys
 busybox mount -t yaffs2 /dev/block/mtdblock2 /system
 busybox mount -t yaffs2 /dev/block/mtdblock5 /cache
 
-image=/stage1/ramdisk.img
+image=/stage1/ramdisk.cpio
 
 if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmdline ; then
 	# recovery boot
 	busybox rm -fr /cache/.startrecovery
-	image=/stage1/ramdisk-recovery.img
+	image=/stage1/ramdisk-recovery.cpio
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
@@ -27,7 +27,7 @@ elif ! busybox test -e /system/build.prop ; then
 	busybox mount -t yaffs2 /dev/block/mtdblock5 /cache
 	busybox mkdir /cache/recovery
 
-	busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard	
+	busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
 
 	UPDATE=$(busybox cat /sdcard/cyanogenmod.cfg)
 
@@ -35,7 +35,7 @@ elif ! busybox test -e /system/build.prop ; then
 		busybox echo "install_zip(\"`echo $UPDATE`\");" > /cache/recovery/extendedcommand
 	fi
 
-	image=/stage1/ramdisk-recovery.img
+	image=/stage1/ramdisk-recovery.cpio
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
@@ -46,7 +46,7 @@ busybox umount /system
 busybox umount /sdcard
 busybox rmdir /sdcard
 
-busybox zcat $image | busybox cpio -i
+busybox cpio -i < $image
 
 if busybox grep -q 1 /sys/class/power_supply/battery/charging_mode_booting ; then
 	# low power mode
