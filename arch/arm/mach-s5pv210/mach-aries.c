@@ -5594,7 +5594,7 @@ static void __init aries_inject_cmdline(void) {
 		if (bootmode < 10) {
 			size += sprintf(new_command_line + size, " bootmode=%d", bootmode);
 		}
-		size += sprintf(new_command_line + size, " androidboot.selinux=permissive");
+		size += sprintf(new_command_line + size, " androidboot.selinux=enforcing");
 	}
 
 	saved_command_line = new_command_line;
