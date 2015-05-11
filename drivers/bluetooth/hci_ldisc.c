@@ -537,7 +537,11 @@ static int __init hci_uart_init(void)
 
 	memset(&hci_uart_ldisc, 0, sizeof (hci_uart_ldisc));
 	hci_uart_ldisc.magic		= TTY_LDISC_MAGIC;
+#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
+	hci_uart_ldisc.name		= "n_bt_hci";
+#else
 	hci_uart_ldisc.name		= "n_hci";
+#endif
 	hci_uart_ldisc.open		= hci_uart_tty_open;
 	hci_uart_ldisc.close		= hci_uart_tty_close;
 	hci_uart_ldisc.read		= hci_uart_tty_read;
@@ -548,10 +552,17 @@ static int __init hci_uart_init(void)
 	hci_uart_ldisc.write_wakeup	= hci_uart_tty_wakeup;
 	hci_uart_ldisc.owner		= THIS_MODULE;
 
+#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
+	if ((err = tty_register_ldisc(N_BT_HCI, &hci_uart_ldisc))) {
+		BT_ERR("HCI line discipline registration failed. (%d)", err);
+		return err;
+	}
+#else
 	if ((err = tty_register_ldisc(N_HCI, &hci_uart_ldisc))) {
 		BT_ERR("HCI line discipline registration failed. (%d)", err);
 		return err;
 	}
+#endif
 
 #ifdef CONFIG_BT_HCIUART_H4
 	h4_init();
@@ -587,8 +598,13 @@ static void __exit hci_uart_exit(void)
 #endif
 
 	/* Release tty registration of line discipline */
+#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
+	if ((err = tty_unregister_ldisc(N_BT_HCI)))
+		BT_ERR("Can't unregister HCI line discipline (%d)", err);
+#else
 	if ((err = tty_unregister_ldisc(N_HCI)))
 		BT_ERR("Can't unregister HCI line discipline (%d)", err);
+#endif
 }
 
 module_init(hci_uart_init);
@@ -601,4 +617,8 @@ MODULE_AUTHOR("Marcel Holtmann <marcel@holtmann.org>");
 MODULE_DESCRIPTION("Bluetooth HCI UART driver ver " VERSION);
 MODULE_VERSION(VERSION);
 MODULE_LICENSE("GPL");
+#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
+MODULE_ALIAS_LDISC(N_BT_HCI);
+#else
 MODULE_ALIAS_LDISC(N_HCI);
+#endif

@@ -287,6 +287,14 @@ config MFD_TC6387XB
 	help
 	  Support for Toshiba Mobile IO Controller TC6387XB
 
+config MFD_CG2900
+	tristate "Support ST-Ericsson CG2900 main structure"
+	depends on NET
+	help
+	  Support for ST-Ericsson CG2900 Connectivity Combo controller main structure.
+	  Supports multiple functionalities muxed over a Bluetooth HCI H:4 interface.
+	  CG2900 support Bluetooth, FM radio, and GPS.
+
 config MFD_TC6393XB
 	bool "Support Toshiba TC6393XB"
 	depends on GPIOLIB && ARM

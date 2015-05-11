@@ -49,7 +49,11 @@
 #define N_V253		19	/* Codec control over voice modem */
 #define N_CAIF		20      /* CAIF protocol for talking to modems */
 #define N_GSM0710	21	/* GSM 0710 Mux */
+#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
+#define N_BT_HCI	22	/* CG2900 Bluetooth Workaround */
+#else
 #define N_TI_WL		22	/* for TI's WL BT, FM, GPS combo chips */
+#endif
 #define N_TRACESINK	23	/* Trace data routing for MIPI P1149.7 */
 #define N_TRACEROUTER	24	/* Trace data routing for MIPI P1149.7 */
 

@@ -45,7 +45,7 @@ struct mtd_partition s3c_partition_info[] = {
 		.size		= (1540*SZ_256K), //1671
 	},
 	{
-		.name		= "userdata",
+		.name		= "datadata",
 		.offset		= (1672*SZ_256K),
 		.size		= (2080*SZ_256K), //3751
 	},
