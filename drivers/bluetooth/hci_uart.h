@@ -30,6 +30,7 @@
 #ifndef N_HCI
 #define N_HCI	15
 #endif
+#endif
 
 /* Ioctls */
 #define HCIUARTSETPROTO		_IOW('U', 200, int)
