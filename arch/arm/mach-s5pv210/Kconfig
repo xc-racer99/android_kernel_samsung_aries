@@ -430,6 +430,12 @@ config S5PV210_SETUP_FIMC2
 	help
 	  Common setup code for FIMC controller 2.
 
+config GPS_CHIPSET_STE_CG2900
+        bool "add GPS GNS2900"
+        default n
+        help
+         add  GPS config
+
 config DVFS_LIMIT
 	bool "DVFS limit"
 	depends on CPU_FREQ

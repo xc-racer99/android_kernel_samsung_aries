@@ -59,11 +59,18 @@ struct s3c_gpio_cfg {
 	int		(*set_pin)(struct s3c_gpio_chip *chip, unsigned offs,
 				    s3c_gpio_pull_t level);
 
+//+gingerbread_CG2900				
+ 	s3c_gpio_pull_t (*get_pin)(struct s3c_gpio_chip *chip, unsigned offs);				
+//-gingerbread_CG2900	
+
 	unsigned (*get_config)(struct s3c_gpio_chip *chip, unsigned offs);
 	int	 (*set_config)(struct s3c_gpio_chip *chip, unsigned offs,
 			       unsigned config);
 };
 
+//+gingerbread_CG2900
+extern s3c_gpio_pull_t s3c_gpio_getpin(unsigned int pin);
+//-gingerbread_CG2900
 extern int		s3c_gpio_setpin(unsigned int pin, s3c_gpio_pull_t level);
 
 #define S3C_GPIO_SPECIAL_MARK	(0xfffffff0)

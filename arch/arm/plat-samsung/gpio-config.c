@@ -111,6 +111,30 @@ int s3c_gpio_setpull(unsigned int pin, s3c_gpio_pull_t pull)
 }
 EXPORT_SYMBOL(s3c_gpio_setpull);
 
+//+gingerbread_CG2900
+s3c_gpio_pull_t s3c_gpio_getpin(unsigned int pin)
+{
+	struct s3c_gpio_chip *chip = s3c_gpiolib_getchip(pin);
+	unsigned long flags;
+	int offset;
+	s3c_gpio_pull_t ret;
+
+	if (!chip)
+		return -EINVAL;
+
+	offset = pin - chip->chip.base;
+
+	local_irq_save(flags);
+	//ret = s3c_gpio_do_getpin(chip, offset, level);
+	ret = (chip->config->get_pin) (chip, offset);
+	local_irq_restore(flags);
+
+	return ret;
+}
+
+EXPORT_SYMBOL(s3c_gpio_getpin);
+//-gingerbread_CG2900
+
 s3c_gpio_pull_t s3c_gpio_getpull(unsigned int pin)
 {
 	struct s3c_gpio_chip *chip = s3c_gpiolib_getchip(pin);
