@@ -18,7 +18,7 @@
 #include<linux/wait.h>
 #include"cg2900_fm_driver.h"
 
-//Defines from the videodev.h file which has been removed
+//++Defines from the videodev.h file which has been removed
 
 #define VID_TYPE_CAPTURE	1	/* Can capture */
 #define VID_TYPE_TUNER		2	/* Can tune */
@@ -34,6 +34,8 @@
 #define VID_TYPE_MPEG_ENCODER	2048	/* Can encode MPEG streams */
 #define VID_TYPE_MJPEG_DECODER	4096	/* Can decode MJPEG streams */
 #define VID_TYPE_MJPEG_ENCODER	8192	/* Can encode MJPEG streams */
+
+//--Defines from the videodev.h file which has been removed
 
 #define RADIO_CG2900_VERSION KERNEL_VERSION(1, 1, 0)
 #define BANNER "ST-Ericsson FM Radio Card driver v1.1.0"
@@ -2122,7 +2124,7 @@ static int cg2900_open(
 	int ret_val = -EINVAL;
 	struct video_device *vdev = video_devdata(file);
 
-	mutex_lock(&dvbdev_mutex);
+	mutex_lock(&fm_mutex);
 	users++;
 	FM_INFO_REPORT("cg2900_open: users = %d", users);
 
@@ -2164,7 +2166,7 @@ switch_on_error:
 init_error:
 	users--;
 done:
-	mutex_unlock(&dvbdev_mutex);
+	mutex_unlock(&fm_mutex);
 	FM_DEBUG_REPORT("cg2900_open: returning %d", ret_val);
 	return ret_val;
 }

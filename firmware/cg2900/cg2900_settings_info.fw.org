@@ -8,6 +8,20 @@
 ########################################################################
 ########################################################################
 #
+#
+#################
+#
+# Factory Settings for ST Microelectronics - STLC2690 -  Cut 2.1
+#
+#  These settings are for the S335, BT2.1 support is enabled.
+#
+0x0603  0x0014  STLC2600_R6_03_01.fw
+0x0604  0x001D  STLC2600_R6_04_02.fw
+#
+#################
+#################
+#
+#
 # Factory Settings for ST-Ericsson - CG2900
 #
 0x0200	0x0000	cg2900/CG2900_Dempsey_SOC_2.x_G_1C1.fw

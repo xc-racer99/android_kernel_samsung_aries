@@ -143,14 +143,13 @@ fw-shipped-$(CONFIG_USB_VICAM) += vicam/firmware.fw
 fw-shipped-$(CONFIG_VIDEO_CPIA2) += cpia2/stv0672_vp4.bin
 fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 fw-shipped-$(CONFIG_MFD_CG2900) += cg2900/cg2900_patch_info.fw cg2900/cg2900_settings_info.fw \
-                                   cg2900/CG2900_BTARMSS_2.xP5C3.fw cg2900/CG2900_Dempsey_SOC_2.x_G_1C1.fw
-
-fw-shipped-$(CONFIG_RADIO_CG2900) += cg2900_fm_bt_src_coeff_info.fw cg2900_fm_ext_src_coeff_info.fw \
-                    cg2900_fm_fm_coeff_info.fw cg2900_fm_fm_prog_info.fw \
-                    R1f.2_SoC1v20_BT_src_coeff_1.1.fw R1f.2_SoC1v20_EXT_src_coeff_1.1.fw \
-                    R1f.2_SoC1v20_Cobra_FM_SOC1_coef.fw R1f.2_SoC1v20_Cobra_FM_SOC1_prog.fw \
-                    R2c_SoC2v01_BT_src_coeff_1.1.fw R2c_SoC2v01_Cobra_FM_SOC2_coef.fw \
-                    R2c_SoC2v01_Cobra_FM_SOC2_prog.fw R2c_SoC2v01_EXT_src_coeff_1.1.fw
+                                   cg2900/CG2900_BTARMSS_2.xP5C3.fw cg2900/CG2900_Dempsey_SOC_2.x_G_1C1.fw \
+		    cg2900/cg2900_fm_bt_src_coeff_info.fw cg2900/cg2900_fm_ext_src_coeff_info.fw \
+                    cg2900/cg2900_fm_fm_coeff_info.fw cg2900/cg2900_fm_fm_prog_info.fw \
+                    cg2900/R1f.2_SoC1v20_BT_src_coeff_1.1.fw cg2900/R1f.2_SoC1v20_EXT_src_coeff_1.1.fw \
+                    cg2900/R1f.2_SoC1v20_Cobra_FM_SOC1_coef.fw cg2900/R1f.2_SoC1v20_Cobra_FM_SOC1_prog.fw \
+                    cg2900/R2c_SoC2v01_BT_src_coeff_1.1.fw cg2900/R2c_SoC2v01_Cobra_FM_SOC2_coef.fw \
+                    cg2900/R2c_SoC2v01_Cobra_FM_SOC2_prog.fw cg2900/R2c_SoC2v01_EXT_src_coeff_1.1.fw
 
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 

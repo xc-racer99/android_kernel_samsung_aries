@@ -42,8 +42,9 @@
 #define FILENAME_MAX				128
 
 #define WQ_NAME					"stlc2690_wq"
-#define PATCH_INFO_FILE				"cg2900_patch_info.fw"
-#define FACTORY_SETTINGS_INFO_FILE		"cg2900_settings_info.fw"
+//Update patch info location
+#define PATCH_INFO_FILE				"cg2900/cg2900_patch_info.fw"
+#define FACTORY_SETTINGS_INFO_FILE		"cg2900/cg2900_settings_info.fw"
 
 /* Supported chips */
 #define SUPP_MANUFACTURER			0x30
@@ -269,6 +270,7 @@ static void create_and_send_bt_cmd(const u8 *data, int length)
 		CG2900_ERR("Couldn't allocate sk_buff with length %d", length);
 		return;
 	}
+
 
 	memcpy(skb_put(skb, length), data, length);
 	skb->data[0] = CHANNEL_BT_CMD;
