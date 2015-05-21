@@ -17,10 +17,10 @@
 #include <linux/mutex.h>
 #include "cg2900_fm_driver.h"
 
-#define CG2900_FM_BT_SRC_COEFF_INFO_FILE "cg2900_fm_bt_src_coeff_info.fw"
-#define CG2900_FM_EXT_SRC_COEFF_INFO_FILE "cg2900_fm_ext_src_coeff_info.fw"
-#define CG2900_FM_FM_COEFF_INFO_FILE	"cg2900_fm_fm_coeff_info.fw"
-#define CG2900_FM_FM_PROG_INFO_FILE	"cg2900_fm_fm_prog_info.fw"
+#define CG2900_FM_BT_SRC_COEFF_INFO_FILE "cg2900/cg2900_fm_bt_src_coeff_info.fw"
+#define CG2900_FM_EXT_SRC_COEFF_INFO_FILE "cg2900/cg2900_fm_ext_src_coeff_info.fw"
+#define CG2900_FM_FM_COEFF_INFO_FILE	"cg2900/cg2900_fm_fm_coeff_info.fw"
+#define CG2900_FM_FM_PROG_INFO_FILE	"cg2900/cg2900_fm_fm_prog_info.fw"
 #define CG2900_FM_LINE_BUFFER_LENGTH	128
 #define CG2900_FM_FILENAME_MAX		128
 #define FW_FILE_PARAM_LEN				3
