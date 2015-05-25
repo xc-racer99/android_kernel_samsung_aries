@@ -20,7 +20,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 
-#define CG2900_DEFAULT_DEBUG_LEVEL 40
+#define CG2900_DEFAULT_DEBUG_LEVEL 25
 //CG2900_GB
 //#define CG2900_DEFAULT_DEBUG_LEVEL 0
 //CG2900_GB

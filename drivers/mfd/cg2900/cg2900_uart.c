@@ -742,7 +742,7 @@ static int set_baud_rate(int baud)
 	wait_event_interruptible_timeout(uart_wait_queue,
 				((BAUD_SUCCESS == uart_info->baud_rate_state) ||
 				 (BAUD_FAIL    == uart_info->baud_rate_state)),
-				 msecs_to_jiffies(UART_RESP_TIMEOUT/50));/* ++ daniel - port fail recovery */
+				 msecs_to_jiffies(UART_RESP_TIMEOUT/5));/* ++ daniel - port fail recovery */
 				 
 
 	if (BAUD_SUCCESS == uart_info->baud_rate_state)
