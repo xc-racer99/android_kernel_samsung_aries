@@ -15,8 +15,8 @@
 #
 #  These settings are for the S335, BT2.1 support is enabled.
 #
-0x0603  0x0014  STLC2600_R6_03_01.fw
-0x0604  0x001D  STLC2600_R6_04_02.fw
+0x0603  0x0014  cg2900/STLC2600_R6_03_01.fw
+0x0604  0x001D  cg2900/STLC2600_R6_04_02.fw
 #
 #################
 #################

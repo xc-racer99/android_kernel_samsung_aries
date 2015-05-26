@@ -13,8 +13,8 @@
 #
 # Patch file for ST Microelectronics - STLC2690 - Cut 2.1
 #
-0x0603  0x0014  STLC2690_R6_03_A1_E5.fw
-0x0604  0x001D  STLC2690_R6_04_A2.fw
+0x0603  0x0014  cg2900/STLC2690_R6_03_A1_E5.fw
+0x0604  0x001D  cg2900/STLC2690_R6_04_A2.fw
 #
 #################
 #
