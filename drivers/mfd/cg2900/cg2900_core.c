@@ -69,7 +69,7 @@
 /*
  * Timeout values
  */
-#define CHIP_STARTUP_TIMEOUT		(15000)	/* ms */
+#define CHIP_STARTUP_TIMEOUT		(30000)	/* ms */
 #define CHIP_SHUTDOWN_TIMEOUT		(15000)	/* ms */
 #define LINE_TOGGLE_DETECT_TIMEOUT	(50)	/* ms */
 #define CHIP_READY_TIMEOUT		(100)	/* ms */
@@ -2156,8 +2156,13 @@ static int cg2900_init(struct work_struct *work)
 	core_info->h4_channels.bt_cmd_channel = HCI_BT_CMD_H4_CHANNEL;
 	core_info->h4_channels.bt_acl_channel = HCI_BT_ACL_H4_CHANNEL;
 	core_info->h4_channels.bt_evt_channel = HCI_BT_EVT_H4_CHANNEL;
+#if 0
 	core_info->h4_channels.gnss_channel = HCI_FM_RADIO_H4_CHANNEL;
 	core_info->h4_channels.fm_radio_channel = HCI_GNSS_H4_CHANNEL;
+#else
+	core_info->h4_channels.gnss_channel = HCI_GNSS_H4_CHANNEL;
+	core_info->h4_channels.fm_radio_channel = HCI_FM_RADIO_H4_CHANNEL;
+#endif
 
 	core_info->wq = create_singlethread_workqueue(CORE_WQ_NAME);
 	if (!core_info->wq) {

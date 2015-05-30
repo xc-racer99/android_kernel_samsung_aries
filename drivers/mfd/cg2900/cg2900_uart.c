@@ -98,7 +98,7 @@
 /* Baud rate defines */
 #define ZERO_BAUD_RATE		0
 #define DEFAULT_BAUD_RATE	115200
-#define HIGH_BAUD_RATE	3000000
+#define HIGH_BAUD_RATE		2000000
 
 
 /* HCI TTY line discipline value */
@@ -218,6 +218,14 @@ static int uart_high_baud = HIGH_BAUD_RATE;
 
 static DECLARE_WAIT_QUEUE_HEAD(uart_wait_queue);
 static void update_timer(void);
+
+#ifdef CG2900_GPS_DSM_SUPPORT
+extern void cg29xx_uart_enable(void);
+extern void cg29xx_uart_disable(void);
+extern int cg29xx_cts_gpio_level(void);
+extern int cg29xx_cts_gpio_pin_number(void);
+extern void cg29xx_rts_gpio_control(int flag);
+#endif
 
 /**
  * is_set_baud_rate_cmd() - Checks if data contains set baud rate hci cmd.
@@ -433,10 +441,17 @@ static void finish_setting_baud_rate(struct tty_struct *tty)
 	} else
 		SET_BAUD_STATE(BAUD_IDLE);
 
+   /* ++ Hemant: Fix for baudrate issue */
+	/*
+	 * Give some time to the platform to change the baudrate
+	 */
+	schedule_timeout_interruptible(msecs_to_jiffies(UART_TX_TIMEOUT*5));
+   /* -- Hemant: Fix for baudrate issue */
+
 	/* Reenable the RTS Flow */
 	//tty_unthrottle(tty); // Not supported by Host
 	//cg29xx_rts_gpio_control(1);
-
+	cg29xx_uart_enable();
 #endif
 }
 
@@ -670,7 +685,7 @@ static int set_baud_rate(int baud)
 #ifdef BAUD_RATE_FIX	
 	/* Disable the RTS Flow */
 	//tty_throttle(tty); // Not supported by Host
-	//cg29xx_rts_gpio_control(0);
+	cg29xx_rts_gpio_control(0);
 #endif /* BAUD_RATE_FIX */
 	/*
 	 * Store old baud rate so that we can restore it if something goes
@@ -804,11 +819,6 @@ static void sleep_timer_expired(unsigned long data)
 }
 
 #ifdef CG2900_GPS_DSM_SUPPORT
-extern void cg29xx_uart_enable(void);
-extern void cg29xx_uart_disable(void);
-extern int cg29xx_cts_gpio_level(void);
-extern int cg29xx_cts_gpio_pin_number(void);
-extern void cg29xx_rts_gpio_control(int flag);
 /**
  * enter_dsm() - Called when chip needs to be put in DSM Mode.
  *
