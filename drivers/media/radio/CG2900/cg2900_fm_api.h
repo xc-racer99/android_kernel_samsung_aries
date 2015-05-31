@@ -12,9 +12,12 @@
 #define CG2900_FM_API_H
 
 #include <linux/device.h>
+#include <linux/skbuff.h>
 
 /* Callback function to receive RDS Data. */
 typedef void  (*cg2900_fm_rds_cb)(void);
+
+extern struct sk_buff_head		fm_interrupt_queue;
 
 /**
  * struct cg2900_fm_rds_buf - RDS Group Receiving Structure
@@ -145,6 +148,9 @@ enum cg2900_fm_grid {
  * @CG2900_EVENT_SCAN_CHANNELS_FOUND: Band Scan is completed.
  * @CG2900_EVENT_BLOCK_SCAN_CHANNELS_FOUND: Block Scan is completed.
  * @CG2900_EVENT_SCAN_CANCELLED: Scan/Seek is cancelled.
+ * @CG2900_EVENT_MONO_STEREO_TRANSITION: Mono/Stereo Transition has taken place.
+ * @CG2900_EVENT_DEVICE_RESET: CG2900 has been reset by some other IP.
+ * @CG2900_EVENT_RDS_EVENT: RDS data interrupt has been received from chip.
  *
  * Various Events reported by FM API layer.
  */
@@ -153,7 +159,10 @@ enum cg2900_fm_event {
 	CG2900_EVENT_SEARCH_CHANNEL_FOUND,
 	CG2900_EVENT_SCAN_CHANNELS_FOUND,
 	CG2900_EVENT_BLOCK_SCAN_CHANNELS_FOUND,
-	CG2900_EVENT_SCAN_CANCELLED
+	CG2900_EVENT_SCAN_CANCELLED,
+	CG2900_EVENT_MONO_STEREO_TRANSITION,
+	CG2900_EVENT_DEVICE_RESET,
+	CG2900_EVENT_RDS_EVENT
 };
 
 /**
@@ -197,6 +206,7 @@ enum cg2900_fm_stereo_mode {
 #define DEFAULT_CHANNELS_TO_SCAN			32
 #define MAX_CHANNELS_TO_SCAN				99
 #define MAX_CHANNELS_FOR_BLOCK_SCAN			198
+#define SKB_FM_INTERRUPT_DATA				2
 
 extern u8 fm_event;
 extern struct cg2900_fm_rds_buf fm_rds_buf[MAX_RDS_BUFFER][MAX_RDS_GROUPS];
@@ -978,13 +988,6 @@ void cg2900_handle_device_reset(void);
 void wake_up_poll_queue(void);
 
 /**
- * void wake_up_read_queue()- Wakes up the Task waiting on Read Queue.
- * This function is called when RDS data is available for reading by
- * application.
- */
-void wake_up_read_queue(void);
-
-/**
  * void cg2900_fm_set_chip_version()- Sets the Version of the Controller.
  *
  * This function is used to update the Chip Version information at time
@@ -997,6 +1000,78 @@ void wake_up_read_queue(void);
 void cg2900_fm_set_chip_version(
 			u16 revision,
 			u16 sub_version
+			);
+
+/**
+ * cg2900_fm_rx_set_deemphasis()- Sets de-emhasis level.
+ *
+ * Sets the Deemphasis level on FM Rx.
+ * @deemphasis: Deemphasis level.
+ *
+ * Returns:
+ *	 0,  if operation completed successfully.
+ *	 -EINVAL, otherwise.
+ */
+int cg2900_fm_rx_set_deemphasis(
+			u8 deemphasis
+			);
+
+/**
+ * cg2900_fm_set_test_tone_generator()- Sets the Test Tone Generator.
+ *
+ * This function is used to enable/disable the Internal Tone Generator of
+ * CG2900.
+ * @test_tone_status: Status of tone generator.
+ *
+ * Returns:
+ *	 0,  if operation completed successfully.
+ *	 -EINVAL, otherwise.
+ */
+int cg2900_fm_set_test_tone_generator(
+			u8 test_tone_status
+			);
+
+
+/**
+ * cg2900_fm_test_tone_connect()- Connect Audio outputs/inputs.
+ *
+ * This function connects the audio outputs/inputs of the Internal Tone
+ * Generator of CG2900.
+ * @left_audio_mode: Left Audio Output Mode.
+ * @right_audio_mode: Right Audio Output Mode.
+ *
+ * Returns:
+ *	 0,  if operation completed successfully.
+ *	 -EINVAL, otherwise.
+ */
+int cg2900_fm_test_tone_connect(
+			u8 left_audio_mode,
+			u8 right_audio_mode
+			);
+
+/**
+ * cg2900_fm_test_tone_set_params()- Sets the Test Tone Parameters.
+ *
+ * This function is used to set the parameters of the Internal Tone Generator of
+ * CG2900.
+ * @tone_gen: Tone to be configured (Tone 1 or Tone 2)
+ * @frequency: Frequency of the tone.
+ * @volume: Volume of the tone.
+ * @phase_offset: Phase offset of the tone.
+ * @dc: DC to add to tone.
+ * @waveform: Waveform to generate, sine or pulse.
+ *
+ * Returns:
+ *	 0,  if operation completed successfully.
+ *	 -EINVAL, otherwise.
+ */
+int cg2900_fm_test_tone_set_params(
+			u8 tone_gen,
+			u16 frequency,
+			u16 volume,
+			u16 phase_offset,
+			u16 dc,
+			u8 waveform
 			);
 
 #endif /* CG2900_FM_API_H */

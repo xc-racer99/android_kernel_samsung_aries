@@ -86,6 +86,8 @@ enum fmd_debug_levels {
 #define MAX_COUNT_OF_IRQS				16
 #define MAX_BUFFER_SIZE					512
 #define MAX_NAME_SIZE					100
+/* Maximum size of parsable data in bytes, received from CG2900 FM IP */
+#define MAX_RESP_SIZE					20
 /* Minimum Power level for CG2900. The value is in units of dBuV */
 #define MIN_POWER_LEVEL					88
 /* Maximum Power level for CG2900. The value is in units of dBuV */
@@ -138,6 +140,12 @@ enum fmd_debug_levels {
  * This is just a hexadecimal number with no units.
  */
 #define DEFAULT_PEAK_NOISE_VALUE			0x0035
+/* Defines the RF level (at the antenna pin) at which the stereo blending
+ * function will stop limiting the channel separation */
+#define STEREO_BLENDING_MIN_RSSI			0x0005
+/* Defines the RF level (at the antenna pin) at which the stereo blending
+ * function will start limiting the channel separation */
+#define STEREO_BLENDING_MAX_RSSI			0x0100
 /*
  * Default Average Noise level for a channel to be considered valid for CG2900.
  * This is just a hexadecimal number with no units.
@@ -171,8 +179,11 @@ enum fmd_debug_levels {
 #define CMD_FMR_DP_BUFFER_SET_SIZE			0x0343
 #define CMD_FMR_DP_BUFFER_SET_THRESHOLD			0x06C3
 #define CMD_FMR_DP_SET_CONTROL				0x02A3
+#define CMD_FMR_DP_SET_GROUP_REJECTION		0x0543
 #define CMD_FMR_RP_GET_RSSI				0x0083
+#define CMD_FMR_RP_GET_STATE				0x0063
 #define CMD_FMR_RP_STEREO_SET_MODE			0x0123
+#define CMD_FMR_RP_STEREO_SET_CONTROL_BLENDING_RSSI		0x0143
 #define CMD_FMR_SET_ANTENNA				0x0663
 #define CMD_FMR_SP_AF_SWITCH_GET_RESULT			0x0603
 #define CMD_FMR_SP_AF_SWITCH_START			0x04A3
@@ -188,6 +199,7 @@ enum fmd_debug_levels {
 #define CMD_FMR_SP_TUNE_SET_CHANNEL			0x03C3
 #define CMD_FMR_TN_SET_BAND				0x0023
 #define CMD_FMR_TN_SET_GRID				0x0043
+#define CMD_FMR_RP_SET_DEEMPHASIS			0x00C3
 #define CMD_FMT_DP_BUFFER_GET_POSITION			0x0204
 #define CMD_FMT_DP_BUFFER_SET_GROUP			0x0244
 #define CMD_FMT_DP_BUFFER_SET_SIZE			0x0224
@@ -214,6 +226,10 @@ enum fmd_debug_levels {
 #define CMD_GEN_SET_REFERENCE_CLOCK			0x0161
 #define CMD_GEN_SET_REFERENCE_CLOCK_PLL			0x01A1
 #define CMD_GEN_SET_REGISTER_VALUE			0x0101
+#define CMD_TST_TONE_ENABLE				0x0027
+#define CMD_TST_TONE_CONNECT				0x0047
+#define CMD_TST_TONE_SET_PARAMS				0x0067
+
 /* FM Command Id Parameter Length */
 #define CMD_GET_VERSION_PARAM_LEN			0
 #define CMD_GET_VERSION_RSP_PARAM_LEN			7
@@ -225,8 +241,11 @@ enum fmd_debug_levels {
 #define CMD_SP_TUNE_GET_CHANNEL_PARAM_LEN		0
 #define CMD_SP_TUNE_GET_CHANNEL_RSP_PARAM_LEN		1
 #define CMD_RP_STEREO_SET_MODE_PARAM_LEN		1
+#define CMD_RP_STEREO_SET_CONTROL_BLENDING_RSSI_PARAM_LEN	2
 #define CMD_RP_GET_RSSI_PARAM_LEN			0
 #define CMD_RP_GET_RSSI_RSP_PARAM_LEN			1
+#define CMD_RP_GET_STATE_PARAM_LEN			0
+#define CMD_RP_GET_STATE_RSP_PARAM_LEN			2
 #define CMD_SP_SEARCH_START_PARAM_LEN			4
 #define CMD_SP_SCAN_START_PARAM_LEN			4
 #define CMD_SP_SCAN_GET_RESULT_PARAM_LEN		1
@@ -244,9 +263,11 @@ enum fmd_debug_levels {
 #define CMD_DP_BUFFER_SET_SIZE_PARAM_LEN		1
 #define CMD_DP_BUFFER_SET_THRESHOLD_PARAM_LEN		1
 #define CMD_DP_SET_CONTROL_PARAM_LEN			1
+#define CMD_DP_SET_GROUP_REJECTION_PARAM_LEN		1
 #define CMD_PA_SET_MODE_PARAM_LEN			1
 #define CMD_PA_SET_CONTROL_PARAM_LEN			1
 #define CMD_RP_SET_PREEMPHASIS_PARAM_LEN		1
+#define CMD_RP_SET_DEEMPHASIS_PARAM_LEN			1
 #define CMD_RP_SET_PILOT_DEVIATION_PARAM_LEN		1
 #define CMD_RP_SET_RDS_DEVIATION_PARAM_LEN		1
 #define CMD_DP_BUFFER_SET_GROUP_PARAM_LEN		5
@@ -265,6 +286,10 @@ enum fmd_debug_levels {
 #define CMD_IP_ENABLE_PARAM_LEN				3
 #define CMD_IP_DISABLE_CMD_LEN				4
 #define CMD_IP_DISABLE_PARAM_LEN			3
+#define CMD_TST_TONE_ENABLE_PARAM_LEN			1
+#define CMD_TST_TONE_CONNECT_PARAM_LEN			2
+#define CMD_TST_TONE_SET_PARAMS_PARAM_LEN		6
+
 /* FM HCI Command and event specific */
 #define FM_WRITE					0x00
 #define FM_READ						0x01
@@ -403,12 +428,14 @@ enum fmd_grid {
 /**
  * enum fmd_emphasis - De-emphasis/Pre-emphasis level.
  *
+ * @FMD_EMPHASIS_NONE: De-emphasis Disabled.
  * @FMD_EMPHASIS_50US: 50 us de-emphasis/pre-emphasis level.
  * @FMD_EMPHASIS_75US: 75 us de-emphasis/pre-emphasis level.
  *
  * De-emphasis/Pre-emphasis level used on FM Radio.
  */
 enum fmd_emphasis {
+	FMD_EMPHASIS_NONE = 0,
 	FMD_EMPHASIS_50US = 1,
 	FMD_EMPHASIS_75US = 2
 };
@@ -499,6 +526,80 @@ enum fmd_rds_mode {
 	FMD_SWITCH_ON_RDS,
 	FMD_SWITCH_ON_RDS_ENHANCED_MODE,
 	FMD_SWITCH_ON_RDS_SIMULATOR
+};
+
+/**
+ * enum fmd_rds_group_rejection_mode - RDS Group Rejection
+ * to be selected for FM Rx.
+ *
+ * @FMD_RDS_GROUP_REJECTION_ON: Group rejection is enabled in FM Chip.
+ * @FMD_RDS_GROUP_REJECTION_OFF: Group rejection is disabled in FM Chip.
+ *
+ * RDS Group rejection to be selected for FM Rx.
+ */
+enum fmd_rds_group_rejection_mode {
+	FMD_RDS_GROUP_REJECTION_ON,
+	FMD_RDS_GROUP_REJECTION_OFF
+};
+
+/**
+ * enum fmd_tst_tone_status - Test Tone Generator Status.
+ *
+ * @FMD_TST_TONE_OFF: Test Tone Generator is off.
+ * @FMD_TST_TONE_ON_W_SRC: Test Tone Gen. is on with Sample Rate Conversion.
+ * @FMD_TST_TONE_ON_WO_SRC: Test Tone Gen. is on without Sample Rate Conversion.
+ *
+ * Test Tone Generator status to be set.
+ */
+enum fmd_tst_tone_status {
+	FMD_TST_TONE_OFF,
+	FMD_TST_TONE_ON_W_SRC,
+	FMD_TST_TONE_ON_WO_SRC
+};
+
+/**
+ * enum fmd_tst_tone_audio_mode - Test Tone Generator Audio Output/Input Mode.
+ *
+ * @FMD_TST_TONE_AUDIO_NORMAL: Normal Audio.
+ * @FMD_TST_TONE_AUDIO_ZERO: Zero.
+ * @FMD_TST_TONE_AUDIO_TONE_1: Tone 1.
+ * @FMD_TST_TONE_AUDIO_TONE_2: Tone 2.
+ * @FMD_TST_TONE_AUDIO_TONE_SUM: Sum of Tone 1 and Tone 2.
+ *
+ * Test Tone Generator Audio Output/Input Modes.
+ */
+enum fmd_tst_tone_audio_mode {
+	FMD_TST_TONE_AUDIO_NORMAL,
+	FMD_TST_TONE_AUDIO_ZERO,
+	FMD_TST_TONE_AUDIO_TONE_1,
+	FMD_TST_TONE_AUDIO_TONE_2,
+	FMD_TST_TONE_AUDIO_TONE_SUM
+};
+
+/**
+ * enum fmd_tst_tone - Test Tone of Internal Tone Generator.
+ *
+ * @FMD_TST_TONE_1: Test Tone 1
+ * @FMD_TST_TONE_2: Test Tone 2
+ *
+ * Test Tone.
+ */
+enum fmd_tst_tone {
+	FMD_TST_TONE_1,
+	FMD_TST_TONE_2
+};
+
+/**
+ * enum fmd_tst_tone_waveform - Test Tone Waveform of Internal Tone Generator.
+ *
+ * @FMD_TST_TONE_SINE: Sine wave
+ * @FMD_TST_TONE_PULSE: Pulse wave
+ *
+ * Test Tone waveform.
+ */
+enum fmd_tst_tone_waveform {
+	FMD_TST_TONE_SINE,
+	FMD_TST_TONE_PULSE
 };
 
 /* Callback function to receive radio events. */
@@ -708,6 +809,26 @@ int fmd_rx_get_frequency(
  */
 int fmd_rx_set_stereo_mode(
 			u8 mode
+			);
+
+/**
+ * fmd_rx_set_stereo_ctrl_BlendingRssi() - Sets the stereo blending control setting.
+ *
+ * @minRssi: Defines the RF level (at the antenna pin) at which the
+ * stereo blending function will stop limiting the channel separation.
+ * @maxRssi: Defines the RF level (at the antenna pin) at which the
+ * stereo blending function will start limiting the channel separation.
+ *
+ *  Returns:
+ *	 0,  if no error.
+ *	 -EINVAL, if parameter is invalid.
+ *	 -ENOEXEC, if preconditions are violated.
+ *	 -EBUSY, if FM Driver is not in idle state.
+ *	 -EINVAL, if wrong response received from chip.
+ */
+int fmd_rx_set_stereo_ctrl_BlendingRssi(
+			u16 minRssi,
+			u16 maxRssi
 			);
 
 /**
@@ -1028,6 +1149,22 @@ int fmd_rx_buffer_set_threshold(
  *   -EINVAL, if wrong response received from chip.
  */
 int fmd_rx_set_rds(
+			u8 on_off_state
+			);
+/**
+ * fmd_rx_set_rds_group_rejection() - Enables or disables group rejection
+ * in case groups with erroneous blocks are received.
+ *
+ * @on_off_state : Rx Group Rejection ON /OFF control
+ *
+ * Returns:
+ *   0,  if no error.
+ *   -ENOEXEC, if preconditions are violated.
+ *   -EBUSY, if FM Driver is not in idle state.
+ *   -EINVAL, if wrong response received from chip.
+ */
+
+int fmd_rx_set_rds_group_rejection(
 			u8 on_off_state
 			);
 
@@ -1601,4 +1738,88 @@ void fmd_get_rds_sem(void);
  */
 void fmd_set_rds_sem(void);
 
+/**
+ * fmd_set_dev() - Set FM device.
+ *
+ * @dev: FM Device
+ *
+ * Returns:
+ *	 0, If there is no error.
+ *	 corresponding error Otherwise
+ */
+int fmd_set_dev(
+			struct device *dev
+			);
+
+/**
+ * fmd_set_test_tone_generator_status()- Sets the Test Tone Generator.
+ *
+ * This function is used to enable/disable the Internal Tone Generator of
+ * CG2900.
+ * @test_tone_status: Status of tone generator.
+ *
+ * Returns:
+ *	 0,  if operation completed successfully.
+ *	 -EINVAL, otherwise.
+ */
+int fmd_set_test_tone_generator_status(
+			u8 test_tone_status
+			);
+
+/**
+ * fmd_test_tone_connect()- Connect Audio outputs/inputs.
+ *
+ * This function connects the audio outputs/inputs of the
+ * Internal Tone Generator of CG2900.
+ * @left_audio_mode: Left Audio Output Mode.
+ * @right_audio_mode: Right Audio Output Mode.
+ *
+ * Returns:
+ *	 0,  if operation completed successfully.
+ *	 -EINVAL, otherwise.
+ */
+int fmd_test_tone_connect(
+			u8 left_audio_mode,
+			u8 right_audio_mode
+			);
+
+/**
+ * fmd_test_tone_set_params()- Sets the Test Tone Parameters.
+ *
+ * This function is used to set the parameters of
+ * the Internal Tone Generator of CG2900.
+ * @tone_gen: Tone to be configured (Tone 1 or Tone 2)
+ * @frequency: Frequency of the tone.
+ * @volume: Volume of the tone.
+ * @phase_offset: Phase offset of the tone.
+ * @dc: DC to add to tone.
+ * @waveform: Waveform to generate, sine or pulse.
+ *
+ * Returns:
+ *	 0,  if operation completed successfully.
+ *	 -EINVAL, otherwise.
+ */
+int fmd_test_tone_set_params(
+			u8 tone_gen,
+			u16 frequency,
+			u16 volume,
+			u16 phase_offset,
+			u16 dc,
+			u8 waveform
+			);
+
+/**
+ * fmd_rx_set_deemphasis()- Connect Audio outputs/inputs.
+ *
+ * This function sets the de-emphasis filter to the
+ * specified de-empahsis level.
+ * @deemphasis: De-emphasis level to set.
+ *
+ * Returns:
+ *	 0,  if operation completed successfully.
+ *	 -EINVAL, otherwise.
+ */
+int fmd_rx_set_deemphasis(
+			u8 deemphasis
+			);
 #endif /* _FMDRIVER_H_  */

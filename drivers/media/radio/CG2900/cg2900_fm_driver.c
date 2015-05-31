@@ -106,6 +106,15 @@
  */
 #define MAX_RESPONSE_TIME_IN_MS	5000
 
+/* Byte per word */
+#define WORD_LENGTH				2
+
+/* Byte Offset Counter */
+#define COUNTER					1
+
+/* Binary shift offset for one byte */
+#define SHIFT_OFFSET			8
+
 /*
  * enum fmd_gocmd_t - FM Driver Command state.
  *
@@ -227,7 +236,7 @@ struct fmd_states_info {
 struct fmd_data {
 	u32 cmd_id;
 	u16 num_parameters;
-	u8 *parameters;
+	u8 parameters[MAX_RESP_SIZE];
 };
 
 static struct fmd_states_info fmd_state_info;
@@ -896,11 +905,6 @@ static int fmd_rx_channel_to_frequency(
 	 */
 	*frequency = min_freq + (channel_number * CHANNEL_FREQ_CONVERTER_MHZ);
 
-	if (*frequency > max_freq)
-		*frequency = max_freq;
-	else if (*frequency < min_freq)
-		*frequency = min_freq;
-
 error:
 	return result;
 }
@@ -1048,7 +1052,7 @@ static void fmd_read_cb(
 	FM_INFO_REPORT("fmd_read_cb");
 
 	if (skb->data == NULL || skb->len == 0)
-		goto error;
+		return;
 
 	mutex_lock(&read_mutex);
 	CG2900_HEX_READ_PACKET_DUMP;
@@ -1060,7 +1064,6 @@ static void fmd_read_cb(
 					FM_GET_PKT_LEN(skb->data),
 					FM_GET_RSP_PKT_ADDR(skb->data));
 
-error:
 	kfree_skb(skb);
 	mutex_unlock(&read_mutex);
 }
@@ -1176,6 +1179,8 @@ static int fmd_rds_thread(
 		/* Give 100 ms for context switching */
 		schedule_timeout_interruptible(msecs_to_jiffies(100));
 	}
+	/* Always signal the rds_sem semaphore before exiting */
+	fmd_set_rds_sem();
 	FM_DEBUG_REPORT("fmd_rds_thread Exiting!!!");
 	return 0;
 }
@@ -1622,6 +1627,8 @@ static int fmd_read_resp(
 			)
 {
 	int err;
+	int param_offset = 0;
+	int byte_offset = 0;
 	FM_INFO_REPORT("fmd_read_resp");
 
 	/* Wait till response of the command is received */
@@ -1641,10 +1648,17 @@ static int fmd_read_resp(
 	*cmd_id = fmd_data.cmd_id;
 	if (fmd_data.num_parameters) {
 		*num_parameters = fmd_data.num_parameters;
-		memcpy(
-			parameters,
-			fmd_data.parameters,
-			(*num_parameters * sizeof(u16)));
+		while (param_offset <
+				(*num_parameters * sizeof(u16)) / WORD_LENGTH) {
+			parameters[param_offset] =
+				(u16)(fmd_data.parameters[byte_offset])
+						& 0x00ff;
+			parameters[param_offset] |=
+				((u16)(fmd_data.parameters[byte_offset + COUNTER])
+						& 0x00ff) << SHIFT_OFFSET;
+			byte_offset = byte_offset + WORD_LENGTH;
+			param_offset++;
+		}
 	}
 
 	err = 0;
@@ -1669,6 +1683,7 @@ static void fmd_process_fm_function(
 {
 	u8 fm_function_id;
 	u8 block_id;
+	int count = 0;
 
 	if (packet_buffer == NULL)
 		return;
@@ -1701,12 +1716,14 @@ static void fmd_process_fm_function(
 			fmd_data.cmd_id, fmd_data.num_parameters);
 
 		if (fmd_data.num_parameters) {
-			fmd_data.parameters =
-				FM_GET_RSP_BUFFER_ADDR(packet_buffer);
-			memcpy(fmd_data.parameters,
-				FM_GET_RSP_BUFFER_ADDR(packet_buffer),
-				fmd_data.num_parameters * sizeof(u16));
+			while (count <
+				(fmd_data.num_parameters * sizeof(u16))) {
+				fmd_data.parameters[count] =
+				*(FM_GET_RSP_BUFFER_ADDR(packet_buffer) + count);
+				count++;
+			}
 		}
+
 		/* Release the semaphore since response is received */
 		fmd_set_cmd_sem();
 		break;
@@ -2308,11 +2325,52 @@ error:
 	return err;
 }
 
+int fmd_rx_set_stereo_ctrl_BlendingRssi(
+			u16 minRssi,
+			u16 maxRssi)
+{
+	int err;
+	int io_result;
+	u16 parameters[CMD_RP_STEREO_SET_CONTROL_BLENDING_RSSI_PARAM_LEN];
+
+	if (fmd_go_cmd_busy()) {
+		err = -EBUSY;
+		goto error;
+	}
+
+	if (!fmd_state_info.fmd_initialized) {
+		err = -ENOEXEC;
+		goto error;
+	}
+
+	parameters[0] = minRssi;
+	parameters[1] = maxRssi;
+
+	io_result = fmd_send_cmd_and_read_resp(
+			CMD_FMR_RP_STEREO_SET_CONTROL_BLENDING_RSSI,
+			CMD_RP_STEREO_SET_CONTROL_BLENDING_RSSI_PARAM_LEN,
+			parameters,
+			NULL,
+			NULL);
+
+	if (io_result != 0) {
+		err = io_result;
+		goto error;
+	}
+	err = 0;
+
+error:
+	return err;
+}
+
 int fmd_rx_get_stereo_mode(
 			u8 *mode
 			)
 {
 	int err;
+	int io_result;
+	u16 response_count;
+	u16 response_data[CMD_RP_GET_STATE_RSP_PARAM_LEN];
 
 	if (fmd_go_cmd_busy()) {
 		err = -EBUSY;
@@ -2329,7 +2387,20 @@ int fmd_rx_get_stereo_mode(
 		goto error;
 	}
 
-	*mode = fmd_state_info.rx_stereo_mode;
+	io_result = fmd_send_cmd_and_read_resp(
+				CMD_FMR_RP_GET_STATE,
+				CMD_RP_GET_STATE_PARAM_LEN,
+				NULL,
+				&response_count,
+				response_data);
+
+	if (io_result != 0) {
+		err = io_result;
+		goto error;
+	}
+
+	/* 2nd element of response is stereo signal */
+	*mode = response_data[1];
 	err = 0;
 
 error:
@@ -3162,6 +3233,47 @@ error:
 	return err;
 }
 
+int fmd_rx_set_rds_group_rejection(
+			u8 on_off_state
+			)
+{
+	int err;
+	int io_result;
+	u16  parameters[CMD_DP_SET_GROUP_REJECTION_PARAM_LEN];
+
+	if (fmd_go_cmd_busy()) {
+		err = -EBUSY;
+		goto error;
+	}
+
+	if (!fmd_state_info.fmd_initialized) {
+		err = -ENOEXEC;
+		goto error;
+	}
+
+	if (on_off_state == FMD_RDS_GROUP_REJECTION_ON)
+		parameters[0] = 0x0001;
+	else if (on_off_state == FMD_RDS_GROUP_REJECTION_OFF)
+		parameters[0] = 0x0000;
+
+	io_result = fmd_send_cmd_and_read_resp(
+			CMD_FMR_DP_SET_GROUP_REJECTION,
+			CMD_DP_SET_GROUP_REJECTION_PARAM_LEN,
+			parameters,
+			NULL,
+			NULL);
+
+	if (io_result != 0) {
+		err = io_result;
+		goto error;
+	}
+
+	err = 0;
+
+error:
+	return err;
+}
+
 int fmd_rx_get_low_level_rds_groups(
 			u8 index,
 			u16 *block1,
@@ -3206,6 +3318,57 @@ int fmd_rx_get_low_level_rds_groups(
 	*status2 = fmd_state_info.rds_group[index].status[1];
 	*status3 = fmd_state_info.rds_group[index].status[2];
 	*status4 = fmd_state_info.rds_group[index].status[3];
+	err = 0;
+
+error:
+	return err;
+}
+
+int fmd_rx_set_deemphasis(
+			u8 deemphasis
+			)
+{
+	int err;
+	int io_result;
+	u16 parameters[CMD_RP_SET_DEEMPHASIS_PARAM_LEN];
+
+	if (fmd_go_cmd_busy()) {
+		err = -EBUSY;
+		goto error;
+	}
+
+	if (!fmd_state_info.fmd_initialized) {
+		err = -ENOEXEC;
+		goto error;
+	}
+
+	switch (deemphasis)	{
+	case FMD_EMPHASIS_50US:
+		parameters[0] = FMD_EMPHASIS_50US;
+		break;
+
+	case FMD_EMPHASIS_75US:
+		parameters[0] = FMD_EMPHASIS_75US;
+		break;
+
+	case FMD_EMPHASIS_NONE:
+	default:
+		parameters[0] = FMD_EMPHASIS_NONE;
+		break;
+
+	}
+
+	io_result = fmd_send_cmd_and_read_resp(
+			CMD_FMR_RP_SET_DEEMPHASIS,
+			CMD_RP_SET_DEEMPHASIS_PARAM_LEN,
+			parameters,
+			NULL,
+			NULL);
+
+	if (io_result != 0) {
+		err = io_result;
+		goto error;
+	}
 	err = 0;
 
 error:
@@ -4571,13 +4734,14 @@ void fmd_stop_rds_thread(void)
 	FM_INFO_REPORT("fmd_stop_rds_thread");
 	/* In case thread is waiting, set the rds sem */
 	fmd_set_rds_sem();
+	/* Re-initialize RDS Semaphore to zero */
+	sema_init(&rds_sem, 0);
 	cb_rds_func = NULL;
 	rds_thread_required = false;
-	if (rds_thread_task) {
-		kthread_stop(rds_thread_task);
+	/* Wait for RDS thread to exit gracefully */
+	fmd_get_rds_sem();
+	if (rds_thread_task)
 		rds_thread_task = NULL;
-		return;
-	}
 }
 
 void fmd_get_rds_sem(void)
@@ -4597,7 +4761,177 @@ void fmd_set_rds_sem(void)
 	FM_DEBUG_REPORT("fmd_set_rds_sem");
 	up(&rds_sem);
 }
+//Check if i need to rewrite this...
+int fmd_set_dev(struct device *dev)
+{
+	struct cg2900_user_data *pf_data;
 
+	FM_DEBUG_REPORT("fmd_set_dev");
+
+	if (dev && cg2900_fm_dev) {
+		FM_ERR_REPORT("Only one FM device supported");
+		return -EACCES;
+	}
+
+	cg2900_fm_dev = dev;
+
+	if (!dev)
+		return 0;
+
+	pf_data = dev_get_platdata(dev);
+	pf_data->dev = dev;
+	pf_data->read_cb = fmd_read_cb;
+	pf_data->reset_cb = fmd_reset_cb;
+
+	return 0;
+}
+
+int fmd_set_test_tone_generator_status(
+			u8 test_tone_status
+			)
+{
+	int err;
+	int io_result;
+	u16 parameters[CMD_TST_TONE_ENABLE_PARAM_LEN];
+
+	if (fmd_go_cmd_busy()) {
+		err = -EBUSY;
+		goto error;
+	}
+
+	if (!fmd_state_info.fmd_initialized) {
+		err = -ENOEXEC;
+		goto error;
+	}
+
+	if (test_tone_status > FMD_TST_TONE_ON_WO_SRC) {
+		err = -EINVAL;
+		goto error;
+	}
+
+	parameters[0] = test_tone_status;
+
+	io_result = fmd_send_cmd_and_read_resp(
+			CMD_TST_TONE_ENABLE,
+			CMD_TST_TONE_ENABLE_PARAM_LEN,
+			parameters,
+			NULL,
+			NULL);
+
+	if (io_result != 0) {
+		err = io_result;
+		goto error;
+	}
+
+	err = 0;
+
+error:
+	return err;
+}
+
+int fmd_test_tone_connect(
+			u8 left_audio_mode,
+			u8 right_audio_mode
+			)
+{
+	int err;
+	int io_result;
+	u16 parameters[CMD_TST_TONE_CONNECT_PARAM_LEN];
+
+	if (fmd_go_cmd_busy()) {
+		err = -EBUSY;
+		goto error;
+	}
+
+	if (!fmd_state_info.fmd_initialized) {
+		err = -ENOEXEC;
+		goto error;
+	}
+
+	if (left_audio_mode > FMD_TST_TONE_AUDIO_TONE_SUM ||
+		right_audio_mode > FMD_TST_TONE_AUDIO_TONE_SUM) {
+		err = -EINVAL;
+		goto error;
+	}
+
+	parameters[0] = left_audio_mode;
+	parameters[1] = right_audio_mode;
+
+	io_result = fmd_send_cmd_and_read_resp(
+			CMD_TST_TONE_CONNECT,
+			CMD_TST_TONE_CONNECT_PARAM_LEN,
+			parameters,
+			NULL,
+			NULL);
+
+	if (io_result != 0) {
+		err = io_result;
+		goto error;
+	}
+
+	err = 0;
+
+error:
+	return err;
+}
+
+int fmd_test_tone_set_params(
+			u8 tone_gen,
+			u16 frequency,
+			u16 volume,
+			u16 phase_offset,
+			u16 dc,
+			u8 waveform
+			)
+{
+	int err;
+	int io_result;
+	u16 parameters[CMD_TST_TONE_SET_PARAMS_PARAM_LEN];
+
+	if (fmd_go_cmd_busy()) {
+		err = -EBUSY;
+		goto error;
+	}
+
+	if (!fmd_state_info.fmd_initialized) {
+		err = -ENOEXEC;
+		goto error;
+	}
+
+	if (tone_gen > FMD_TST_TONE_2 ||
+		waveform > FMD_TST_TONE_PULSE ||
+		frequency > 0x7FFF ||
+		volume > 0x7FFF) {
+		err = -EINVAL;
+		goto error;
+	}
+
+	parameters[0] = tone_gen;
+	parameters[1] = frequency;
+	parameters[2] = volume;
+	parameters[3] = phase_offset;
+	parameters[4] = dc;
+	parameters[5] = waveform;
+
+	io_result = fmd_send_cmd_and_read_resp(
+			CMD_TST_TONE_SET_PARAMS,
+			CMD_TST_TONE_SET_PARAMS_PARAM_LEN,
+			parameters,
+			NULL,
+			NULL);
+
+	if (io_result != 0) {
+		err = io_result;
+		goto error;
+	}
+
+	err = 0;
+
+error:
+	return err;
+}
+
+>>>>>>> bc27fc9... This is the xperia driver - now to see what chaned between them and backport it to the original framework
 MODULE_AUTHOR("Hemant Gupta");
 MODULE_LICENSE("GPL v2");
 

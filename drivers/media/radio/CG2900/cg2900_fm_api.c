@@ -583,6 +583,24 @@ error:
 }
 
 /**
+ * cg2900_fm_check_rds_status()- Checks whether RDS was On previously
+ *
+ * This method is called on receiving interrupt for Seek Completion,
+ * Scan completion and Block Scan completion. It will check whether RDS
+ * was forcefully disabled before the above operations started and if the
+ * previous RDS state was true, then RDS will be enabled back
+ */
+static void cg2900_fm_check_rds_status(void)
+{
+	FM_INFO_REPORT("cg2900_fm_check_rds_status");
+	if (fm_prev_rds_status) {
+		/* Restart RDS if it was active previously */
+		cg2900_fm_rds_on();
+		fm_prev_rds_status = false;
+	}
+}
+
+/**
  * cg2900_fm_driver_callback()- Callback function indicating the event.
  *
  * This callback function is called on receiving irpt_CommandSucceeded,
@@ -597,91 +615,111 @@ static void cg2900_fm_driver_callback(
 			bool event_successful
 			)
 {
+	struct sk_buff *skb;
+
 	FM_INFO_REPORT("cg2900_fm_driver_callback: "
 			"event = %02x, event_successful = %x",
 			event, event_successful);
 
-	if (event_successful) {
-		switch (event) {
-		case FMD_EVENT_GEN_POWERUP:
-			FM_DEBUG_REPORT("FMD_EVENT_GEN_POWERUP");
-			break;
-		case FMD_EVENT_ANTENNA_STATUS_CHANGED:
-			FM_DEBUG_REPORT("FMD_EVENT_ANTENNA_STATUS_CHANGED");
-			break;
-		case FMD_EVENT_FREQUENCY_CHANGED:
-			FM_DEBUG_REPORT("FMD_EVENT_FREQUENCY_CHANGED ");
-			break;
-
-		case FMD_EVENT_SEEK_STOPPED:
-			FM_DEBUG_REPORT("FMD_EVENT_SEEK_STOPPED");
-			fm_event = CG2900_EVENT_SCAN_CANCELLED;
-			wake_up_poll_queue();
-			break;
-
-		case FMD_EVENT_SEEK_COMPLETED:
-			FM_DEBUG_REPORT("FMD_EVENT_SEEK_COMPLETED");
-			fm_event = CG2900_EVENT_SEARCH_CHANNEL_FOUND;
-			wake_up_poll_queue();
-			break;
-
-		case FMD_EVENT_SCAN_BAND_COMPLETED:
-			FM_DEBUG_REPORT("FMD_EVENT_SCAN_BAND_COMPLETED");
-			fm_event = CG2900_EVENT_SCAN_CHANNELS_FOUND;
-			wake_up_poll_queue();
-			break;
-
-		case FMD_EVENT_BLOCK_SCAN_COMPLETED:
-			FM_DEBUG_REPORT("FMD_EVENT_BLOCK_SCAN_COMPLETED");
-			fm_event = CG2900_EVENT_BLOCK_SCAN_CHANNELS_FOUND;
-			wake_up_poll_queue();
-			break;
-
-		case FMD_EVENT_AF_UPDATE_SWITCH_COMPLETE:
-			FM_DEBUG_REPORT("FMD_EVENT_AF_UPDATE_SWITCH_COMPLETE");
-			break;
-
-		case FMD_EVENT_RDSGROUP_RCVD:
-			FM_DEBUG_REPORT("FMD_EVENT_RDSGROUP_RCVD");
-			fmd_set_rds_sem();
-			break;
-
-		default:
-			FM_INFO_REPORT("cg2900_fm_driver_callback: "
-				      "Unknown event = %x", event);
-			break;
-		}
-	} else {
-		switch (event) {
-			/*
-			 * Seek stop, band scan, seek, block scan could
-			 * fail for some reason so wake up poll queue
-			 */
-		case FMD_EVENT_SEEK_STOPPED:
-			FM_ERR_REPORT("FMD_EVENT_SEEK_STOPPED");
-			fm_event = CG2900_EVENT_SCAN_CANCELLED;
-			wake_up_poll_queue();
-			break;
-		case FMD_EVENT_SEEK_COMPLETED:
-			FM_ERR_REPORT("FMD_EVENT_SEEK_COMPLETED");
-			fm_event = CG2900_EVENT_SEARCH_CHANNEL_FOUND;
-			wake_up_poll_queue();
-			break;
-		case FMD_EVENT_SCAN_BAND_COMPLETED:
-			FM_ERR_REPORT("FMD_EVENT_SCAN_BAND_COMPLETED");
-			fm_event = CG2900_EVENT_SCAN_CHANNELS_FOUND;
-			wake_up_poll_queue();
-			break;
-		case FMD_EVENT_BLOCK_SCAN_COMPLETED:
-			FM_ERR_REPORT("FMD_EVENT_BLOCK_SCAN_COMPLETED");
-			fm_event = CG2900_EVENT_BLOCK_SCAN_CHANNELS_FOUND;
-			wake_up_poll_queue();
-			break;
-		default:
+	switch (event) {
+	case FMD_EVENT_GEN_POWERUP:
+		FM_DEBUG_REPORT("FMD_EVENT_GEN_POWERUP");
+		break;
+	case FMD_EVENT_ANTENNA_STATUS_CHANGED:
+		FM_DEBUG_REPORT("FMD_EVENT_ANTENNA_STATUS_CHANGED");
+		break;
+	case FMD_EVENT_FREQUENCY_CHANGED:
+		FM_DEBUG_REPORT("FMD_EVENT_FREQUENCY_CHANGED ");
+		break;
+	case FMD_EVENT_SEEK_STOPPED:
+		FM_DEBUG_REPORT("FMD_EVENT_SEEK_STOPPED");
+		skb = alloc_skb(SKB_FM_INTERRUPT_DATA,
+			GFP_KERNEL);
+		if (!skb) {
 			FM_ERR_REPORT("cg2900_fm_driver_callback: "
-				      "event = %x failed!!!!", event);
-			break;
+					"Unable to Allocate Memory");
+			return;
 		}
+		skb->data[0] = CG2900_EVENT_SCAN_CANCELLED;
+		skb->data[1] = event_successful;
+		skb_queue_tail(&fm_interrupt_queue, skb);
+		wake_up_poll_queue();
+		break;
+	case FMD_EVENT_SEEK_COMPLETED:
+		FM_DEBUG_REPORT("FMD_EVENT_SEEK_COMPLETED");
+		cg2900_fm_check_rds_status();
+		skb = alloc_skb(SKB_FM_INTERRUPT_DATA,
+			GFP_KERNEL);
+		if (!skb) {
+			FM_ERR_REPORT("cg2900_fm_driver_callback: "
+					"Unable to Allocate Memory");
+			return;
+		}
+		skb->data[0] = CG2900_EVENT_SEARCH_CHANNEL_FOUND;
+		skb->data[1] = event_successful;
+		skb_queue_tail(&fm_interrupt_queue, skb);
+		wake_up_poll_queue();
+		break;
+	case FMD_EVENT_SCAN_BAND_COMPLETED:
+		FM_DEBUG_REPORT("FMD_EVENT_SCAN_BAND_COMPLETED");
+		cg2900_fm_check_rds_status();
+		skb = alloc_skb(SKB_FM_INTERRUPT_DATA,
+			GFP_KERNEL);
+		if (!skb) {
+			FM_ERR_REPORT("cg2900_fm_driver_callback: "
+					"Unable to Allocate Memory");
+			return;
+		}
+		skb->data[0] = CG2900_EVENT_SCAN_CHANNELS_FOUND;
+		skb->data[1] = event_successful;
+		skb_queue_tail(&fm_interrupt_queue, skb);
+		wake_up_poll_queue();
+		break;
+	case FMD_EVENT_BLOCK_SCAN_COMPLETED:
+		FM_DEBUG_REPORT("FMD_EVENT_BLOCK_SCAN_COMPLETED");
+		cg2900_fm_check_rds_status();
+		skb = alloc_skb(SKB_FM_INTERRUPT_DATA,
+			GFP_KERNEL);
+		if (!skb) {
+			FM_ERR_REPORT("cg2900_fm_driver_callback: "
+					"Unable to Allocate Memory");
+			return;
+		}
+		skb->data[0] = CG2900_EVENT_BLOCK_SCAN_CHANNELS_FOUND;
+		skb->data[1] = event_successful;
+		skb_queue_tail(&fm_interrupt_queue, skb);
+		wake_up_poll_queue();
+		break;
+	case FMD_EVENT_AF_UPDATE_SWITCH_COMPLETE:
+		FM_DEBUG_REPORT("FMD_EVENT_AF_UPDATE_SWITCH_COMPLETE");
+		break;
+	case FMD_EVENT_RDSGROUP_RCVD:
+		FM_DEBUG_REPORT("FMD_EVENT_RDSGROUP_RCVD");
+		/*
+		* Release the rds semaphore, poll queue
+		* will be woken-up in rds callback
+		*/
+		fmd_set_rds_sem();
+		break;
+	case FMD_EVENT_MONO_STEREO_TRANSITION_COMPLETE:
+		FM_ERR_REPORT(
+			"FMD_EVENT_MONO_STEREO_TRANSITION_COMPLETE");
+		skb = alloc_skb(SKB_FM_INTERRUPT_DATA,
+			GFP_KERNEL);
+		if (!skb) {
+			FM_ERR_REPORT("cg2900_fm_driver_callback: "
+					"Unable to Allocate Memory");
+			return;
+		}
+		skb->data[0] = CG2900_EVENT_MONO_STEREO_TRANSITION;
+		skb->data[1] = event_successful;
+		skb_queue_tail(&fm_interrupt_queue, skb);
+		wake_up_poll_queue();
+		break;
+	default:
+		FM_INFO_REPORT("cg2900_fm_driver_callback: "
+			      "Unknown event = %x", event);
+		break;
 	}
 }
 
@@ -696,6 +734,8 @@ static void cg2900_fm_rds_callback(void)
 	u8 index = 0;
 	u16 rds_local_buf_count;
 	int result;
+	struct sk_buff *skb;
+
 	FM_INFO_REPORT("cg2900_fm_rds_callback");
 
 	/*
@@ -751,7 +791,21 @@ static void cg2900_fm_rds_callback(void)
 	fm_rds_info.rds_head++;
 	if (fm_rds_info.rds_head == MAX_RDS_BUFFER)
 		fm_rds_info.rds_head = 0;
-	wake_up_read_queue();
+
+	/* Queue the RDS event */
+	skb = alloc_skb(SKB_FM_INTERRUPT_DATA,
+		GFP_KERNEL);
+	if (!skb) {
+		FM_ERR_REPORT("cg2900_fm_rds_callback: "
+				"Unable to Allocate Memory");
+		goto error;
+	}
+	skb->data[0] = CG2900_EVENT_RDS_EVENT;
+	skb->data[1] = true;
+	skb_queue_tail(&fm_interrupt_queue, skb);
+
+	/* Wake up the poll queue */
+	wake_up_poll_queue();
 error:
 	mutex_unlock(&rds_mutex);
 }
@@ -795,6 +849,7 @@ int cg2900_fm_init(void)
 	fm_event = CG2900_EVENT_NO_EVENT;
 	fm_state = CG2900_FM_STATE_INITIALIZED;
 	fm_mode = CG2900_FM_IDLE_MODE;
+	fm_prev_rds_status = false;
 
 error:
 	FM_DEBUG_REPORT("cg2900_fm_init: returning %d",
@@ -902,10 +957,11 @@ int cg2900_fm_switch_on(
 	}
 	fm_state = CG2900_FM_STATE_SWITCHED_ON;
 	fm_mode = CG2900_FM_IDLE_MODE;
-	memset(&fm_rds_info, 0, sizeof(struct cg2900_fm_rds_info));
+	memset(&fm_rds_info, 0,
+		sizeof(struct cg2900_fm_rds_info));
 	memset(fm_rds_buf, 0,
-	       sizeof(struct cg2900_fm_rds_buf) *
-	       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		sizeof(struct cg2900_fm_rds_buf) *
+		MAX_RDS_BUFFER * MAX_RDS_GROUPS);
 
 error:
 	FM_DEBUG_REPORT("cg2900_fm_switch_on: returning %d",
@@ -952,10 +1008,12 @@ int cg2900_fm_switch_off(void)
 		fm_state = CG2900_FM_STATE_INITIALIZED;
 		fm_mode = CG2900_FM_IDLE_MODE;
 		memset(&fm_rds_info, 0,
-		       sizeof(struct cg2900_fm_rds_info));
+			sizeof(struct cg2900_fm_rds_info));
 		memset(fm_rds_buf, 0,
-		       sizeof(struct cg2900_fm_rds_buf) *
-		       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+			sizeof(struct cg2900_fm_rds_buf) *
+			MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		/* Remove all Interrupts from the queue */
+		skb_queue_purge(&fm_interrupt_queue);
 	}
 
 error:
@@ -976,6 +1034,13 @@ int cg2900_fm_standby(void)
 		result = -EINVAL;
 		goto error;
 	}
+	memset(&fm_rds_info, 0,
+		sizeof(struct cg2900_fm_rds_info));
+	memset(fm_rds_buf, 0,
+		sizeof(struct cg2900_fm_rds_buf) *
+		MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+	/* Remove all Interrupts from the queue */
+	skb_queue_purge(&fm_interrupt_queue);
 	result = fmd_goto_standby();
 	if (0 != result) {
 		FM_ERR_REPORT("cg2900_fm_standby: "
@@ -1125,6 +1190,33 @@ int cg2900_fm_set_rx_default_settings(
 		result = -EINVAL;
 		goto error;
 	}
+	if (enable_stereo) {
+		/* Set the Stereo Blending RSSI control */
+		result = fmd_rx_set_stereo_ctrl_BlendingRssi(
+			STEREO_BLENDING_MIN_RSSI,
+			STEREO_BLENDING_MAX_RSSI);
+	}
+	if (0 != result) {
+		FM_ERR_REPORT("cg2900_fm_set_rx_default_settings: "
+			"fmd_rx_set_stereo_ctrl_BlendingRssi "
+			"failed %d", (unsigned int)result);
+		result = -EINVAL;
+		goto error;
+	}
+
+	/* Set RDS Group rejection Off*/
+	result = fmd_rx_set_rds_group_rejection(
+			FMD_RDS_GROUP_REJECTION_OFF);
+	if (0 != result) {
+		FM_ERR_REPORT("cg2900_fm_set_rx_default_settings: "
+			"fmd_rx_set_rds_group_rejection "
+			"failed %d", (unsigned int)result);
+		result = -EINVAL;
+		goto error;
+	}
+
+	/* Remove all Interrupt from the queue */
+	skb_queue_purge(&fm_interrupt_queue);
 
 	FM_DEBUG_REPORT("cg2900_fm_set_rx_default_settings: "
 			"Sending Set rds");
@@ -1189,13 +1281,15 @@ int cg2900_fm_set_tx_default_settings(
 		fm_rds_status = false;
 		fmd_stop_rds_thread();
 		memset(&fm_rds_info, 0,
-		       sizeof(struct cg2900_fm_rds_info));
+			sizeof(struct cg2900_fm_rds_info));
 		memset(fm_rds_buf, 0,
-		       sizeof(struct cg2900_fm_rds_buf) *
-		       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
-		/* Give 50 ms delay to exit the rDS thread */
+			sizeof(struct cg2900_fm_rds_buf) *
+			MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		/* Give 50 ms delay to exit the RDS thread */
 		schedule_timeout_interruptible(msecs_to_jiffies(50));
 	}
+	/* Remove all Interrupt from the queue */
+	skb_queue_purge(&fm_interrupt_queue);
 
 	/* Switch To Tx mode */
 	FM_DEBUG_REPORT("cg2900_fm_set_tx_default_settings: "
@@ -1391,19 +1485,23 @@ int cg2900_fm_search_up_freq(void)
 		/* Stop RDS if it is active */
 		result = cg2900_fm_rds_off();
 		fm_prev_rds_status = true;
+	} else {
+		memset(&fm_rds_info, 0,
+			sizeof(struct cg2900_fm_rds_info));
+		memset(fm_rds_buf, 0,
+			sizeof(struct cg2900_fm_rds_buf) *
+			MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		/* Remove all Interrupts from the queue */
+		skb_queue_purge(&fm_interrupt_queue);
 	}
 	result = fmd_rx_seek(CG2900_DIR_UP);
 	if (0 != result) {
 		FM_ERR_REPORT("cg2900_fm_search_up_freq: "
 			      "Error Code %d", (unsigned int)result);
+		cg2900_fm_check_rds_status();
 		result = -EINVAL;
 		goto error;
 	}
-	memset(&fm_rds_info, 0,
-	       sizeof(struct cg2900_fm_rds_info));
-	memset(fm_rds_buf, 0,
-	       sizeof(struct cg2900_fm_rds_buf) *
-	       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
 	result = 0;
 
 error:
@@ -1428,19 +1526,23 @@ int cg2900_fm_search_down_freq(void)
 		/* Stop RDS if it is active */
 		result = cg2900_fm_rds_off();
 		fm_prev_rds_status = true;
+	} else {
+		memset(&fm_rds_info, 0,
+			sizeof(struct cg2900_fm_rds_info));
+		memset(fm_rds_buf, 0,
+			sizeof(struct cg2900_fm_rds_buf) *
+			MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		/* Remove all Interrupts from the queue */
+		skb_queue_purge(&fm_interrupt_queue);
 	}
 	result = fmd_rx_seek(CG2900_DIR_DOWN);
 	if (0 != result) {
 		FM_ERR_REPORT("cg2900_fm_search_down_freq: "
 			      "Error Code %d", (unsigned int)result);
+		cg2900_fm_check_rds_status();
 		result = -EINVAL;
 		goto error;
 	}
-	memset(&fm_rds_info, 0,
-	       sizeof(struct cg2900_fm_rds_info));
-	memset(fm_rds_buf, 0,
-	       sizeof(struct cg2900_fm_rds_buf) *
-	       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
 	result = 0;
 
 error:
@@ -1465,19 +1567,23 @@ int cg2900_fm_start_band_scan(void)
 		/* Stop RDS if it is active */
 		result = cg2900_fm_rds_off();
 		fm_prev_rds_status = true;
+	} else {
+		memset(&fm_rds_info, 0,
+			sizeof(struct cg2900_fm_rds_info));
+		memset(fm_rds_buf, 0,
+			sizeof(struct cg2900_fm_rds_buf) *
+			MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		/* Remove all Interrupts from the queue */
+		skb_queue_purge(&fm_interrupt_queue);
 	}
 	result = fmd_rx_scan_band(DEFAULT_CHANNELS_TO_SCAN);
 	if (0 != result) {
 		FM_ERR_REPORT("cg2900_fm_start_band_scan: "
 			      "Error Code %d", (unsigned int)result);
+		cg2900_fm_check_rds_status();
 		result = -EINVAL;
 		goto error;
 	}
-	memset(&fm_rds_info, 0,
-	       sizeof(struct cg2900_fm_rds_info));
-	memset(fm_rds_buf, 0,
-	       sizeof(struct cg2900_fm_rds_buf) *
-	       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
 	result = 0;
 
 error:
@@ -1598,11 +1704,6 @@ int cg2900_fm_get_scan_result(
 			}
 		}
 	}
-	if (fm_prev_rds_status) {
-		/* Restart RDS if it was active earlier */
-		result = cg2900_fm_rds_on();
-		fm_prev_rds_status = false;
-	}
 
 error:
 	FM_DEBUG_REPORT("cg2900_fm_get_scan_result: returning %d",
@@ -1634,6 +1735,14 @@ int cg2900_fm_start_block_scan(
 		/* Stop RDS if it is active */
 		result = cg2900_fm_rds_off();
 		fm_prev_rds_status = true;
+	} else {
+		memset(&fm_rds_info, 0,
+			sizeof(struct cg2900_fm_rds_info));
+		memset(fm_rds_buf, 0,
+			sizeof(struct cg2900_fm_rds_buf) *
+			MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		/* Remove all Interrupts from the queue */
+		skb_queue_purge(&fm_interrupt_queue);
 	}
 	result = fmd_get_antenna(
 			&antenna);
@@ -1644,14 +1753,10 @@ int cg2900_fm_start_block_scan(
 	if (0 != result) {
 		FM_ERR_REPORT("cg2900_fm_start_block_scan: "
 			"Error Code %d", (unsigned int)result);
+		cg2900_fm_check_rds_status();
 		result = -EINVAL;
 		goto error;
 	}
-	memset(&fm_rds_info, 0,
-		sizeof(struct cg2900_fm_rds_info));
-	memset(fm_rds_buf, 0,
-		sizeof(struct cg2900_fm_rds_buf) *
-		MAX_RDS_BUFFER * MAX_RDS_GROUPS);
 	result = 0;
 
 error:
@@ -1701,19 +1806,13 @@ int cg2900_fm_get_block_scan_result(
 			    = rssi[5];
 		}
 	}
-	if (CG2900_FM_RX_MODE == fm_mode) {
-		if (fm_prev_rds_status) {
-			/* Restart RDS if it was active earlier*/
-			result = cg2900_fm_rds_on();
-			fm_prev_rds_status = false;
-		}
-	} else if (CG2900_FM_TX_MODE == fm_mode) {
+	if (CG2900_FM_TX_MODE == fm_mode) {
 		FM_DEBUG_REPORT("cg2900_fm_get_block_scan_result:"
 				" Sending Set fmd_tx_set_pa");
 
 		/* Enable the PA */
 		result = fmd_tx_set_pa(true);
-	if (0 != result) {
+		if (0 != result) {
 			FM_ERR_REPORT("cg2900_fm_get_block_scan_result:"
 				      " fmd_tx_set_pa "
 				      "failed %d",
@@ -1976,8 +2075,8 @@ int cg2900_fm_tx_get_pilot_tone_status(
 	result = fmd_tx_get_stereo_mode(enable);
 	if (0 != result) {
 		FM_ERR_REPORT("cg2900_fm_tx_get_pilot_tone_status: "
-			      "fmd_tx_get_stereo_mode failed %d",
-			      (unsigned int)result);
+			"fmd_tx_get_stereo_mode failed %d",
+			result);
 		result = -EINVAL;
 		goto error;
 	}
@@ -2136,6 +2235,35 @@ error:
 	return result;
 }
 
+int cg2900_fm_rx_set_deemphasis(
+			u8 deemphasis
+			)
+{
+	int result;
+
+	FM_INFO_REPORT("cg2900_fm_rx_set_deemphasis: deemphasis = %02x",
+		deemphasis);
+
+	if (CG2900_FM_STATE_SWITCHED_ON != fm_state) {
+		FM_ERR_REPORT("cg2900_fm_rx_set_deemphasis: "
+			"Invalid state of FM Driver = %d", fm_state);
+			result = -EINVAL;
+		goto error;
+	}
+	result = fmd_rx_set_deemphasis(deemphasis);
+	if (0 != result) {
+		FM_ERR_REPORT("cg2900_fm_rx_set_deemphasis: "
+			"fmd_rx_set_deemphasis failed %d",
+			result);
+		result = -EINVAL;
+		goto error;
+	}
+
+error:
+	FM_DEBUG_REPORT("cg2900_fm_rx_set_deemphasis: returning %d", result);
+	return result;
+}
+
 int cg2900_fm_tx_get_power_level(
 			u16 *power_level
 			)
@@ -2291,6 +2419,11 @@ int cg2900_fm_rds_off(void)
 		result = -EINVAL;
 		goto error;
 	}
+	memset(&fm_rds_info, 0,
+	       sizeof(struct cg2900_fm_rds_info));
+	memset(fm_rds_buf, 0,
+	       sizeof(struct cg2900_fm_rds_buf) *
+	       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
 	result = fmd_rx_set_rds(FMD_SWITCH_OFF_RDS);
 	if (0 != result) {
 		FM_ERR_REPORT("cg2900_fm_rds_off: fmd_rx_set_rds failed, "
@@ -2298,16 +2431,13 @@ int cg2900_fm_rds_off(void)
 		result = -EINVAL;
 		goto error;
 	}
-	/* Stop the RDS Thread */
-	fm_rds_status = false;
-	memset(&fm_rds_info, 0,
-	       sizeof(struct cg2900_fm_rds_info));
-	memset(fm_rds_buf, 0,
-	       sizeof(struct cg2900_fm_rds_buf) *
-	       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
-	FM_DEBUG_REPORT("cg2900_fm_rds_off: "
-			"Stopping RDS Thread");
-	fmd_stop_rds_thread();
+	if (fm_rds_status) {
+		/* Stop the RDS Thread */
+		FM_DEBUG_REPORT("cg2900_fm_rds_off: "
+				"Stopping RDS Thread");
+		fmd_stop_rds_thread();
+		fm_rds_status = false;
+	}
 
 error:
 	FM_DEBUG_REPORT("cg2900_fm_rds_off: returning %d",
@@ -2320,7 +2450,12 @@ int cg2900_fm_rds_on(void)
 	int result;
 
 	FM_INFO_REPORT("cg2900_fm_rds_on");
-
+	if (fm_rds_status) {
+		result = 0;
+		FM_DEBUG_REPORT("cg2900_fm_rds_on: rds is on "
+			"return result = %d", result);
+		return result;
+	}
 	if (CG2900_FM_STATE_SWITCHED_ON != fm_state) {
 		FM_ERR_REPORT("cg2900_fm_rds_on: "
 			"Invalid state of FM Driver = %d", fm_state);
@@ -2356,10 +2491,10 @@ int cg2900_fm_rds_on(void)
 	/* Start the RDS Thread to read the RDS Buffers */
 	fm_rds_status = true;
 	memset(&fm_rds_info, 0,
-	       sizeof(struct cg2900_fm_rds_info));
+		sizeof(struct cg2900_fm_rds_info));
 	memset(fm_rds_buf, 0,
-	       sizeof(struct cg2900_fm_rds_buf) *
-	       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		sizeof(struct cg2900_fm_rds_buf) *
+		MAX_RDS_BUFFER * MAX_RDS_GROUPS);
 	fmd_start_rds_thread(cg2900_fm_rds_callback);
 
 error:
@@ -2514,11 +2649,6 @@ int cg2900_fm_get_frequency(
 	*freq = currentFreq * FREQUENCY_CONVERTOR_KHZ_HZ;
 	FM_DEBUG_REPORT("cg2900_fm_get_frequency: "
 			"Current Frequency = %d Hz", *freq);
-	if (fm_prev_rds_status) {
-		/* Restart RDS if it was active earlier */
-		cg2900_fm_rds_on();
-		fm_prev_rds_status = false;
-	}
 
 error:
 	FM_DEBUG_REPORT("cg2900_fm_get_frequency: returning %d",
@@ -2541,6 +2671,21 @@ int cg2900_fm_set_frequency(
 		result = -EINVAL;
 		goto error;
 	}
+	/* Check if RDS needs to be disabled before Setting Frequency */
+	if (fm_rds_status) {
+		/* Stop RDS if it is active */
+		result = cg2900_fm_rds_off();
+		fm_prev_rds_status = true;
+	} else {
+		memset(&fm_rds_info, 0,
+			sizeof(struct cg2900_fm_rds_info));
+		memset(fm_rds_buf, 0,
+			sizeof(struct cg2900_fm_rds_buf) *
+			MAX_RDS_BUFFER * MAX_RDS_GROUPS);
+		/* Remove all Interrupts from the queue */
+		skb_queue_purge(&fm_interrupt_queue);
+	}
+
 	if (CG2900_FM_RX_MODE == fm_mode) {
 		FM_DEBUG_REPORT("cg2900_fm_set_frequency: "
 				"fmd_rx_set_frequency");
@@ -2552,6 +2697,11 @@ int cg2900_fm_set_frequency(
 		result = fmd_tx_set_frequency(
 				new_freq / FREQUENCY_CONVERTOR_KHZ_HZ);
 	}
+	if (fm_prev_rds_status) {
+		/* Restart RDS if it was active earlier */
+		cg2900_fm_rds_on();
+		fm_prev_rds_status = false;
+	}
 	if (result != 0) {
 		FM_ERR_REPORT("cg2900_fm_set_frequency: "
 			      "fmd_rx_set_frequency failed %x",
@@ -2559,6 +2709,7 @@ int cg2900_fm_set_frequency(
 		result = -EINVAL;
 		goto error;
 	}
+
 	if (CG2900_FM_TX_MODE == fm_mode) {
 		FM_DEBUG_REPORT("cg2900_fm_set_frequency:"
 				" Sending Set" "fmd_tx_set_pa");
@@ -2573,11 +2724,6 @@ int cg2900_fm_set_frequency(
 			result = -EINVAL;
 			goto error;
 		}
-		memset(&fm_rds_info, 0,
-	       sizeof(struct cg2900_fm_rds_info));
-		memset(fm_rds_buf, 0,
-		       sizeof(struct cg2900_fm_rds_buf) *
-		       MAX_RDS_BUFFER * MAX_RDS_GROUPS);
 		result = 0;
 	}
 
@@ -2777,16 +2923,7 @@ int cg2900_fm_get_mode(
 		FM_DEBUG_REPORT("cg2900_fm_get_mode: "
 				"fmd_rx_get_stereo_mode");
 		result = fmd_rx_get_stereo_mode(cur_mode);
-		switch (*cur_mode) {
-		case FMD_STEREOMODE_OFF:
-		case FMD_STEREOMODE_BLENDING:
-			*cur_mode = CG2900_MODE_STEREO;
-			break;
-		case FMD_STEREOMODE_MONO:
-		default:
-			*cur_mode = CG2900_MODE_MONO;
-			break;
-		}
+		FM_DEBUG_REPORT("cg2900_fm_get_mode: cur_mode = %x", *cur_mode);
 	} else if (CG2900_FM_TX_MODE == fm_mode) {
 		FM_DEBUG_REPORT("cg2900_fm_get_mode: "
 				"fmd_tx_get_stereo_mode");
@@ -2968,6 +3105,95 @@ void cg2900_fm_set_chip_version(
 	version_info.sub_version = sub_version;
 }
 
+int cg2900_fm_set_test_tone_generator(
+			u8 test_tone_status
+			)
+{
+	int result;
+
+	FM_INFO_REPORT("cg2900_fm_set_test_tone_generator: "
+		"test_tone_status = %02x", test_tone_status);
+
+	result = fmd_set_test_tone_generator_status(test_tone_status);
+	if (0 != result) {
+		FM_ERR_REPORT("cg2900_fm_set_test_tone_generator: "
+			"fmd_set_test_tone_generator_status failed"
+			", Error Code %d", result);
+		result = -EINVAL;
+		goto error;
+	}
+
+error:
+	FM_DEBUG_REPORT("cg2900_fm_set_test_tone_generator: returning %d",
+		result);
+	return result;
+}
+
+int cg2900_fm_test_tone_connect(
+			u8 left_audio_mode,
+			u8 right_audio_mode
+			)
+{
+	int result;
+
+	FM_INFO_REPORT("cg2900_fm_test_tone_connect: "
+		"left_audio_mode = %02x right_audio_mode = %02x",
+		left_audio_mode, right_audio_mode);
+
+	result = fmd_test_tone_connect(left_audio_mode, right_audio_mode);
+	if (0 != result) {
+		FM_ERR_REPORT("cg2900_fm_test_tone_connect: "
+			"fmd_set_test_tone_connect failed, Error Code %d",
+			result);
+		result = -EINVAL;
+		goto error;
+	}
+
+error:
+	FM_DEBUG_REPORT("cg2900_fm_test_tone_connect: returning %d",
+		result);
+	return result;
+}
+
+int cg2900_fm_test_tone_set_params(
+			u8 tone_gen,
+			u16 frequency,
+			u16 volume,
+			u16 phase_offset,
+			u16 dc,
+			u8 waveform
+			)
+{
+	int result;
+
+	FM_INFO_REPORT("cg2900_fm_test_tone_set_params: "
+		"tone_gen = %02x frequency = %04x "
+		"volume = %04x phase_offset = %04x "
+		"dc offset = %04x waveform = %02x",
+		tone_gen, frequency,
+		volume, phase_offset,
+		dc, waveform);
+
+	result = fmd_test_tone_set_params(
+				tone_gen,
+				frequency,
+				volume,
+				phase_offset,
+				dc,
+				waveform);
+	if (0 != result) {
+		FM_ERR_REPORT("cg2900_fm_test_tone_set_params: "
+			"fmd_test_tone_set_params failed, Error Code %d",
+			result);
+		result = -EINVAL;
+		goto error;
+	}
+
+error:
+	FM_DEBUG_REPORT("cg2900_fm_test_tone_set_params: returning %d",
+		result);
+	return result;
+}
 
 MODULE_AUTHOR("Hemant Gupta");
 MODULE_LICENSE("GPL v2");
