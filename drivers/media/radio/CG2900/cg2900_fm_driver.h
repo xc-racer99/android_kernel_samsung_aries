@@ -1746,11 +1746,11 @@ void fmd_set_rds_sem(void);
  * Returns:
  *	 0, If there is no error.
  *	 corresponding error Otherwise
- */
+ *
 int fmd_set_dev(
 			struct device *dev
 			);
-
+*/
 /**
  * fmd_set_test_tone_generator_status()- Sets the Test Tone Generator.
  *

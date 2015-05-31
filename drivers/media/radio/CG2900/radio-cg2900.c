@@ -217,7 +217,7 @@ enum fm_power_state {
 };
 
 /**
- * struct cg2900_device - Stores FM Device Info.
+ * struct cg2900_fm_device - Stores FM Device Info.
  *
  * @state: state of FM Radio
  * @muted: FM Radio Mute/Unmute status
@@ -235,7 +235,7 @@ enum fm_power_state {
  *
  * FM Driver Information Structure.
  */
-struct cg2900_device {
+struct cg2900_fm_device {
 	u8 state;
 	u8 muted;
 	u8 seekstatus;
@@ -252,7 +252,7 @@ struct cg2900_device {
 };
 
 /* Global Structure to store the maintain FM Driver device info */
-static struct cg2900_device cg2900_device;
+static struct cg2900_fm_device cg2900_fm_device;
 
 /* V4l2 File Operation Structure */
 static const struct v4l2_file_operations cg2900_fops = {
@@ -399,7 +399,7 @@ static int vidioc_get_tuner(
 			| V4L2_TUNER_CAP_STEREO	/* Can receive stereo */
 			| V4L2_TUNER_CAP_RDS;	/* Supports RDS Capture  */
 
-	if (cg2900_device.fm_mode == CG2900_FM_RX_MODE) {
+	if (cg2900_fm_device.fm_mode == CG2900_FM_RX_MODE) {
 
 		status = cg2900_fm_get_mode(&mode);
 
@@ -440,7 +440,7 @@ static int vidioc_get_tuner(
 		tuner->rxsubchans = V4L2_TUNER_SUB_MONO;
 	}
 
-	if (cg2900_device.fm_mode == CG2900_FM_RX_MODE) {
+	if (cg2900_fm_device.fm_mode == CG2900_FM_RX_MODE) {
 		status = cg2900_fm_get_signal_strength(&rssi);
 
 		if (0 != status) {
@@ -492,7 +492,7 @@ static int vidioc_set_tuner(
 		goto error;
 	}
 
-	if (cg2900_device.fm_mode != CG2900_FM_RX_MODE) {
+	if (cg2900_fm_device.fm_mode != CG2900_FM_RX_MODE) {
 		/*
 		 * FM Rx mode should be configured
 		 * as earlier mode was not FM Rx
@@ -513,20 +513,20 @@ static int vidioc_set_tuner(
 			freq_high = FMR_CHINA_HIGH_FREQ_IN_MHZ *
 			    FMR_HZ_TO_MHZ_CONVERTER;
 		}
-		cg2900_device.fm_mode = CG2900_FM_RX_MODE;
-		cg2900_device.rx_rds_enabled =
+		cg2900_fm_device.fm_mode = CG2900_FM_RX_MODE;
+		cg2900_fm_device.rx_rds_enabled =
 		    (tuner->rxsubchans & V4L2_TUNER_SUB_RDS) ?
 		    true : false;
 		if (tuner->rxsubchans & V4L2_TUNER_SUB_STEREO)
 			stereo_status = true;
 		else if (tuner->rxsubchans & V4L2_TUNER_SUB_MONO)
 			stereo_status = false;
-		cg2900_device.rx_stereo_status = stereo_status;
+		cg2900_fm_device.rx_stereo_status = stereo_status;
 		status = cg2900_fm_set_rx_default_settings(freq_low,
 				band,
 				grid,
-				cg2900_device.rx_rds_enabled,
-				cg2900_device.rx_stereo_status);
+				cg2900_fm_device.rx_rds_enabled,
+				cg2900_fm_device.rx_stereo_status);
 
 		if (0 != status) {
 			FM_ERR_REPORT("vidioc_set_tuner: "
@@ -535,7 +535,7 @@ static int vidioc_set_tuner(
 			goto error;
 		}
 		status = cg2900_fm_set_rssi_threshold(
-				cg2900_device.rssi_threshold);
+				cg2900_fm_device.rssi_threshold);
 		if (0 != status) {
 			FM_ERR_REPORT("vidioc_set_tuner: "
 					"cg2900_fm_set_rssi_threshold returned "
@@ -553,8 +553,8 @@ static int vidioc_set_tuner(
 			stereo_status = true;
 		else if (tuner->rxsubchans & V4L2_TUNER_SUB_MONO)
 			stereo_status = false;
-		if (stereo_status != cg2900_device.rx_stereo_status) {
-			cg2900_device.rx_stereo_status = stereo_status;
+		if (stereo_status != cg2900_fm_device.rx_stereo_status) {
+			cg2900_fm_device.rx_stereo_status = stereo_status;
 			if (stereo_status)
 				status =
 				    cg2900_fm_set_mode(
@@ -570,8 +570,8 @@ static int vidioc_set_tuner(
 				goto error;
 			}
 		}
-		if (rds_status != cg2900_device.rx_rds_enabled) {
-			cg2900_device.rx_rds_enabled = rds_status;
+		if (rds_status != cg2900_fm_device.rx_rds_enabled) {
+			cg2900_fm_device.rx_rds_enabled = rds_status;
 			if (rds_status)
 				status = cg2900_fm_rds_on();
 			else
@@ -635,7 +635,7 @@ static int vidioc_get_modulator(
 	    | V4L2_TUNER_CAP_STEREO	/* Can receive stereo */
 	    | V4L2_TUNER_CAP_RDS;	/* Supports RDS Capture  */
 
-	if (cg2900_device.fm_mode == CG2900_FM_TX_MODE) {
+	if (cg2900_fm_device.fm_mode == CG2900_FM_TX_MODE) {
 		status = cg2900_fm_get_mode(&mode);
 		FM_DEBUG_REPORT("vidioc_get_modulator: mode = %x", mode);
 		if (0 != status) {
@@ -710,7 +710,7 @@ static int vidioc_set_modulator(
 		goto error;
 	}
 
-	if (cg2900_device.fm_mode != CG2900_FM_TX_MODE) {
+	if (cg2900_fm_device.fm_mode != CG2900_FM_TX_MODE) {
 		/*
 		 * FM Tx mode should be configured as
 		 * earlier mode was not FM Tx
@@ -731,22 +731,22 @@ static int vidioc_set_modulator(
 			freq_high = FMR_CHINA_HIGH_FREQ_IN_MHZ *
 			    FMR_HZ_TO_MHZ_CONVERTER;
 		}
-		cg2900_device.fm_mode = CG2900_FM_TX_MODE;
-		cg2900_device.rx_rds_enabled = false;
-		cg2900_device.tx_rds_enabled =
+		cg2900_fm_device.fm_mode = CG2900_FM_TX_MODE;
+		cg2900_fm_device.rx_rds_enabled = false;
+		cg2900_fm_device.tx_rds_enabled =
 		    (modulator->txsubchans & V4L2_TUNER_SUB_RDS) ?
 		    true : false;
 		if (modulator->txsubchans & V4L2_TUNER_SUB_STEREO)
 			stereo_status = true;
 		else if (modulator->txsubchans & V4L2_TUNER_SUB_MONO)
 			stereo_status = false;
-		cg2900_device.tx_stereo_status = stereo_status;
+		cg2900_fm_device.tx_stereo_status = stereo_status;
 
 		status = cg2900_fm_set_tx_default_settings(freq_low,
 					       band,
 					       grid,
-					       cg2900_device.tx_rds_enabled,
-					       cg2900_device.
+					       cg2900_fm_device.tx_rds_enabled,
+					       cg2900_fm_device.
 					       tx_stereo_status);
 
 		if (0 != status) {
@@ -766,8 +766,8 @@ static int vidioc_set_modulator(
 			stereo_status = true;
 		else if (modulator->txsubchans & V4L2_TUNER_SUB_MONO)
 			stereo_status = false;
-		if (stereo_status != cg2900_device.tx_stereo_status) {
-			cg2900_device.tx_stereo_status = stereo_status;
+		if (stereo_status != cg2900_fm_device.tx_stereo_status) {
+			cg2900_fm_device.tx_stereo_status = stereo_status;
 			status = cg2900_fm_set_mode(stereo_status);
 			if (0 != status) {
 				FM_ERR_REPORT("vidioc_set_modulator: "
@@ -776,8 +776,8 @@ static int vidioc_set_modulator(
 				goto error;
 			}
 		}
-		if (rds_status != cg2900_device.tx_rds_enabled) {
-			cg2900_device.tx_rds_enabled = rds_status;
+		if (rds_status != cg2900_fm_device.tx_rds_enabled) {
+			cg2900_fm_device.tx_rds_enabled = rds_status;
 			status = cg2900_fm_tx_rds(rds_status);
 			if (0 != status) {
 				FM_ERR_REPORT("vidioc_set_modulator: "
@@ -823,16 +823,16 @@ static int vidioc_get_frequency(
 	struct sk_buff *skb;
 
 	FM_INFO_REPORT("vidioc_get_frequency: Status = %d",
-			cg2900_device.seekstatus);
+			cg2900_fm_device.seekstatus);
 
 	status = cg2900_fm_get_frequency(&frequency);
 
 	if (0 != status) {
-		freq->frequency = cg2900_device.frequency;
+		freq->frequency = cg2900_fm_device.frequency;
 		goto error;
 	}
 
-	if (cg2900_device.seekstatus == FMR_SEEK_IN_PROGRESS) {
+	if (cg2900_fm_device.seekstatus == FMR_SEEK_IN_PROGRESS) {
 		if (skb_queue_empty(&fm_interrupt_queue)) {
 			/* No Interrupt, bad case */
 			FM_ERR_REPORT("vidioc_get_frequency: "
@@ -857,9 +857,9 @@ static int vidioc_get_frequency(
 		if (CG2900_EVENT_SEARCH_CHANNEL_FOUND == fm_event) {
 			/* seek is finished */
 			spin_lock(&fm_spinlock);
-			cg2900_device.frequency = HZ_TO_V4L2(frequency);
-			freq->frequency = cg2900_device.frequency;
-			cg2900_device.seekstatus = FMR_SEEK_NONE;
+			cg2900_fm_device.frequency = HZ_TO_V4L2(frequency);
+			freq->frequency = cg2900_fm_device.frequency;
+			cg2900_fm_device.seekstatus = FMR_SEEK_NONE;
 			fm_event = CG2900_EVENT_NO_EVENT;
 			kfree_skb(skb);
 			spin_unlock(&fm_spinlock);
@@ -871,8 +871,8 @@ static int vidioc_get_frequency(
 		}
 	} else {
 		spin_lock(&fm_spinlock);
-		cg2900_device.frequency = HZ_TO_V4L2(frequency);
-		freq->frequency = cg2900_device.frequency;
+		cg2900_fm_device.frequency = HZ_TO_V4L2(frequency);
+		freq->frequency = cg2900_fm_device.frequency;
 		spin_unlock(&fm_spinlock);
 	}
 	ret_val = 0;
@@ -916,8 +916,8 @@ static int vidioc_set_frequency(
 	no_of_scan_freq = 0;
 	spin_unlock(&fm_spinlock);
 
-	cg2900_device.seekstatus = FMR_SEEK_NONE;
-	cg2900_device.frequency = frequency;
+	cg2900_fm_device.seekstatus = FMR_SEEK_NONE;
+	cg2900_fm_device.frequency = frequency;
 	status = cg2900_fm_set_frequency(V4L2_TO_HZ(frequency));
 
 	if (0 != status)
@@ -1050,20 +1050,20 @@ static int vidioc_get_ctrl(
 		status = cg2900_fm_get_volume(&value);
 		if (0 == status) {
 			ctrl->value = value;
-			cg2900_device.volume = value;
+			cg2900_fm_device.volume = value;
 			ret_val = 0;
 		}
 		break;
 	case V4L2_CID_AUDIO_MUTE:
-		ctrl->value = cg2900_device.muted;
+		ctrl->value = cg2900_fm_device.muted;
 		ret_val = 0;
 		break;
 	case V4L2_CID_AUDIO_BALANCE:
-		ctrl->value = cg2900_device.audiopath;
+		ctrl->value = cg2900_fm_device.audiopath;
 		ret_val = 0;
 		break;
 	case V4L2_CID_CG2900_RADIO_RSSI_THRESHOLD:
-		ctrl->value = cg2900_device.rssi_threshold;
+		ctrl->value = cg2900_fm_device.rssi_threshold;
 		ret_val = 0;
 		break;
 	case V4L2_CID_CG2900_RADIO_SELECT_ANTENNA:
@@ -1163,7 +1163,7 @@ static int vidioc_set_ctrl(
 			status = cg2900_fm_unmute();
 		}
 		if (0 == status) {
-			cg2900_device.muted = ctrl->value;
+			cg2900_fm_device.muted = ctrl->value;
 			ret_val = 0;
 		}
 		break;
@@ -1178,7 +1178,7 @@ static int vidioc_set_ctrl(
 		}
 		status = cg2900_fm_set_volume(ctrl->value);
 		if (0 == status) {
-			cg2900_device.volume = ctrl->value;
+			cg2900_fm_device.volume = ctrl->value;
 			ret_val = 0;
 		}
 		break;
@@ -1188,7 +1188,7 @@ static int vidioc_set_ctrl(
 				"value = %d", ctrl->value);
 		status = cg2900_fm_set_audio_balance(ctrl->value);
 		if (0 == status) {
-			cg2900_device.audiopath = ctrl->value;
+			cg2900_fm_device.audiopath = ctrl->value;
 			ret_val = 0;
 		}
 		break;
@@ -1205,9 +1205,9 @@ static int vidioc_set_ctrl(
 		if (0 != status)
 			break;
 		if (V4L2_CG2900_RADIO_STANDBY == ctrl->value)
-			cg2900_device.state = FMR_STANDBY;
+			cg2900_fm_device.state = FMR_STANDBY;
 		else if (V4L2_CG2900_RADIO_POWERUP == ctrl->value)
-			cg2900_device.state = FMR_SWITCH_ON;
+			cg2900_fm_device.state = FMR_SWITCH_ON;
 		ret_val = 0;
 		break;
 	case V4L2_CID_CG2900_RADIO_SELECT_ANTENNA:
@@ -1223,12 +1223,12 @@ static int vidioc_set_ctrl(
 				"V4L2_CID_CG2900_RADIO_BANDSCAN, "
 				"value = %d", ctrl->value);
 		if (V4L2_CG2900_RADIO_BANDSCAN_START == ctrl->value) {
-			cg2900_device.seekstatus = FMR_SEEK_IN_PROGRESS;
+			cg2900_fm_device.seekstatus = FMR_SEEK_IN_PROGRESS;
 			no_of_scan_freq = 0;
 			status = cg2900_fm_start_band_scan();
 		} else if (V4L2_CG2900_RADIO_BANDSCAN_STOP == ctrl->value) {
 			status = cg2900_fm_stop_scan();
-			cg2900_device.seekstatus = FMR_SEEK_NONE;
+			cg2900_fm_device.seekstatus = FMR_SEEK_NONE;
 		} else
 			break;
 		if (0 == status)
@@ -1240,7 +1240,7 @@ static int vidioc_set_ctrl(
 				"= %d", ctrl->value);
 		status = cg2900_fm_set_rssi_threshold(ctrl->value);
 		if (0 == status) {
-			cg2900_device.rssi_threshold = ctrl->value;
+			cg2900_fm_device.rssi_threshold = ctrl->value;
 			ret_val = 0;
 		}
 		break;
@@ -1362,7 +1362,7 @@ static int vidioc_get_ext_ctrls(
 			ext_ctrl->ctrl_class);
 			break;
 		}
-		if (cg2900_device.seekstatus ==
+		if (cg2900_fm_device.seekstatus ==
 			FMR_SEEK_IN_PROGRESS) {
 			spin_lock(&fm_spinlock);
 			skb = skb_dequeue(&fm_interrupt_queue);
@@ -1405,19 +1405,19 @@ static int vidioc_get_ext_ctrls(
 		FM_DEBUG_REPORT("vidioc_get_ext_ctrls: "
 				"SeekStatus = %x, GlobalEvent = %x, "
 				"numchannels = %x",
-				cg2900_device.seekstatus,
+				cg2900_fm_device.seekstatus,
 				fm_event, no_of_scan_freq);
 
 		if (ext_ctrl->controls->size == 0 &&
 		    ext_ctrl->controls->string == NULL) {
-			if (cg2900_device.seekstatus ==
+			if (cg2900_fm_device.seekstatus ==
 			    FMR_SEEK_IN_PROGRESS &&
 			    CG2900_EVENT_SCAN_CHANNELS_FOUND
 			    == fm_event) {
 				spin_lock(&fm_spinlock);
 				ext_ctrl->controls->size =
 				    no_of_scan_freq;
-				cg2900_device.seekstatus
+				cg2900_fm_device.seekstatus
 				    = FMR_SEEK_NONE;
 				fm_event =
 				    CG2900_EVENT_NO_EVENT;
@@ -1447,7 +1447,7 @@ static int vidioc_get_ext_ctrls(
 			ext_ctrl->ctrl_class);
 			break;
 		}
-		if (cg2900_device.seekstatus == FMR_SEEK_IN_PROGRESS) {
+		if (cg2900_fm_device.seekstatus == FMR_SEEK_IN_PROGRESS) {
 			spin_lock(&fm_spinlock);
 			skb = skb_dequeue(&fm_interrupt_queue);
 			spin_unlock(&fm_spinlock);
@@ -1490,18 +1490,18 @@ static int vidioc_get_ext_ctrls(
 		FM_DEBUG_REPORT("vidioc_get_ext_ctrls: "
 				"SeekStatus = %x, GlobalEvent = %x, "
 				"numchannels = %x",
-				cg2900_device.seekstatus,
+				cg2900_fm_device.seekstatus,
 				fm_event, no_of_block_scan_freq);
 		if (ext_ctrl->controls->size == 0 &&
 		    ext_ctrl->controls->string == NULL) {
-			if (cg2900_device.seekstatus ==
+			if (cg2900_fm_device.seekstatus ==
 			    FMR_SEEK_IN_PROGRESS &&
 			    CG2900_EVENT_BLOCK_SCAN_CHANNELS_FOUND
 			    == fm_event) {
 				spin_lock(&fm_spinlock);
 				ext_ctrl->controls->size =
 				    no_of_block_scan_freq;
-				cg2900_device.seekstatus
+				cg2900_fm_device.seekstatus
 				    = FMR_SEEK_NONE;
 				fm_event =
 				    CG2900_EVENT_NO_EVENT;
@@ -1637,7 +1637,7 @@ static int vidioc_get_ext_ctrls(
 			no_of_scan_freq = 0;
 			no_of_block_scan_freq = 0;
 			spin_unlock(&fm_spinlock);
-			cg2900_device.seekstatus = FMR_SEEK_NONE;
+			cg2900_fm_device.seekstatus = FMR_SEEK_NONE;
 			/* Clear the Interrupt flag */
 			fm_event = CG2900_EVENT_NO_EVENT;
 			kfree_skb(skb);
@@ -1662,7 +1662,7 @@ static int vidioc_get_ext_ctrls(
 			 * get the current value from chip
 			 */
 			status = cg2900_fm_get_mode(&mode);
-			cg2900_device.rx_stereo_status = (bool)mode;
+			cg2900_fm_device.rx_stereo_status = (bool)mode;
 			/* Clear the Interrupt flag */
 			fm_event = CG2900_EVENT_NO_EVENT;
 			kfree_skb(skb);
@@ -1673,7 +1673,7 @@ static int vidioc_get_ext_ctrls(
 			no_of_scan_freq = 0;
 			no_of_block_scan_freq = 0;
 			spin_unlock(&fm_spinlock);
-			cg2900_device.seekstatus = FMR_SEEK_NONE;
+			cg2900_fm_device.seekstatus = FMR_SEEK_NONE;
 			/* Clear the Interrupt flag */
 			fm_event = CG2900_EVENT_NO_EVENT;
 			kfree_skb(skb);
@@ -2103,7 +2103,7 @@ static int vidioc_set_ext_ctrls(
 					start_freq,
 					end_freq);
 			if (0 == status) {
-				cg2900_device.seekstatus =
+				cg2900_fm_device.seekstatus =
 					FMR_SEEK_IN_PROGRESS;
 				ret_val = 0;
 			}
@@ -2301,10 +2301,10 @@ static int vidioc_set_hw_freq_seek(
 
 	FM_DEBUG_REPORT("vidioc_set_hw_freq_seek: Status = %x, "
 			"Upwards = %x, Wrap Around = %x",
-			cg2900_device.seekstatus,
+			cg2900_fm_device.seekstatus,
 			freq_seek->seek_upward, freq_seek->wrap_around);
 
-	if (cg2900_device.seekstatus == FMR_SEEK_IN_PROGRESS) {
+	if (cg2900_fm_device.seekstatus == FMR_SEEK_IN_PROGRESS) {
 		FM_ERR_REPORT("vidioc_set_hw_freq_seek: "
 				"VIDIOC_S_HW_FREQ_SEEK, "
 				"freq_seek in progress");
@@ -2326,7 +2326,7 @@ static int vidioc_set_hw_freq_seek(
 	if (0 != status)
 		goto error;
 
-	cg2900_device.seekstatus = FMR_SEEK_IN_PROGRESS;
+	cg2900_fm_device.seekstatus = FMR_SEEK_IN_PROGRESS;
 	ret_val = 0;
 
 error:
@@ -2543,16 +2543,16 @@ static int cg2900_open(
 	if (0 != status)
 		goto switch_on_error;
 
-	cg2900_device.state = FMR_SWITCH_ON;
-	cg2900_device.frequency = HZ_TO_V4L2(freq_low);
-	cg2900_device.rx_rds_enabled = false;
-	cg2900_device.muted = false;
-	cg2900_device.audiopath = 0;
-	cg2900_device.seekstatus = FMR_SEEK_NONE;
-	cg2900_device.rssi_threshold = CG2900_FM_DEFAULT_RSSI_THRESHOLD;
+	cg2900_fm_device.state = FMR_SWITCH_ON;
+	cg2900_fm_device.frequency = HZ_TO_V4L2(freq_low);
+	cg2900_fm_device.rx_rds_enabled = false;
+	cg2900_fm_device.muted = false;
+	cg2900_fm_device.audiopath = 0;
+	cg2900_fm_device.seekstatus = FMR_SEEK_NONE;
+	cg2900_fm_device.rssi_threshold = CG2900_FM_DEFAULT_RSSI_THRESHOLD;
 	fm_event = CG2900_EVENT_NO_EVENT;
 	no_of_scan_freq = 0;
-	cg2900_device.fm_mode = CG2900_FM_IDLE_MODE;
+	cg2900_fm_device.fm_mode = CG2900_FM_IDLE_MODE;
 	ret_val = 0;
 	goto done;
 
@@ -2605,11 +2605,11 @@ static int cg2900_release(
 		if (0 != status)
 			goto done;
 
-		cg2900_device.state = FMR_SWITCH_OFF;
-		cg2900_device.frequency = 0;
-		cg2900_device.rx_rds_enabled = false;
-		cg2900_device.muted = false;
-		cg2900_device.seekstatus = FMR_SEEK_NONE;
+		cg2900_fm_device.state = FMR_SWITCH_OFF;
+		cg2900_fm_device.frequency = 0;
+		cg2900_fm_device.rx_rds_enabled = false;
+		cg2900_fm_device.muted = false;
+		cg2900_fm_device.seekstatus = FMR_SEEK_NONE;
 		fm_event = CG2900_EVENT_NO_EVENT;
 		no_of_scan_freq = 0;
 	}
@@ -2658,7 +2658,7 @@ static ssize_t cg2900_read(
 
 	blocks_to_read = (count / sizeof(struct v4l2_rds_data));
 
-	if (!cg2900_device.rx_rds_enabled) {
+	if (!cg2900_fm_device.rx_rds_enabled) {
 		/* Remove all Interrupts from the queue */
 		skb_queue_purge(&fm_interrupt_queue);
 		FM_INFO_REPORT("cg2900_read: returning 0");
@@ -2794,7 +2794,7 @@ static ssize_t cg2900_read(
 		if (fm_rds_info.rds_block_sent == NUM_OF_RDS_BLOCKS)
 			fm_rds_info.rds_block_sent = 0;
 
-		if (!cg2900_device.rx_rds_enabled) {
+		if (!cg2900_fm_device.rx_rds_enabled) {
 			/* Remove all Interrupts from the queue */
 			skb_queue_purge(&fm_interrupt_queue);
 			FM_INFO_REPORT("cg2900_read: returning 0");

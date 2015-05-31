@@ -4762,18 +4762,19 @@ void fmd_set_rds_sem(void)
 	up(&rds_sem);
 }
 //Check if i need to rewrite this...
+#if 0
 int fmd_set_dev(struct device *dev)
 {
-	struct cg2900_user_data *pf_data;
+	struct cg2900_device *pf_data;
 
 	FM_DEBUG_REPORT("fmd_set_dev");
 
-	if (dev && cg2900_fm_dev) {
+	if (dev && cg2900_fm_cmd_evt) {
 		FM_ERR_REPORT("Only one FM device supported");
 		return -EACCES;
 	}
 
-	cg2900_fm_dev = dev;
+	cg2900_fm_cmd_evt = dev;
 
 	if (!dev)
 		return 0;
@@ -4785,6 +4786,7 @@ int fmd_set_dev(struct device *dev)
 
 	return 0;
 }
+#endif
 
 int fmd_set_test_tone_generator_status(
 			u8 test_tone_status
@@ -4931,7 +4933,6 @@ error:
 	return err;
 }
 
->>>>>>> bc27fc9... This is the xperia driver - now to see what chaned between them and backport it to the original framework
 MODULE_AUTHOR("Hemant Gupta");
 MODULE_LICENSE("GPL v2");
 
