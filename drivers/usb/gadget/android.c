@@ -642,7 +642,7 @@ static int mass_storage_function_init(struct android_usb_function *f,
 	if (!config)
 		return -ENOMEM;
 
-#if defined(CONFIG_SAMSUNG_FASCINATE) || defined(CONFIG_SAMSUNG_P1C)
+#if defined(CONFIG_SAMSUNG_FASCINATE) || defined(CONFIG_SAMSUNG_P1C)  || defined(CONFIG_SAMSUNG_GALAXYS4G)
 	config->fsg.nluns = 1;
 #else
 	config->fsg.nluns = 2;

@@ -43,6 +43,8 @@ obj-$(CONFIG_MACH_ARIES)	+= aries-watchdog.o
 obj-$(CONFIG_MACH_ARIES)	+= aries-panel.o
 obj-$(CONFIG_PHONE_ARIES)	+= dev-s1-phone.o
 obj-$(CONFIG_PHONE_ARIES)	+= level.o
+obj-$(CONFIG_PHONE_ARIES_STE)	+= dev-s1-phone.o
+obj-$(CONFIG_PHONE_ARIES_STE)	+= level.o
 obj-$(CONFIG_PHONE_ARIES_CDMA)	+= dev-s1-phone.o
 obj-$(CONFIG_PHONE_ARIES_CDMA)	+= level.o
 obj-$(CONFIG_PHONE_CRESPO)	+= dev-aries-phone.o
@@ -73,6 +75,8 @@ obj-$(CONFIG_S5PV210_SETUP_SDHCI_GPIO)	+= setup-sdhci-gpio.o
 obj-$(CONFIG_S5PV210_SETUP_FIMC0)	+= setup-fimc0.o
 obj-$(CONFIG_S5PV210_SETUP_FIMC1)	+= setup-fimc1.o
 obj-$(CONFIG_S5PV210_SETUP_FIMC2)	+= setup-fimc2.o
+
+obj-$(CONFIG_GPS_CHIPSET_STE_CG2900)	+= cg2900_devices.o
 
 obj-$(CONFIG_CPU_IDLE)		+= cpuidle.o
 obj-$(CONFIG_CPU_FREQ)		+= dev-cpufreq.o
