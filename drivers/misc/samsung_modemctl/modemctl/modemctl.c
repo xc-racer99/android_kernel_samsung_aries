@@ -1106,7 +1106,7 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 	_wake_lock_init(mc);
 
 	platform_set_drvdata(pdev, mc);
-
+#if defined(CONFIG_PHONE_ARIES_STE)
 	if(IS_ERR_OR_NULL(cp_rtc_regulator)) {
 		cp_rtc_regulator = regulator_get(NULL, "cp_rtc");
 		if(IS_ERR_OR_NULL(cp_rtc_regulator)) {
@@ -1114,6 +1114,7 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 			return -1;
 		}
 	}
+#endif
 
 	return 0;
 
