@@ -300,7 +300,7 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 			return ret;
 		}
 	} else {
-#ifndef CONFIG_SAMSUNG_GALAXYS4G 
+#ifndef CONFIG_SAMSUNG_GALAXYS4G
 #ifdef CONFIG_MACH_ARIES
 		if (vtmode == 1 && device_id != 0 && (ctrl->cap->rotate == 90 || ctrl->cap->rotate == 270)) {
 #else // CONFIG_MACH_P1
@@ -381,16 +381,16 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 			printk("line(%d):vtmode = %d, rotate = %d, device = %d, cam->width = %d, cam->height = %d\n", __LINE__, ctrl->vt_mode, ctrl->cap->rotate, fimc->active_camera, ctrl->cam->width, ctrl->cam->height);
 #endif
 		}
-	}
 #else
 	}
-    ctrl->cam->width = cam_frmsize.discrete.width;
-    ctrl->cam->height = cam_frmsize.discrete.height;
 
-    ctrl->cam->window.left = 0;
-    ctrl->cam->window.top = 0;
-    ctrl->cam->window.width = ctrl->cam->width;
-    ctrl->cam->window.height = ctrl->cam->height;
+	ctrl->cam->width = cam_frmsize.discrete.width;
+	ctrl->cam->height = cam_frmsize.discrete.height;
+
+	ctrl->cam->window.left = 0;
+	ctrl->cam->window.top = 0;
+	ctrl->cam->window.width = ctrl->cam->width;
+	ctrl->cam->window.height = ctrl->cam->height;
 #endif
 
 	cam_ctrl.id = V4L2_CID_CAM_PREVIEW_ONOFF;
@@ -1876,12 +1876,8 @@ int fimc_streamon_capture(void *fh)
 			}
 		}
 	}
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G)
-    ctrl->cam->window.left = 0;
-    ctrl->cam->window.top = 0;
-    ctrl->cam->width = ctrl->cam->window.width = cam_frmsize.discrete.width;
-    ctrl->cam->height = ctrl->cam->window.height = cam_frmsize.discrete.height; 
-#else // CONFIG_MACH_ARIES
+
+#elif defined(CONFIG_MACH_ARIES) && !defined(CONFIG_SAMSUNG_GALAXYS4G)
 
 	if (!ctrl->cam->initialized)
 		fimc_camera_init(ctrl);
@@ -1915,6 +1911,22 @@ int fimc_streamon_capture(void *fh)
 			ctrl->cam->height = ctrl->cam->window.height = cam_frmsize.discrete.height;
 		}
 	}
+#else // CONFIG_SAMSUNG_GALAXYS4G
+	if (!ctrl->cam->initialized)
+		fimc_camera_init(ctrl);
+
+	ret = subdev_call(ctrl, video, enum_framesizes, &cam_frmsize);
+	if (ret < 0) {
+		dev_err(ctrl->dev, "%s: enum_framesizes failed\n", __func__);
+
+        if(ret != -ENOIOCTLCMD)
+            return ret;
+	} else {
+	}
+	ctrl->cam->window.left = 0;
+	ctrl->cam->window.top = 0;
+	ctrl->cam->width = ctrl->cam->window.width = cam_frmsize.discrete.width;
+	ctrl->cam->height = ctrl->cam->window.height = cam_frmsize.discrete.height;
 #endif
 
 	if (ctrl->id != 2 &&
