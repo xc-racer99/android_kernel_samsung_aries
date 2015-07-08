@@ -627,7 +627,6 @@ int ubifs_init_security(struct inode *dir, struct inode *inode,
 	char *suffix;
 	char name[XATTR_NAME_MAX];
 
-	mutex_lock(&inode->i_mutex);
 	err = security_inode_init_security(inode, dir, qstr, &suffix, &value, &len);
 	if (err) {
 		if (err == -EOPNOTSUPP)
@@ -639,9 +638,8 @@ int ubifs_init_security(struct inode *dir, struct inode *inode,
 
 	err = setxattr(inode, name, value, len, 0);
 
-	mutex_unlock(&inode->i_mutex);
-
 	kfree(suffix);
 	kfree(value);
+
 	return err;
 }
