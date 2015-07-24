@@ -106,7 +106,7 @@ static void uart_start(struct tty_struct *tty)
 	unsigned long flags;
 
 	spin_lock_irqsave(&port->lock, flags);
-#ifdef CONFIG_GPS_CHIPSET_STE_CG2900
+#ifdef CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION
 	if (tty->hw_stopped && (state->uart_port->ops->get_mctrl(state->uart_port) & TIOCM_CTS)) 
 		tty->hw_stopped = 0;	
 #endif	

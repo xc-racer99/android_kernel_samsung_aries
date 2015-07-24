@@ -313,10 +313,29 @@ config SAMSUNG_GALAXYS
 	 Select Samsung Galaxy S GT-I9000
 
 config SAMSUNG_GALAXYS4G
-	bool "select SGHT959V"
+	bool "select SGHT959V/SGHT959W/SGHT959P"
 	depends on MACH_ARIES
 	help
 	 Select Samsung Galaxy S 4G SGH-T959V
+
+if SAMSUNG_GALAXYS4G
+choice
+prompt "Select device variant"
+config SAMSUNG_GALAXYS4G_TMOBILE_VERSION
+	bool "select T959V"
+	help
+	 Select Samsung Galaxy S 4G SGH-T959V
+config SAMSUNG_GALAXYS4G_WIND_VERSION
+	bool "select T959W"
+	help
+	 Select Samsung Galaxy S 4G SGH-T959W
+config SAMSUNG_GALAXYS4G_TELUS_VERSION
+	bool "select T959P"
+	select MFD_CG2900
+	help
+	 Select Samsung Galaxy S Fascinate 4G SGH-T959P
+endchoice
+endif
 
 config SAMSUNG_GALAXYSB
 	bool "select GTI9000B"
@@ -421,12 +440,6 @@ config S5PV210_SETUP_FIMC2
 	default y
 	help
 	  Common setup code for FIMC controller 2.
-
-config GPS_CHIPSET_STE_CG2900
-        bool "add GPS GNS2900"
-        default n
-        help
-         add  GPS config
 
 config DVFS_LIMIT
 	bool "DVFS limit"

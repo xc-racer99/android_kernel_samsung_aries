@@ -49,7 +49,7 @@
 #define N_V253		19	/* Codec control over voice modem */
 #define N_CAIF		20      /* CAIF protocol for talking to modems */
 #define N_GSM0710	21	/* GSM 0710 Mux */
-#if defined(CONFIG_GPS_CHIPSET_STE_CG2900)
+#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
 #define N_BT_HCI	22	/* CG2900 Bluetooth Workaround */
 #else
 #define N_TI_WL		22	/* for TI's WL BT, FM, GPS combo chips */

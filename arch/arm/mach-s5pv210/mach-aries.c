@@ -269,7 +269,7 @@ static struct s3c2410_uartcfg aries_uartcfgs[] __initdata = {
 		.flags		= 0,
 		.ucon		= S5PV210_UCON_DEFAULT,
 		.ulcon		= S5PV210_ULCON_DEFAULT,
-#ifdef CONFIG_GPS_CHIPSET_STE_CG2900 /* STE for CG2900 */
+#ifdef CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION /* STE for CG2900 */
                 .ufcon		 = S3C2410_UFCON_FIFOMODE | S5PV210_UFCON_TXTRIG64 | S5PV210_UFCON_RXTRIG8, // -> RX trigger leve : 8byte.
 #else
 		.ufcon		= S5PV210_UFCON_DEFAULT,
@@ -3078,7 +3078,7 @@ static struct gpio_init_data aries_init_gpios[] = {
 		.pud	= S3C_GPIO_PULL_DOWN,
 		.drv	= S3C_GPIO_DRVSTR_1X,
 	}, {
-#if defined(CONFIG_GPS_CHIPSET_STE_CG2900)
+#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
 		.num	= S5PV210_GPD1(2), // GPIO_FM_SDA_28V
 		.cfg	= S3C_GPIO_INPUT,
 		.val	= S3C_GPIO_SETPIN_NONE,
@@ -3367,7 +3367,7 @@ static struct gpio_init_data aries_init_gpios[] = {
 		.val	= S3C_GPIO_SETPIN_NONE,
 		.pud	= S3C_GPIO_PULL_DOWN,
 		.drv	= S3C_GPIO_DRVSTR_1X,
-#elif defined(CONFIG_GPS_CHIPSET_STE_CG2900)
+#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
 		.num	= S5PV210_GPG3(0), //CG2900 :nReset
 		.cfg	= S3C_GPIO_OUTPUT,
 		.val	= S3C_GPIO_SETPIN_ZERO,
@@ -3387,7 +3387,7 @@ static struct gpio_init_data aries_init_gpios[] = {
 		.val	= S3C_GPIO_SETPIN_NONE,
 		.pud	= S3C_GPIO_PULL_DOWN,
 		.drv	= S3C_GPIO_DRVSTR_1X,
-#elif defined(CONFIG_GPS_CHIPSET_STE_CG2900)
+#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
 		.num	= S5PV210_GPG3(1), //CG2900 :PWR
 		.cfg	= S3C_GPIO_OUTPUT,
 		.val	= S3C_GPIO_SETPIN_ZERO,
@@ -4279,12 +4279,12 @@ static unsigned int aries_sleep_gpio_table[][3] = {
   	{ S5PV210_GPA0(5), S3C_GPIO_SLP_OUT0,   S3C_GPIO_PULL_NONE},
   	{ S5PV210_GPA0(6), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_NONE},
   	{ S5PV210_GPA0(7), S3C_GPIO_SLP_OUT1,   S3C_GPIO_PULL_NONE},
-#elif defined (CONFIG_GPS_CHIPSET_STE_CG2900)
+#elif defined (CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
 	{ S5PV210_GPA0(4), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
 	{ S5PV210_GPA0(5), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
 	{ S5PV210_GPA0(6), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
 	{ S5PV210_GPA0(7), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
-#elif defined (CONFIG_SAMSUNG_VIBRANT) || defined (CONFIG_SAMSUNG_GALAXYS4G) && !defined(CONFIG_GPS_CHIPSET_STE_CG2900)
+#elif defined (CONFIG_SAMSUNG_VIBRANT) || defined (CONFIG_SAMSUNG_GALAXYS4G) && !defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
     { S5PV210_GPA0(4), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
   	{ S5PV210_GPA0(5), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP}, 
   	{ S5PV210_GPA0(6), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN}, 
@@ -4497,10 +4497,10 @@ static unsigned int aries_sleep_gpio_table[][3] = {
 #if defined (CONFIG_SAMSUNG_VIBRANT)
   	{ S5PV210_GPG3(0), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
   	{ S5PV210_GPG3(1), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G) && !defined(CONFIG_GPS_CHIPSET_STE_CG2900)
+#elif defined(CONFIG_SAMSUNG_GALAXYS4G) && !defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
 	{ S5PV210_GPG3(0), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_NONE},
 	{ S5PV210_GPG3(1), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_NONE},
-#elif defined(CONFIG_GPS_CHIPSET_STE_CG2900)
+#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
  	{ S5PV210_GPG3(0), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_UP},	//GPIO_GPS_nRST dig
 	{ S5PV210_GPG3(1), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_UP},	//GPIO_GPS_EN : MIDAS[2010.09.04] temporary out0 for sleep
 #else
@@ -5757,7 +5757,7 @@ static void __init aries_machine_init(void)
 
 	aries_switch_init();
 
-#if !defined(CONFIG_GPS_CHIPSET_STE_CG2900)
+#if !defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
  	gps_gpio_init();
 #endif
 
@@ -5922,7 +5922,7 @@ void s3c_setup_uart_cfg_gpio(unsigned char port)
 		s3c_gpio_slp_setpull_updown(GPIO_BT_RTS, S3C_GPIO_PULL_NONE);
 		break;
 	case 1:
-#ifdef CONFIG_GPS_CHIPSET_STE_CG2900 /* STE for CG2900 */
+#ifdef CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION /* STE for CG2900 */
 		s3c_gpio_cfgpin(GPIO_GPS_RXD, S3C_GPIO_SFN(GPIO_GPS_RXD_AF));
 		s3c_gpio_setpull(GPIO_GPS_RXD, S3C_GPIO_PULL_NONE);// up -> none
 		s3c_gpio_cfgpin(GPIO_GPS_TXD, S3C_GPIO_SFN(GPIO_GPS_TXD_AF));
@@ -5960,7 +5960,7 @@ void s3c_setup_uart_cfg_gpio(unsigned char port)
 }
 EXPORT_SYMBOL(s3c_setup_uart_cfg_gpio);
 
-#if defined (CONFIG_GPS_CHIPSET_STE_CG2900)  /* STE for CG2900 */
+#if defined (CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)  /* STE for CG2900 */
 void cg29xx_uart_disable(void)
 {
 	printk("cg29xx_uart_disable");

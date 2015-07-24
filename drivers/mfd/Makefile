@@ -57,7 +57,7 @@ obj-$(CONFIG_MCP_UCB1200_TS)	+= ucb1x00-ts.o
 ifeq ($(CONFIG_SA1100_ASSABET),y)
 obj-$(CONFIG_MCP_UCB1200)	+= ucb1x00-assabet.o
 endif
-obj-$(CONFIG_GPS_CHIPSET_STE_CG2900)	+= cg2900/
+obj-y				+= cg2900/
 obj-$(CONFIG_UCB1400_CORE)	+= ucb1400_core.o
 
 obj-$(CONFIG_PMIC_DA903X)	+= da903x.o
