@@ -381,6 +381,7 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 			printk("line(%d):vtmode = %d, rotate = %d, device = %d, cam->width = %d, cam->height = %d\n", __LINE__, ctrl->vt_mode, ctrl->cap->rotate, fimc->active_camera, ctrl->cam->width, ctrl->cam->height);
 #endif
 		}
+	}
 #else
 	}
 
