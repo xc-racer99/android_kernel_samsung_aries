@@ -9,7 +9,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/linkage.h>
-
+	.arch	armv7-a
 /*
  * Debugging stuff
  *
