@@ -2101,6 +2101,12 @@ static int ce147_set_capture_exif(struct v4l2_subdev *sd)
 	unsigned char ce147_str_model[9] = "SCH-I500\0";
 #elif defined(CONFIG_SAMSUNG_VIBRANT)
 	unsigned char ce147_str_model[9] = "SGH-T959\0";
+#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
+	unsigned char ce147_str_model[10] = "SGH-T959P\0";
+#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TMOBILE_VERSION)
+	unsigned char ce147_str_model[10] = "SGH-T959V\0";
+#elif defined(CONFIG_SAMSUNG_GALAXYS4G_WIND_VERSION)
+	unsigned char ce147_str_model[10] = "SGH-T959W\0";
 #else /* Modify	NTTS1 */
 	unsigned char ce147_str_model[7] = "SC-02B\0";
 #endif
