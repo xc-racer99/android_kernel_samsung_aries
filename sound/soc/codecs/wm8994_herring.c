@@ -35,30 +35,29 @@
  * Definitions of tunning volumes for wm8994
  */
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 // valid values for incall boost are (0 .. 3) << WM8994_AIF2DAC_BOOST_SHIFT
 // .. meaning you only change the number below, not the shift, and you only
 // make it one of:
-// 0 ( 0db  = too quiet),
-// 1 (+6db  = quiet),
-// 2 (+12db = loud),
+// 0 ( 0db  = too quiet), 
+// 1 (+6db  = quiet), 
+// 2 (+12db = loud), 
 // 3 (+18db = holy shit)
 unsigned short incall_boost_rcv  = (2 << WM8994_AIF2DAC_BOOST_SHIFT);
 unsigned short incall_boost_bt   = (2 << WM8994_AIF2DAC_BOOST_SHIFT);
-unsigned short incall_boost_spk  = (1 << WM8994_AIF2DAC_BOOST_SHIFT);
+unsigned short incall_boost_spk  = (2 << WM8994_AIF2DAC_BOOST_SHIFT);
 unsigned short incall_boost_hp   = (2 << WM8994_AIF2DAC_BOOST_SHIFT);
+
 
 // valid values for in-call mic gain are 0 .. 0x1f (31 decimal)
 // 0 means -16.5db
 // 0x0b means 0db
 // 0x1f means +30db
 unsigned short incall_mic_gain_rcv       = 0x13;
-unsigned short incall_mic_gain_spk       = 0x0c;
-unsigned short incall_mic_gain_hp        = 0x13;
+unsigned short incall_mic_gain_spk       = 0x1f;
+unsigned short incall_mic_gain_hp        = 0x1d;
 unsigned short incall_mic_gain_hp_no_mic = 0x12;
 
 void update_mic_gain(unsigned short gain);
-#endif
 
 struct gain_info_t cdma_playback_gain_table[PLAYBACK_GAIN_CDMA_NUM] = {
 	{ /* COMMON */
@@ -130,7 +129,7 @@ struct gain_info_t cdma_playback_gain_table[PLAYBACK_GAIN_CDMA_NUM] = {
 		.mode = PLAYBACK_SPK,
 		.reg  = WM8994_CLASSD,			/* 25h */
 		.mask = WM8994_SPKOUTL_BOOST_MASK,
-		.gain = 0x06 << WM8994_SPKOUTL_BOOST_SHIFT  /* +7.5dB */
+		.gain = 0x05 << WM8994_SPKOUTL_BOOST_SHIFT  /* +7.5dB */
 	}, {
 		.mode = PLAYBACK_SPK,
 		.reg  = WM8994_AIF1_DAC1_LEFT_VOLUME,	/* 402h */
@@ -145,12 +144,12 @@ struct gain_info_t cdma_playback_gain_table[PLAYBACK_GAIN_CDMA_NUM] = {
 		.mode = PLAYBACK_HP,
 		.reg  = WM8994_LEFT_OUTPUT_VOLUME,	/* 1Ch */
 		.mask = WM8994_HPOUT1L_VOL_MASK,
-		.gain = WM8994_HPOUT1_VU | 0x32 /* -8dB */
+		.gain = WM8994_HPOUT1_VU | 0x31 /* -8dB */
 	}, {
 		.mode = PLAYBACK_HP,
 		.reg  = WM8994_RIGHT_OUTPUT_VOLUME,	/* 1Dh */
 		.mask = WM8994_HPOUT1R_VOL_MASK,
-		.gain = WM8994_HPOUT1_VU | 0x32 /* -8dB */
+		.gain = WM8994_HPOUT1_VU | 0x31 /* -8dB */
 	}, {
 		.mode = PLAYBACK_HP,
 		.reg  = WM8994_LEFT_OPGA_VOLUME,	/* 20h */
@@ -378,7 +377,7 @@ struct gain_info_t cdma_voicecall_gain_table[VOICECALL_GAIN_NUM] = {
 		.mode = VOICECALL_SPK,
 		.reg  = WM8994_INPUT_MIXER_3,		/* 29h */
 		.mask = WM8994_IN1L_MIXINL_VOL_MASK | WM8994_MIXOUTL_MIXINL_VOL_MASK,
-		.gain = 0x12     /* Mic +7.5dB */
+		.gain = 0x10     /* Mic +7.5dB */
 	}, {
 		.mode = VOICECALL_SPK,
 		.reg  = WM8994_LEFT_LINE_INPUT_1_2_VOLUME,	/* 18h */
@@ -1586,9 +1585,11 @@ void wm8994_set_bluetooth_common_setting(struct snd_soc_codec *codec)
 		WM8994_AIF2ADCR_SRC | WM8994_AIF2_BCLK_INV | 0x18);
 
 	wm8994_write(codec, WM8994_AIF2_BCLK, 0x70);
-#ifndef CONFIG_PHONE_ARIES_CDMA
+/*#ifdef CONFIG_PHONE_ARIES_CDMA
+	wm8994_write(codec, WM8994_AIF2_CONTROL_2, incallBoost);
+#else
 	wm8994_write(codec, WM8994_AIF2_CONTROL_2, 0x0000);
-#endif
+#endif*/
 	wm8994_write(codec, WM8994_AIF2_MASTER_SLAVE, WM8994_AIF2_MSTR |
 		WM8994_AIF2_CLK_FRC | WM8994_AIF2_LRCLK_FRC);
 
@@ -2605,9 +2606,11 @@ static void wm8994_set_cdma_voicecall_common_setting(struct snd_soc_codec *codec
 	wm8994_write(codec, WM8994_AIF2_CONTROL_1, 0x4118);
 
 	wm8994_write(codec, WM8994_AIF2_BCLK, 0x70);
-#ifndef CONFIG_PHONE_ARIES_CDMA
+/*#ifdef CONFIG_PHONE_ARIES_CDMA
+	wm8994_write(codec, WM8994_AIF2_CONTROL_2, incallBoost);
+#else
 	wm8994_write(codec, WM8994_AIF2_CONTROL_2, 0x0000);
-#endif
+#endif*/
 	wm8994_write(codec, WM8994_AIF2_MASTER_SLAVE, 0);
 
 	val = wm8994_read(codec, WM8994_POWER_MANAGEMENT_5);
@@ -2676,7 +2679,7 @@ static void wm8994_set_gsm_voicecall_common_setting(struct snd_soc_codec *codec)
 		WM8994_AIF2ADCR_SRC | WM8994_AIF2_BCLK_INV | 0x18);
 
 	wm8994_write(codec, WM8994_AIF2_BCLK, 0x70);
-	wm8994_write(codec, WM8994_AIF2_CONTROL_2, 0x0000);
+	/*wm8994_write(codec, WM8994_AIF2_CONTROL_2, 0x0000);*/
 	wm8994_write(codec, WM8994_AIF2_MASTER_SLAVE, WM8994_AIF2_MSTR |
 		WM8994_AIF2_CLK_FRC | WM8994_AIF2_LRCLK_FRC);
 
@@ -2757,13 +2760,15 @@ static void wm8994_set_cdma_voicecall_receiver(struct snd_soc_codec *codec)
 	wm8994_write(codec, 0x0211, 0x0003);	/* AIF2 Rate */
 	wm8994_write(codec, 0x0310, 0x4118);	/* AIF2 Control 1 */
 	/* AIF2 Control 2 pcm format is changed ulaw to linear */
-
-#ifdef CONFIG_PHONE_ARIES_CDMA
-	// CDMA: boost the incoming voice volume a bit
-	wm8994_write(codec, 0x0311, incall_boost_rcv);
+/*#ifdef CONFIG_PHONE_ARIES_CDMA
+	wm8994_write(codec, 0x0311, incallBoost);
 #else
 	wm8994_write(codec, 0x0311, 0x0000);
-#endif
+#endif*/
+ 
+// boost the incoming voice volume a bit
+	wm8994_write(codec, 0x0311, incall_boost_rcv);
+
 
 	wm8994_write(codec, 0x0520, 0x0000);	/* AIF2 DAC Filter 1 */
 	/* AIF2 Clocking 1. AIF2 Clock Enable */
@@ -2772,19 +2777,24 @@ static void wm8994_set_cdma_voicecall_receiver(struct snd_soc_codec *codec)
 	wm8994_write(codec, 0x0601, 0x0005);	/* DAC1 Left Mixer Routing */
 	/* DAC1 Right Mixer Routing(Playback) */
 	wm8994_write(codec, 0x0602, 0x0001);
+/*#ifdef CONFIG_PHONE_ARIES_CDMA
+	wm8994_write(codec, 0x0603, 0x01EF);	/* DAC2 Mixer Volumes */
+/*#else*/
 	wm8994_write(codec, 0x0603, 0x018C);	/* DAC2 Mixer Volumes */
+/*#endif*/
 	wm8994_write(codec, 0x0604, 0x0030);	/* DAC2 Left Mixer Routing */
 	wm8994_write(codec, 0x0605, 0x0010);	/* DAC2 Right Mixer Routing */
 	wm8994_write(codec, 0x0621, 0x01C0);	/* Sidetone */
 	wm8994_write(codec, 0x0002, 0x6240);	/* Power Management 2 */
 	wm8994_write(codec, 0x0028, 0x0030);	/* Input Mixer 2 */
+/*#ifdef CONFIG_PHONE_ARIES_CDMA
+	wm8994_write(codec, 0x0018, WM8994_IN1L_VU | WM8994_IN1L_VOL_12dB); /* Mic gain */
+/*#else
+	wm8994_write(codec, 0x0018, 0x010A);
+#endif*/
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	/* mic gain setting */
 	wm8994_write(codec, 0x0018, WM8994_IN1L_VU | incall_mic_gain_rcv);
-#else
-	wm8994_write(codec, 0x0018, 0x010A);
-#endif
 
 	/* Output Mixer 5 */
 	val = wm8994_read(codec, 0x0031);
@@ -2798,31 +2808,39 @@ static void wm8994_set_cdma_voicecall_receiver(struct snd_soc_codec *codec)
 	val |= 0x0000 << 0x0009;
 	wm8994_write(codec, 0x0032, val);
 
+	/* Left OPGA Volume */
+	/*val = wm8994_read(codec, 0x0020);
+	val &= ~(WM8994_MIXOUTL_MUTE_N_MASK | WM8994_MIXOUTL_VOL_MASK);
 #ifdef CONFIG_PHONE_ARIES_CDMA
+	val |= (0x0100 | 0x0040 | 0x3F);
+	wm8994_write(codec, 0x0020, val);
+#else
+	val |= (0x0100 | 0x0040 | 0x3D);
+	/* 05.24 Maximum ´ëºñ -6dB HAC ¿ë test -2 3B -> 39 */
+	/*wm8994_write(codec, 0x0020, 0x01F9);
+#endif*/
+
 	/* Volume Control - Output - just un-mute, let rom set the value */
 	val = wm8994_read(codec, WM8994_LEFT_OPGA_VOLUME);
 	val &= ~(WM8994_MIXOUTL_MUTE_N_MASK);
 	val |= (WM8994_MIXOUTL_MUTE_N);
 	wm8994_write(codec, WM8994_LEFT_OPGA_VOLUME, val);
 
+	/* Right OPGA Volume */
+	/*val = wm8994_read(codec, 0x0021);
+	val &= ~(WM8994_MIXOUTR_MUTE_N_MASK | WM8994_MIXOUTR_VOL_MASK);
+#ifdef CONFIG_PHONE_ARIES_CDMA
+	val |= (0x0100 | 0x0040 | 0x3F);
+	wm8994_write(codec, 0x0021, val);
+#else
+	val |= (0x0100 | 0x0040 | 0x3D);
+	wm8994_write(codec, 0x0021, 0x01F9);
+#endif*/
+
 	val = wm8994_read(codec, WM8994_RIGHT_OPGA_VOLUME);
 	val &= ~(WM8994_MIXOUTR_MUTE_N_MASK);
 	val |= (WM8994_MIXOUTR_MUTE_N);
 	wm8994_write(codec, WM8994_RIGHT_OPGA_VOLUME, val);
-#else
-	/* Left OPGA Volume */
-	val = wm8994_read(codec, 0x0020);
-	val &= ~(WM8994_MIXOUTL_MUTE_N_MASK | WM8994_MIXOUTL_VOL_MASK);
-	val |= (0x0100 | 0x0040 | 0x3D);
-	/* 05.24 Maximum ´ëºñ -6dB HAC ¿ë test -2 3B -> 39 */
-	wm8994_write(codec, 0x0020, 0x01F9);
-
-	/* Right OPGA Volume */
-	val = wm8994_read(codec, 0x0021);
-	val &= ~(WM8994_MIXOUTR_MUTE_N_MASK | WM8994_MIXOUTR_VOL_MASK);
-	val |= (0x0100 | 0x0040 | 0x3D);
-	wm8994_write(codec, 0x0021, 0x01F9);
-#endif
 
 	wm8994_write(codec, 0x0312, 0x0000);	/* Slave */
 	/* sub mic */
@@ -2851,13 +2869,21 @@ static void wm8994_set_cdma_voicecall_receiver(struct snd_soc_codec *codec)
 	val = wm8994_read(codec, 0x0610);
 	val &= ~(WM8994_DAC1L_MUTE_MASK | WM8994_DAC1L_VOL_MASK);
 	val |= 0xC0;
+/*#ifdef CONFIG_PHONE_ARIES_CDMA
+	wm8994_write(codec, 0x0610, 0x01FF);
+#else*/
 	wm8994_write(codec, 0x0610, 0x01C0);
+/*#endif*/
 
 	/* DAC1 Right Volume */
 	val = wm8994_read(codec, 0x0611);
 	val &= ~(WM8994_DAC1R_MUTE_MASK | WM8994_DAC1R_VOL_MASK);
 	val |= 0xC0;
+/*#ifdef CONFIG_PHONE_ARIES_CDMA
+	wm8994_write(codec, 0x0611, 0x01FF);
+#else*/
 	wm8994_write(codec, 0x0611, 0x01C0);
+/*#endif*/
 
 	/* Power Management 3(Playback) */
 	wm8994_write(codec, 0x0003, 0x00F0);
@@ -2935,7 +2961,9 @@ static void wm8994_set_gsm_voicecall_receiver(struct snd_soc_codec *codec)
 	val &= ~(WM8994_HPOUT2_MUTE_MASK);
 	wm8994_write(codec, WM8994_HPOUT2_VOLUME, val);
 
+	wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_rcv);
 	wm8994_set_codec_gain(codec, VOICECALL_MODE, VOICECALL_RCV);
+	update_mic_gain(incall_mic_gain_rcv);
 
 	/* Unmute DAC1 left */
 	val = wm8994_read(codec, WM8994_DAC1_LEFT_VOLUME);
@@ -3120,13 +3148,9 @@ void wm8994_set_voicecall_headset(struct snd_soc_codec *codec)
 
 	wm8994_write(codec, WM8994_ANALOGUE_HP_1, 0x00EE);
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_hp);
-#endif
 	wm8994_set_codec_gain(codec, VOICECALL_MODE, VOICECALL_HP);
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	update_mic_gain(incall_mic_gain_hp);
-#endif
 
 	/* Unmute DAC1 left */
 	val = wm8994_read(codec, WM8994_DAC1_LEFT_VOLUME);
@@ -3283,13 +3307,9 @@ void wm8994_set_voicecall_headphone(struct snd_soc_codec *codec)
 
 	wm8994_write(codec, WM8994_ANALOGUE_HP_1, 0x00EE);
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_hp);
-#endif
 	wm8994_set_codec_gain(codec, VOICECALL_MODE, VOICECALL_HP_NO_MIC);
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	update_mic_gain(incall_mic_gain_hp_no_mic);
-#endif
 
 	/* Unmute DAC1 left */
 	val = wm8994_read(codec, WM8994_DAC1_LEFT_VOLUME);
@@ -3463,13 +3483,9 @@ void wm8994_set_voicecall_speaker(struct snd_soc_codec *codec)
 	wm8994_write(codec, WM8994_POWER_MANAGEMENT_1,
 		WM8994_SPKOUTL_ENA | WM8994_VMID_SEL_NORMAL | WM8994_BIAS_ENA);
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_spk);
-#endif
 	wm8994_set_codec_gain(codec, VOICECALL_MODE, VOICECALL_SPK);
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	update_mic_gain(incall_mic_gain_spk);
-#endif
 
 	/* Unmute DAC1 left */
 	val = wm8994_read(codec, WM8994_DAC1_LEFT_VOLUME);
@@ -3699,16 +3715,18 @@ void wm8994_set_voicecall_bluetooth(struct snd_soc_codec *codec)
 	else
 		wm8994_write(codec, WM8994_AIF2_CLOCKING_1, 0x0019);
 
+/*#ifdef CONFIG_PHONE_ARIES_CDMA
+	wm8994_write(codec, WM8994_DAC2_MIXER_VOLUMES, 0x01EF);
+#else*/
 	wm8994_write(codec, WM8994_DAC2_MIXER_VOLUMES, 0x000C);
+/*#endif*/
 
 	wm8994_write(codec, WM8994_DAC2_LEFT_VOLUME, 0x01C0);
 	wm8994_write(codec, WM8994_DAC2_RIGHT_VOLUME, 0x01C0);
 
 	wm8994_write(codec, WM8994_OVERSAMPLING, 0X0000);
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_bt);
-#endif
 	wm8994_set_codec_gain(codec, VOICECALL_MODE, VOICECALL_BT);
 
 	/* Unmute DAC1 left */
@@ -5323,4 +5341,5 @@ int wm8994_set_codec_gain(struct snd_soc_codec *codec, u16 mode, u16 device)
 	return 0;
 
 }
+
 

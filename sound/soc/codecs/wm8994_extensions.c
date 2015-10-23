@@ -90,19 +90,18 @@ unsigned int eq_band_values[5][4] = {
 bool stereo_expansion = false;
 short unsigned int stereo_expansion_gain = 16;
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 // call volume boost hack
 extern unsigned short incall_boost_rcv;
 extern unsigned short incall_boost_bt;
 extern unsigned short incall_boost_spk;
 extern unsigned short incall_boost_hp;
 
+
 // mic gain control hack
 extern unsigned short incall_mic_gain_rcv;
 extern unsigned short incall_mic_gain_spk;
 extern unsigned short incall_mic_gain_hp;
 extern unsigned short incall_mic_gain_hp_no_mic;
-#endif
 
 // keep here a pointer to the codec structure
 struct snd_soc_codec *codec;
@@ -1074,28 +1073,27 @@ DECLARE_BOOL_STORE_UPDATE_WITH_MUTE(dac_direct,
 				    update_dac_direct,
 				    false);
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 static ssize_t incall_boost_rcv_show(struct device* dev, struct device_attribute* attr,
 				     char* buf)
 {
 	return sprintf( buf, "%d\n", incall_boost_rcv >> WM8994_AIF2DAC_BOOST_SHIFT );
-}
+}				     
 
 static ssize_t incall_boost_rcv_store( struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size )
 {
 	unsigned short newval = 2;
-
+	
 	if ( sscanf( buf, "%hd", &newval ) == 1 )
 	{
 		if ( newval > 3 )
 		{
 			newval = 3;
 		}
-
+		
 		incall_boost_rcv = newval << WM8994_AIF2DAC_BOOST_SHIFT;
-
+		
 		wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_rcv);
 	}
 	return size;
@@ -1105,23 +1103,23 @@ static ssize_t incall_boost_bt_show(struct device* dev, struct device_attribute*
 				     char* buf)
 {
 	return sprintf( buf, "%d\n", incall_boost_bt >> WM8994_AIF2DAC_BOOST_SHIFT );
-}
+}				     
 
 static ssize_t incall_boost_bt_store( struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size )
 {
 	unsigned short newval = 2;
-
+	
 	if ( sscanf( buf, "%hd", &newval ) == 1 )
 	{
 		if ( newval > 3 )
 		{
 			newval = 3;
 		}
-
+		
 		incall_boost_bt = newval << WM8994_AIF2DAC_BOOST_SHIFT;
-
+		
 		wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_bt);
 	}
 	return size;
@@ -1131,23 +1129,23 @@ static ssize_t incall_boost_spk_show(struct device* dev, struct device_attribute
 				     char* buf)
 {
 	return sprintf( buf, "%d\n", incall_boost_spk >> WM8994_AIF2DAC_BOOST_SHIFT  );
-}
+}				     
 
 static ssize_t incall_boost_spk_store( struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size )
 {
 	unsigned short newval = 2;
-
+	
 	if ( sscanf( buf, "%hd", &newval ) == 1 )
 	{
 		if ( newval > 3 )
 		{
 			newval = 3;
 		}
-
+		
 		incall_boost_spk = newval << WM8994_AIF2DAC_BOOST_SHIFT;
-
+		
 		wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_spk);
 	}
 	return size;
@@ -1157,23 +1155,23 @@ static ssize_t incall_boost_hp_show(struct device* dev, struct device_attribute*
 				     char* buf)
 {
 	return sprintf( buf, "%d\n", incall_boost_hp >> WM8994_AIF2DAC_BOOST_SHIFT  );
-}
+}				     
 
 static ssize_t incall_boost_hp_store( struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size )
 {
 	unsigned short newval = 2;
-
+	
 	if ( sscanf( buf, "%hd", &newval ) == 1 )
 	{
 		if ( newval > 3 )
 		{
 			newval = 3;
 		}
-
+		
 		incall_boost_hp = newval << WM8994_AIF2DAC_BOOST_SHIFT;
-
+		
 		wm8994_write(codec, WM8994_AIF2_CONTROL_2, incall_boost_hp);
 	}
 	return size;
@@ -1187,7 +1185,7 @@ void update_mic_gain(unsigned short gain)
 	wm8994_write(codec, WM8994_LEFT_LINE_INPUT_1_2_VOLUME, val);
 }
 
-static ssize_t incall_mic_gain_rcv_show( struct device* dev,
+static ssize_t incall_mic_gain_rcv_show( struct device* dev, 
 					 struct device_attribute* attr,
 				         char* buf)
 {
@@ -1195,11 +1193,11 @@ static ssize_t incall_mic_gain_rcv_show( struct device* dev,
 }
 
 static ssize_t incall_mic_gain_rcv_store( struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t size)
+				      	  struct device_attribute *attr,
+				      	  const char *buf, size_t size)
 {
 	DECLARE_WM8994(codec);
-
+	
 	unsigned short newGain = 0;
 	if ( sscanf( buf, "%hd", &newGain ) == 1 )
 	{
@@ -1207,32 +1205,32 @@ static ssize_t incall_mic_gain_rcv_store( struct device *dev,
 		{
 			newGain = 0x1f;
 		}
-
+		
 		incall_mic_gain_rcv = newGain;
-
+		
 		if ( wm8994->codec_state & CALL_ACTIVE &&
 		     wm8994->cur_path == RCV )
 		{
 			update_mic_gain(incall_mic_gain_rcv);
 		}
-
+		
 	}
 	return size;
 }
 
-static ssize_t incall_mic_gain_spk_show( struct device* dev,
+static ssize_t incall_mic_gain_spk_show( struct device* dev, 
 					 struct device_attribute* attr,
-					 char* buf)
+				         char* buf)
 {
 	return sprintf( buf, "%d\n", incall_mic_gain_spk  );
 }
 
 static ssize_t incall_mic_gain_spk_store( struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t size)
+				      	  struct device_attribute *attr,
+				      	  const char *buf, size_t size)
 {
 	DECLARE_WM8994(codec);
-
+	
 	unsigned short newGain = 0;
 	if ( sscanf( buf, "%hd", &newGain ) == 1 )
 	{
@@ -1240,19 +1238,19 @@ static ssize_t incall_mic_gain_spk_store( struct device *dev,
 		{
 			newGain = 0x1f;
 		}
-
+		
 		incall_mic_gain_spk = newGain;
-
+		
 		if ( wm8994->codec_state & CALL_ACTIVE &&
 		     wm8994->cur_path == SPK )
 		{
 			update_mic_gain(incall_mic_gain_spk);
-		}
+		}		
 	}
 	return size;
 }
 
-static ssize_t incall_mic_gain_hp_show( struct device* dev,
+static ssize_t incall_mic_gain_hp_show( struct device* dev, 
 					 struct device_attribute* attr,
 				         char* buf)
 {
@@ -1260,11 +1258,11 @@ static ssize_t incall_mic_gain_hp_show( struct device* dev,
 }
 
 static ssize_t incall_mic_gain_hp_store( struct device *dev,
-					 struct device_attribute *attr,
-					 const char *buf, size_t size)
+				      	  struct device_attribute *attr,
+				      	  const char *buf, size_t size)
 {
 	DECLARE_WM8994(codec);
-
+	
 	unsigned short newGain = 0;
 	if ( sscanf( buf, "%hd", &newGain ) == 1 )
 	{
@@ -1272,19 +1270,19 @@ static ssize_t incall_mic_gain_hp_store( struct device *dev,
 		{
 			newGain = 0x1f;
 		}
-
+		
 		incall_mic_gain_hp = newGain;
-
+		
 		if ( wm8994->codec_state & CALL_ACTIVE &&
 		     wm8994->cur_path == HP )
 		{
 			update_mic_gain(incall_mic_gain_hp);
-		}
+		}		
 	}
 	return size;
 }
 
-static ssize_t incall_mic_gain_hp_no_mic_show( struct device* dev,
+static ssize_t incall_mic_gain_hp_no_mic_show( struct device* dev, 
 					 struct device_attribute* attr,
 				         char* buf)
 {
@@ -1292,11 +1290,11 @@ static ssize_t incall_mic_gain_hp_no_mic_show( struct device* dev,
 }
 
 static ssize_t incall_mic_gain_hp_no_mic_store( struct device *dev,
-						struct device_attribute *attr,
-						const char *buf, size_t size)
+				      	  struct device_attribute *attr,
+				      	  const char *buf, size_t size)
 {
 	DECLARE_WM8994(codec);
-
+	
 	unsigned short newGain = 0;
 	if ( sscanf( buf, "%hd", &newGain ) == 1 )
 	{
@@ -1304,18 +1302,17 @@ static ssize_t incall_mic_gain_hp_no_mic_store( struct device *dev,
 		{
 			newGain = 0x1f;
 		}
-
+		
 		incall_mic_gain_hp_no_mic = newGain;
-
+		
 		if ( wm8994->codec_state & CALL_ACTIVE &&
 		     wm8994->cur_path == HP_NO_MIC )
 		{
 			update_mic_gain(incall_mic_gain_hp_no_mic);
-		}
+		}		
 	}
 	return size;
 }
-#endif
 
 static ssize_t digital_gain_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
@@ -1685,11 +1682,10 @@ static DEVICE_ATTR(recording_preset, S_IRUGO | S_IWUGO,
 		   recording_preset_store);
 #endif
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 static DEVICE_ATTR(incall_boost_rcv, S_IRUGO | S_IWUGO,
 		   incall_boost_rcv_show,
 		   incall_boost_rcv_store);
-
+		   
 static DEVICE_ATTR(incall_boost_bt, S_IRUGO | S_IWUGO,
 		   incall_boost_bt_show,
 		   incall_boost_bt_store);
@@ -1697,27 +1693,26 @@ static DEVICE_ATTR(incall_boost_bt, S_IRUGO | S_IWUGO,
 static DEVICE_ATTR(incall_boost_spk, S_IRUGO | S_IWUGO,
 		   incall_boost_spk_show,
 		   incall_boost_spk_store);
-
+		   
 static DEVICE_ATTR(incall_boost_hp, S_IRUGO | S_IWUGO,
 		   incall_boost_hp_show,
 		   incall_boost_hp_store);
-
+		   
 static DEVICE_ATTR(incall_mic_gain_rcv, S_IRUGO | S_IWUGO,
 		   incall_mic_gain_rcv_show,
 		   incall_mic_gain_rcv_store);
-
+		   
 static DEVICE_ATTR(incall_mic_gain_spk, S_IRUGO | S_IWUGO,
 		   incall_mic_gain_spk_show,
-		   incall_mic_gain_spk_store);
-
+		   incall_mic_gain_spk_store);	
+		   
 static DEVICE_ATTR(incall_mic_gain_hp, S_IRUGO | S_IWUGO,
 		   incall_mic_gain_hp_show,
 		   incall_mic_gain_hp_store);
-
+		   
 static DEVICE_ATTR(incall_mic_gain_hp_no_mic, S_IRUGO | S_IWUGO,
 		   incall_mic_gain_hp_no_mic_show,
 		   incall_mic_gain_hp_no_mic_store);
-#endif
 
 static DEVICE_ATTR(dac_osr128, S_IRUGO | S_IWUGO,
 		   dac_osr128_show,
@@ -1816,17 +1811,15 @@ static struct attribute *wm8994_extensions_attributes[] = {
 	&dev_attr_recording_preset.attr,
 #endif
 
-#ifdef CONFIG_PHONE_ARIES_CDMA
 	&dev_attr_incall_boost_rcv.attr,
 	&dev_attr_incall_boost_bt.attr,
 	&dev_attr_incall_boost_spk.attr,
 	&dev_attr_incall_boost_hp.attr,
-
+	
 	&dev_attr_incall_mic_gain_rcv.attr,
 	&dev_attr_incall_mic_gain_spk.attr,
 	&dev_attr_incall_mic_gain_hp.attr,
 	&dev_attr_incall_mic_gain_hp_no_mic.attr,
-#endif
 
 	&dev_attr_dac_osr128.attr,
 	&dev_attr_adc_osr128.attr,
@@ -2141,3 +2134,4 @@ void wm8994_extensions_pcm_probe(struct snd_soc_codec *codec_)
 	// initialize eq_band_values[] from default codec EQ values
 	load_current_eq_values();
 }
+
