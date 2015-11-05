@@ -857,6 +857,7 @@ static int inet_diag_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 		return -EINVAL;
 
 	if (nlh->nlmsg_flags & NLM_F_DUMP) {
+		struct netlink_dump_control c = { .dump = inet_diag_dump, };
 		if (nlmsg_attrlen(nlh, hdrlen)) {
 			struct nlattr *attr;
 
@@ -868,8 +869,7 @@ static int inet_diag_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 				return -EINVAL;
 		}
 
-		return netlink_dump_start(idiagnl, skb, nlh,
-					  inet_diag_dump, NULL, 0);
+		return netlink_dump_start(idiagnl, skb, nlh, &c, 0);
 	}
 
 	return inet_diag_get_exact(skb, nlh);

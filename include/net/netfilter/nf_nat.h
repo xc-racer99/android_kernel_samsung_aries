@@ -10,6 +10,9 @@ enum nf_nat_manip_type {
 	IP_NAT_MANIP_DST
 };
 
+#define NF_NAT_MANIP_SRC IP_NAT_MANIP_SRC
+#define NF_NAT_MANIP_DST IP_NAT_MANIP_DST
+
 /* SRC manip occurs POST_ROUTING or LOCAL_IN */
 #define HOOK2MANIP(hooknum) ((hooknum) != NF_INET_POST_ROUTING && \
 			     (hooknum) != NF_INET_LOCAL_IN)

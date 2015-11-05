@@ -1981,12 +1981,13 @@ static int rtnetlink_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 
 	if (kind == 2 && nlh->nlmsg_flags&NLM_F_DUMP) {
 		struct sock *rtnl;
-		rtnl_dumpit_func dumpit;
+
+		struct netlink_dump_control c = {.dump = rtnl_get_dumpit(family, type), };
 		rtnl_calcit_func calcit;
 		u16 min_dump_alloc = 0;
 
-		dumpit = rtnl_get_dumpit(family, type);
-		if (dumpit == NULL)
+
+		if (c.dump == NULL)
 			return -EOPNOTSUPP;
 		calcit = rtnl_get_calcit(family, type);
 		if (calcit)
@@ -1994,8 +1995,8 @@ static int rtnetlink_rcv_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 
 		__rtnl_unlock();
 		rtnl = net->rtnl;
-		err = netlink_dump_start(rtnl, skb, nlh, dumpit,
-					 NULL, min_dump_alloc);
+
+		err = netlink_dump_start(rtnl, skb, nlh, &c, min_dump_alloc);
 		rtnl_lock();
 		return err;
 	}

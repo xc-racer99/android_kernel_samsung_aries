@@ -1682,6 +1682,7 @@ static int netlink_dump(struct sock *sk)
 	int len, err = -ENOBUFS;
 	int alloc_size;
 
+
 	mutex_lock(nlk->cb_mutex);
 
 	cb = nlk->cb;
@@ -1735,11 +1736,7 @@ errout:
 }
 
 int netlink_dump_start(struct sock *ssk, struct sk_buff *skb,
-		       const struct nlmsghdr *nlh,
-		       int (*dump)(struct sk_buff *skb,
-				   struct netlink_callback *),
-		       int (*done)(struct netlink_callback *),
-		       u16 min_dump_alloc)
+		       const struct nlmsghdr *nlh, struct netlink_dump_control *dctl, u16 min_dump_alloc)
 {
 	struct netlink_callback *cb;
 	struct sock *sk;
@@ -1750,12 +1747,14 @@ int netlink_dump_start(struct sock *ssk, struct sk_buff *skb,
 	if (cb == NULL)
 		return -ENOBUFS;
 
-	cb->dump = dump;
-	cb->done = done;
+	cb->dump = dctl->dump;
+	cb->done = dctl->done;
+	cb->data = dctl->data;
 	cb->nlh = nlh;
 	cb->min_dump_alloc = min_dump_alloc;
 	atomic_inc(&skb->users);
 	cb->skb = skb;
+
 
 	sk = netlink_lookup(sock_net(ssk), ssk->sk_protocol, NETLINK_CB(skb).pid);
 	if (sk == NULL) {
@@ -1763,6 +1762,7 @@ int netlink_dump_start(struct sock *ssk, struct sk_buff *skb,
 		return -ECONNREFUSED;
 	}
 	nlk = nlk_sk(sk);
+
 	/* A dump is in progress... */
 	mutex_lock(nlk->cb_mutex);
 	if (nlk->cb) {

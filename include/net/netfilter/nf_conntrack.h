@@ -227,6 +227,9 @@ extern void __nf_ct_refresh_acct(struct nf_conn *ct,
 				 unsigned long extra_jiffies,
 				 int do_acct);
 
+
+extern int nf_conntrack_hash_check_insert(struct nf_conn *ct);
+
 /* Refresh conntrack for this many jiffies and do accounting */
 static inline void nf_ct_refresh_acct(struct nf_conn *ct,
 				      enum ip_conntrack_info ctinfo,
