@@ -338,6 +338,15 @@ static int call_undef_hook(struct pt_regs *regs, unsigned int instr)
 	return fn ? fn(regs, instr) : 1;
 }
 
+
+/*
+ * True if instr is a 32-bit thumb instruction. This works if instr
+ * is the first or only half-word of a thumb instruction. It also works
+ * when instr holds all 32-bits of a wide thumb instruction if stored
+ * in the form (first_half<<16)|(second_half)
+ */
+#define is_wide_instruction(instr)	((unsigned)(instr) >= 0xe800)
+
 asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 {
 	unsigned int correction = thumb_mode(regs) ? 2 : 4;
@@ -358,6 +367,12 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 		instr = *(u32 *) pc;
 	} else if (thumb_mode(regs)) {
 		get_user(instr, (u16 __user *)pc);
+		if (is_wide_instruction(instr)) {
+			unsigned int instr2;
+			get_user(instr2, (u16 __user *)pc+1);
+			instr <<= 16;
+			instr |= instr2;
+		}
 	} else {
 		get_user(instr, (u32 __user *)pc);
 	}
