@@ -179,7 +179,8 @@ from_old_alarm_set:
 			break;
 		case ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP:
 		case ANDROID_ALARM_ELAPSED_REALTIME:
-			get_monotonic_boottime(&tmp_time);
+			tmp_time =
+				ktime_to_timespec(alarm_get_elapsed_realtime());
 			break;
 		case ANDROID_ALARM_TYPE_COUNT:
 		case ANDROID_ALARM_SYSTEMTIME:
