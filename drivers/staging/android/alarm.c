@@ -13,7 +13,7 @@
  *
  */
 
-#include <linux/time.h>
+#include <asm/mach/time.h>
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
@@ -21,6 +21,7 @@
 #include <linux/rtc.h>
 #include <linux/sched.h>
 #include <linux/spinlock.h>
+#include <linux/sysdev.h>
 #include <linux/wakelock.h>
 #include "android_alarm.h"
 
