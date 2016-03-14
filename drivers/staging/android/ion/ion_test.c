@@ -16,6 +16,7 @@
 #define pr_fmt(fmt) "ion-test: " fmt
 
 #include <linux/dma-buf.h>
+#include <linux/dma-direction.h>
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
