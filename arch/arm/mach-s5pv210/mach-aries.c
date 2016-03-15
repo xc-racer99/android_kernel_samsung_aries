@@ -31,9 +31,6 @@
 #include <linux/irq.h>
 #include <linux/skbuff.h>
 #include <linux/console.h>
-#ifdef CONFIG_ION_S5P
-#include <../../../drivers/staging/android/ion/ion.h>
-#endif
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -336,11 +333,6 @@ static struct s3cfb_lcd s6e63m0 = {
 						 (CONFIG_FB_S3C_NUM_OVLY_WIN * \
 						  CONFIG_FB_S3C_NUM_BUF_OVLY_WIN)))
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_JPEG (916 * SZ_1K)
-#define  S5P_MAX_VIDEO_BUFFERS	3
-#define  S5P_VIDEO_Y_SIZE	ALIGN(1280 * 720, PAGE_SIZE)
-#define  S5P_VIDEO_UV_SIZE	ALIGN(1280 * 360, PAGE_SIZE)
-#define  S5P_ION_CARVEOUT	\
-	S5P_MAX_VIDEO_BUFFERS * (S5P_VIDEO_Y_SIZE + S5P_VIDEO_UV_SIZE)
 
 static struct s5p_media_device aries_media_devs[] = {
 	[0] = {
@@ -385,15 +377,6 @@ static struct s5p_media_device aries_media_devs[] = {
 		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMD,
 		.paddr = 0,
 	},
-#ifdef CONFIG_ION_S5P
-	[6] = {
-		.id = S5P_MDEV_ION_CARVEOUT,
-		.name = "ion-carveout",
-		.bank = 1,
-		.memsize = S5P_ION_CARVEOUT,
-		.paddr = 0,
-	},
-#endif
 };
 
 #ifdef CONFIG_CPU_FREQ
@@ -5225,40 +5208,6 @@ static struct platform_device watchdog_device = {
 	.id = -1,
 };
 
-#ifdef CONFIG_ION_S5P
-struct ion_platform_heap aries_heaps[] = {
-	{
-		.id	    = ION_HEAP_TYPE_SYSTEM,
-		.type	= ION_HEAP_TYPE_SYSTEM,
-		.name	= "system",
-	},{
-		.id	    = ION_HEAP_TYPE_CARVEOUT,
-		.type	= ION_HEAP_TYPE_CARVEOUT,
-		.name	= "carveout",
-	}
-};
-static struct ion_platform_data ion_s5p_data = {
-	.nr = ARRAY_SIZE(aries_heaps),
-	.heaps = aries_heaps,
-};
-
-static struct platform_device ion_s5p_device = {
-	.name = "ion-s5p",
-	.id = -1,
-	.dev = {
-		.platform_data = &ion_s5p_data,
-	},
-};
-
-static void __init ion_s5p_set_platdata(void)
-{
-	ion_s5p_data.heaps[1].base =
-		s5p_get_media_memory_bank(S5P_MDEV_ION_CARVEOUT, 1);
-	ion_s5p_data.heaps[1].size =
-		s5p_get_media_memsize_bank(S5P_MDEV_ION_CARVEOUT, 1);
-}
-#endif /* CONFIG_ION_S5P */
-
 static struct platform_device *aries_devices[] __initdata = {
 	&watchdog_device,
 #ifdef CONFIG_FIQ_DEBUGGER
@@ -5392,9 +5341,6 @@ static struct platform_device *aries_devices[] __initdata = {
 	&sec_device_wifi,
 	&samsung_asoc_dma,
 
-#ifdef CONFIG_ION_S5P
-	&ion_s5p_device,
-#endif
 };
 
 static void check_bigmem(void) {
@@ -5665,10 +5611,6 @@ static void __init aries_machine_init(void)
 
 	/*initialise the gpio's*/
 	aries_init_gpio();
-
-#ifdef CONFIG_ION_S5P
-	ion_s5p_set_platdata();
-#endif
 
 	/* headset/earjack detection */
 #if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_GALAXYS4G)
