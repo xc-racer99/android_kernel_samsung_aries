@@ -1545,9 +1545,9 @@ static void set_shared_mic_bias(void)
     }
     gpio_set_value(GPIO_EARPATH_SEL, jack_mic_bias);
 #elif defined(CONFIG_SAMSUNG_GALAXYS4G)
-	gpio_set_value(GPIO_MICBIAS_EN, wm8994_mic_bias || jack_mic_bias);
-	gpio_set_value(GPIO_MICBIAS_EN2, jack_mic_bias);
-	gpio_set_value(GPIO_MICBIAS_EN, wm8994_mic_bias);
+	gpio_set_value(GPIO_MICBIAS_EN, wm8994_mic_bias);// GPJ4(2)
+	gpio_set_value(GPIO_MICBIAS_EN2, jack_mic_bias || wm8994_mic_bias); // GPJ2(5)
+	gpio_set_value(GPIO_EARPATH_SEL, wm8994_mic_bias || jack_mic_bias);
 #else
 	gpio_set_value(GPIO_MICBIAS_EN, wm8994_mic_bias || jack_mic_bias);
     gpio_set_value(GPIO_EARPATH_SEL, wm8994_mic_bias || jack_mic_bias);
@@ -3001,7 +3001,7 @@ struct sec_jack_platform_data sec_jack_pdata = {
 	.buttons_zones = sec_jack_buttons_zones,
 	.num_buttons_zones = ARRAY_SIZE(sec_jack_buttons_zones),
 	.det_gpio = GPIO_DET_35,
-#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_GALAXYS4G)
+#if defined(CONFIG_SAMSUNG_CAPTIVATE)
 	.send_end_gpio = GPIO_EAR_SEND_END35,
 #else
 	.send_end_gpio = GPIO_EAR_SEND_END,
