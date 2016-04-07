@@ -5376,9 +5376,9 @@ static void __init aries_map_io(void)
 #endif
 #endif
 }
-#ifdef CONFIG_SAMSUNG_PM_DEBUG
+
 unsigned int pm_debug_scratchpad;
-#endif
+
 static unsigned int ram_console_start;
 static unsigned int ram_console_size;
 
@@ -5393,10 +5393,6 @@ static void __init aries_fixup(struct machine_desc *desc,
 	mi->bank[1].size = 256 * SZ_1M;
 
 	mi->bank[2].start = 0x50000000;
-#ifndef CONFIG_SAMSUNG_PM_DEBUG
-	mi->bank[2].size = 128 * SZ_1M;
-	mi->nr_banks = 3;
-#else
 	/* 1M for ram_console buffer */
 	mi->bank[2].size = 127 * SZ_1M;
 	mi->nr_banks = 3;
@@ -5405,7 +5401,6 @@ static void __init aries_fixup(struct machine_desc *desc,
 	ram_console_size = SZ_1M - SZ_4K;
 
 	pm_debug_scratchpad = ram_console_start + ram_console_size;
-#endif
 }
 
 /* this function are used to detect s5pc110 chip version temporally */

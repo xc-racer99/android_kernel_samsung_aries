@@ -37,7 +37,6 @@
 
 unsigned long s3c_pm_flags;
 
-#ifdef CONFIG_SAMSUNG_PM_DEBUG
 /* ---------------------------------------------- */
 extern unsigned int pm_debug_scratchpad;
 #include <linux/slab.h>
@@ -119,6 +118,7 @@ void __init pmstats_init(void)
  * resume before the console layer is available.
 */
 
+#ifdef CONFIG_SAMSUNG_PM_DEBUG
 extern void printascii(const char *);
 
 void s3c_pm_dbg(const char *fmt, ...)
@@ -377,15 +377,11 @@ static int s3c_pm_enter(suspend_state_t state)
 	 * we resume as it saves its own register state and restores it
 	 * during the resume.  */
 
-#ifdef CONFIG_SAMSUNG_PM_DEBUG
 	pmstats->sleep_count++;
 	pmstats->sleep_freq = __raw_readl(S5P_CLK_DIV0);
-#endif
 	s3c_cpu_save(0, PLAT_PHYS_OFFSET - PAGE_OFFSET);
-#ifdef CONFIG_SAMSUNG_PM_DEBUG
 	pmstats->wake_count++;
 	pmstats->wake_freq = __raw_readl(S5P_CLK_DIV0);
-#endif
 
 	/* restore the cpu state using the kernel's cpu init code. */
 
@@ -453,9 +449,8 @@ static const struct platform_suspend_ops s3c_pm_ops = {
 int __init s3c_pm_init(void)
 {
 	printk("S3C Power Management, Copyright 2004 Simtec Electronics\n");
-#ifdef CONFIG_SAMSUNG_PM_DEBUG
 	pmstats_init();
-#endif
+
 	suspend_set_ops(&s3c_pm_ops);
 	return 0;
 }
