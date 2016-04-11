@@ -361,7 +361,6 @@ static struct s5p_media_device aries_media_devs[] = {
 		.bank = 0,
 		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_JPEG,
 		.paddr = 0,
-		.cmadev = &s3c_device_jpeg.dev,
 	},
 	[5] = {
 		.id = S5P_MDEV_FIMD,
