@@ -1,0 +1,12 @@
+How-To modify your initramfs...
+
+Since AOSP doesn't support inline kernel building, you need to build one manually and copy it over in your device tree.
+
+To do so, make sure all paths are absolute (ie in the kernel source).  To create your ramdisk.cpio (or ramdisk-recovery.cpio), run:
+	lunch aosp_deviceName-userdebug
+	mka out/target/product/deviceName/ramdisk.img
+	minigzip -d < out/target/product/deviceName/ramdisk.img > ramdisk.cpio
+
+Copy this resulting cpio to the desired place.  Don't try to edit it with anything directly as it won't work then.
+
+Note that any differences in the ramdisk (ie init.aries.rc for the vibrant) require a different ramdisk and so need a different ramdisk.cpio (see galaxys4g devices as an example)
