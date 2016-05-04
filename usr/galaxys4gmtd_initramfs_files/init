@@ -26,6 +26,41 @@ if busybox test -e /cache/.startrecovery || \
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
 
+elif busybox test -e /cache/.format_sd ; then
+	# boot from repartitionning
+	busybox echo 'REPARTITION BOOT' >>boot.txt
+
+	# purge all partitions and create one new primary one
+	# benign errors if only one partition is present
+	# commands in order are:
+		# delete both partitions
+		# create new partition
+		# make it primary
+		# make it partition number 1
+		# start at default address
+		# end at default address
+		# write to disk
+	busybox fdisk /dev/block/mmcblk0 <<EOF
+d
+2
+d
+n
+p
+1
+
+
+w
+EOF
+
+	make_ext4fs -l -16384 -a /data /dev/block/mmcblk0p1
+
+	busybox rm -fr /cache/.format_sd
+	image=/stage1/ramdisk-recovery.cpio
+	busybox echo "loading ramdisk-recovery.cpio" >>boot.txt
+
+	# disable lpm
+	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
+
 elif ! busybox test -e /system/build.prop ; then
 
 	# emergency boot
@@ -68,6 +103,7 @@ fi
 busybox umount /cache
 busybox umount /system
 busybox rmdir /sdcard
+busybox rm -rf /file_contexts
 
 busybox cpio -ui < $image
 
