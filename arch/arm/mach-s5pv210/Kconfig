@@ -444,11 +444,6 @@ config DVFS_LIMIT
 	depends on CPU_FREQ
 	default n
 
-config CPU_DIDLE
-	bool "DEEP Idle"
-	depends on CPU_IDLE
-	default n
-
 config S5PV210_SCLKFIMD_USE_VPLL
 	bool "Use VPLL for FIMD sclk source"
 	depends on FB_S3C

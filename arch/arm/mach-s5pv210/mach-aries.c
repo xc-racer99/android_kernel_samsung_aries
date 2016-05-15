@@ -159,6 +159,7 @@ static struct notifier_block aries_reboot_notifier = {
 	.notifier_call = aries_notifier_call,
 };
 
+#ifndef CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION
 static void gps_gpio_init(void)
 {
 	struct device *gps_dev;
@@ -189,6 +190,7 @@ static void gps_gpio_init(void)
  err:
 	return;
 }
+#endif
 
 static void uart_switch_init(void)
 {
@@ -1931,60 +1933,6 @@ static int ce147_power_en(int onoff)
 	return 0;
 }
 
-static int smdkc110_cam1_power(int onoff)
-{
-	int err;
-	/* Implement on/off operations */
-
-	/* CAM_VGA_nSTBY - GPB(0) */
-	err = gpio_request(S5PV210_GPB(0), "GPB");
-
-	if (err) {
-		printk(KERN_ERR "failed to request GPB for camera control\n");
-		return err;
-	}
-
-	gpio_direction_output(S5PV210_GPB(0), 0);
-	
-	mdelay(1);
-
-	gpio_direction_output(S5PV210_GPB(0), 1);
-
-	mdelay(1);
-
-	gpio_set_value(S5PV210_GPB(0), 1);
-
-	mdelay(1);
-
-	gpio_free(S5PV210_GPB(0));
-	
-	mdelay(1);
-
-	/* CAM_VGA_nRST - GPB(2) */
-	err = gpio_request(S5PV210_GPB(2), "GPB");
-
-	if (err) {
-		printk(KERN_ERR "failed to request GPB for camera control\n");
-		return err;
-	}
-
-	gpio_direction_output(S5PV210_GPB(2), 0);
-
-	mdelay(1);
-
-	gpio_direction_output(S5PV210_GPB(2), 1);
-
-	mdelay(1);
-
-	gpio_set_value(S5PV210_GPB(2), 1);
-
-	mdelay(1);
-
-	gpio_free(S5PV210_GPB(2));
-
-	return 0;
-}
-
 /*
  * Guide for Camera Configuration for Jupiter board
  * ITU CAM CH A: CE147
@@ -2040,7 +1988,7 @@ static struct s3c_platform_camera ce147 = {
 #ifdef CONFIG_VIDEO_S5KA3DFX
 /* External camera module setting */
 static DEFINE_MUTEX(s5ka3dfx_lock);
-static struct regulator *s5ka3dfx_vga_avdd;
+//static struct regulator *s5ka3dfx_vga_avdd;
 static struct regulator *s5ka3dfx_vga_vddio;
 static struct regulator *s5ka3dfx_cam_isp_host;
 static struct regulator *s5ka3dfx_vga_dvdd;
