@@ -5,6 +5,11 @@
 #ifndef __ARIES_H__
 #define __ARIES_H__
 
+#ifdef CONFIG_SAMSUNG_GALAXYS4G
+#include <asm/system.h>
+#include <asm/mach-types.h>
+#endif
+
 struct uart_port;
 
 void aries_bt_uart_wake_peer(struct uart_port *port);

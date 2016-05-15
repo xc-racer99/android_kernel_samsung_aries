@@ -19,6 +19,10 @@
 #include <linux/videodev2_samsung.h>
 #endif
 
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+extern bool is_telus_galaxys4g;
+#endif
+
 /* #define MDNIE_TUNING */
 
 #define	CE147_DRIVER_NAME	"CE147"
@@ -2101,12 +2105,10 @@ static int ce147_set_capture_exif(struct v4l2_subdev *sd)
 	unsigned char ce147_str_model[9] = "SCH-I500\0";
 #elif defined(CONFIG_SAMSUNG_VIBRANT)
 	unsigned char ce147_str_model[9] = "SGH-T959\0";
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
-	unsigned char ce147_str_model[10] = "SGH-T959P\0";
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TMOBILE_VERSION)
+#elif defined(CONFIG_SAMSUNG_GALAXYS4G)
 	unsigned char ce147_str_model[10] = "SGH-T959V\0";
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G_WIND_VERSION)
-	unsigned char ce147_str_model[10] = "SGH-T959W\0";
+	if(is_telus_galaxys4g)
+		strcpy(ce147_str_model,"SGH-T959P\0");
 #else /* Modify	NTTS1 */
 	unsigned char ce147_str_model[7] = "SC-02B\0";
 #endif

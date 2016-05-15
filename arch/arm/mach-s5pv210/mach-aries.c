@@ -118,6 +118,10 @@ EXPORT_SYMBOL(sec_set_param_value);
 void (*sec_get_param_value)(int idx, void *value);
 EXPORT_SYMBOL(sec_get_param_value);
 
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+bool is_telus_galaxys4g;
+#endif
+
 #define KERNEL_REBOOT_MASK      0xFFFFFFFF
 #define REBOOT_MODE_FAST_BOOT		7
 
@@ -162,6 +166,13 @@ static struct notifier_block aries_reboot_notifier = {
 #ifndef CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION
 static void gps_gpio_init(void)
 {
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+	if(is_telus_galaxys4g) {
+		// Do nothing
+		return;
+	}
+#endif
+
 	struct device *gps_dev;
 
 	gps_dev = device_create(sec_class, NULL, 0, NULL, "gps");
@@ -258,7 +269,7 @@ static struct s3c2410_uartcfg aries_uartcfgs[] __initdata = {
 		.flags		= 0,
 		.ucon		= S5PV210_UCON_DEFAULT,
 		.ulcon		= S5PV210_ULCON_DEFAULT,
-#ifdef CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION /* STE for CG2900 */
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
                 .ufcon		 = S3C2410_UFCON_FIFOMODE | S5PV210_UFCON_TXTRIG64 | S5PV210_UFCON_RXTRIG8, // -> RX trigger leve : 8byte.
 #else
 		.ufcon		= S5PV210_UFCON_DEFAULT,
@@ -3151,19 +3162,6 @@ static struct gpio_init_data aries_init_gpios[] = {
 		.pud	= S3C_GPIO_PULL_DOWN,
 		.drv	= S3C_GPIO_DRVSTR_1X,
 	}, {
-#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
-		.num	= S5PV210_GPD1(2), // GPIO_FM_SDA_28V
-		.cfg	= S3C_GPIO_INPUT,
-		.val	= S3C_GPIO_SETPIN_NONE,
-		.pud	= S3C_GPIO_PULL_DOWN,
-		.drv	= S3C_GPIO_DRVSTR_1X,
-	}, {
-		.num	= S5PV210_GPD1(3), // GPIO_FM_SCL_28V	
-		.cfg	= S3C_GPIO_INPUT,
-		.val	= S3C_GPIO_SETPIN_NONE,
-		.pud	= S3C_GPIO_PULL_DOWN,
-		.drv	= S3C_GPIO_DRVSTR_1X,
-#else
 		.num	= S5PV210_GPD1(2), // GPIO_FM_SDA_28V
 		.cfg	= S3C_GPIO_INPUT,
 		.val	= S3C_GPIO_SETPIN_NONE,
@@ -3175,7 +3173,6 @@ static struct gpio_init_data aries_init_gpios[] = {
 		.val	= S3C_GPIO_SETPIN_NONE,
 		.pud	= S3C_GPIO_PULL_NONE,
 		.drv	= S3C_GPIO_DRVSTR_1X,
-#endif
 	}, {
 		.num	= S5PV210_GPD1(4), // GPIO_TSP_SDA_28V
 		.cfg	= S3C_GPIO_INPUT,
@@ -3440,13 +3437,7 @@ static struct gpio_init_data aries_init_gpios[] = {
 		.val	= S3C_GPIO_SETPIN_NONE,
 		.pud	= S3C_GPIO_PULL_DOWN,
 		.drv	= S3C_GPIO_DRVSTR_1X,
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
-		.num	= S5PV210_GPG3(0), //CG2900 :nReset
-		.cfg	= S3C_GPIO_OUTPUT,
-		.val	= S3C_GPIO_SETPIN_ZERO,
-		.pud	= S3C_GPIO_PULL_UP,
-		.drv	= S3C_GPIO_DRVSTR_1X,
-#else
+#elif !defined(CONFIG_SAMSUNG_GALAXYS4G)
 		.num	= S5PV210_GPG3(0), // GPIO_GPS_nRST
 		.cfg	= S3C_GPIO_OUTPUT,
 		.val	= S3C_GPIO_SETPIN_ZERO,
@@ -3460,13 +3451,7 @@ static struct gpio_init_data aries_init_gpios[] = {
 		.val	= S3C_GPIO_SETPIN_NONE,
 		.pud	= S3C_GPIO_PULL_DOWN,
 		.drv	= S3C_GPIO_DRVSTR_1X,
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
-		.num	= S5PV210_GPG3(1), //CG2900 :PWR
-		.cfg	= S3C_GPIO_OUTPUT,
-		.val	= S3C_GPIO_SETPIN_ZERO,
-		.pud	= S3C_GPIO_PULL_UP,
-		.drv	= S3C_GPIO_DRVSTR_1X,
-#else
+#elif !defined(CONFIG_SAMSUNG_GALAXYS4G)
 		.num	= S5PV210_GPG3(1), // GPIO_GPS_PWR_EN
 		.cfg	= S3C_GPIO_OUTPUT,
 		.val	= S3C_GPIO_SETPIN_ZERO,
@@ -4284,6 +4269,40 @@ static struct gpio_init_data aries_init_gpios[] = {
 	},
 };
 
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+static struct gpio_init_data telus_galaxys4g_init_gpios[] = {
+	{
+		.num	= S5PV210_GPG3(0), //CG2900 :nReset
+		.cfg	= S3C_GPIO_OUTPUT,
+		.val	= S3C_GPIO_SETPIN_ZERO,
+		.pud	= S3C_GPIO_PULL_UP,
+		.drv	= S3C_GPIO_DRVSTR_1X,
+	}, {
+		.num	= S5PV210_GPG3(1), //CG2900 :PWR
+		.cfg	= S3C_GPIO_OUTPUT,
+		.val	= S3C_GPIO_SETPIN_ZERO,
+		.pud	= S3C_GPIO_PULL_UP,
+		.drv	= S3C_GPIO_DRVSTR_1X,
+	},
+};
+
+static struct gpio_init_data tmobile_galaxys4g_init_gpios[] = {
+	{
+		.num	= S5PV210_GPG3(0), // GPIO_GPS_nRST
+		.cfg	= S3C_GPIO_OUTPUT,
+		.val	= S3C_GPIO_SETPIN_ZERO,
+		.pud	= S3C_GPIO_PULL_NONE,
+		.drv	= S3C_GPIO_DRVSTR_1X,
+	}, {
+		.num	= S5PV210_GPG3(1), // GPIO_GPS_PWR_EN
+		.cfg	= S3C_GPIO_OUTPUT,
+		.val	= S3C_GPIO_SETPIN_ZERO,
+		.pud	= S3C_GPIO_PULL_NONE,
+		.drv	= S3C_GPIO_DRVSTR_1X,
+	},
+};
+#endif
+
 void s3c_config_gpio_table(void)
 {
 	u32 i, gpio;
@@ -4303,6 +4322,30 @@ void s3c_config_gpio_table(void)
 			s3c_gpio_set_drvstrength(gpio, aries_init_gpios[i].drv);
 		}
 	}
+#ifdef CONFIG_SAMSUNG_GALAYXS4G
+	if (is_telus_galaxys4g)
+		for (i = 0; i < ARRAY_SIZE(telus_galaxys4g_init_gpios); i++) {
+			gpio = telus_galaxys4g_init_gpios[i].num;
+			s3c_gpio_cfgpin(gpio, telus_galaxys4g_init_gpios[i].cfg);
+			s3c_gpio_setpull(gpio, telus_galaxys4g_init_gpios[i].pud);
+
+			if (telus_galaxys4g_init_gpios[i].val != S3C_GPIO_SETPIN_NONE)
+				gpio_set_value(gpio, telus_galaxys4g_init_gpios[i].val);
+
+			s3c_gpio_set_drvstrength(gpio, telus_galaxys4g_init_gpios[i].drv);
+		}
+	else
+		for (i = 0; i < ARRAY_SIZE(tmobile_galaxys4g_init_gpios); i++) {
+			gpio = tmobile_galaxys4g_init_gpios[i].num;
+			s3c_gpio_cfgpin(gpio, tmobile_galaxys4g_init_gpios[i].cfg);
+			s3c_gpio_setpull(gpio, tmobile_galaxys4g_init_gpios[i].pud);
+
+			if (tmobile_galaxys4g_init_gpios[i].val != S3C_GPIO_SETPIN_NONE)
+				gpio_set_value(gpio, tmobile_galaxys4g_init_gpios[i].val);
+
+			s3c_gpio_set_drvstrength(gpio, tmobile_galaxys4g_init_gpios[i].drv);
+		}
+#endif
 #ifdef CONFIG_SAMSUNG_FASCINATE
 	s3c_gpio_set_drvstrength(S5PV210_GPH3(7), S3C_GPIO_DRVSTR_4X);
 #endif
@@ -4352,17 +4395,12 @@ static unsigned int aries_sleep_gpio_table[][3] = {
   	{ S5PV210_GPA0(5), S3C_GPIO_SLP_OUT0,   S3C_GPIO_PULL_NONE},
   	{ S5PV210_GPA0(6), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_NONE},
   	{ S5PV210_GPA0(7), S3C_GPIO_SLP_OUT1,   S3C_GPIO_PULL_NONE},
-#elif defined (CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
-	{ S5PV210_GPA0(4), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
-	{ S5PV210_GPA0(5), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
-	{ S5PV210_GPA0(6), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
-	{ S5PV210_GPA0(7), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
-#elif defined (CONFIG_SAMSUNG_VIBRANT) || defined (CONFIG_SAMSUNG_GALAXYS4G)
+#elif defined (CONFIG_SAMSUNG_VIBRANT)
     { S5PV210_GPA0(4), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
   	{ S5PV210_GPA0(5), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP}, 
   	{ S5PV210_GPA0(6), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN}, 
   	{ S5PV210_GPA0(7), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN}, 
-#else
+#elif !defined(CONFIG_SAMSUNG_GALAXYS4G)
   	{ S5PV210_GPA0(4), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN},
   	{ S5PV210_GPA0(5), S3C_GPIO_SLP_OUT0,   S3C_GPIO_PULL_NONE},
   	{ S5PV210_GPA0(6), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN},
@@ -4570,13 +4608,7 @@ static unsigned int aries_sleep_gpio_table[][3] = {
 #if defined (CONFIG_SAMSUNG_VIBRANT)
   	{ S5PV210_GPG3(0), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
   	{ S5PV210_GPG3(1), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G) && !defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
-	{ S5PV210_GPG3(0), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_NONE},
-	{ S5PV210_GPG3(1), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_NONE},
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
- 	{ S5PV210_GPG3(0), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_UP},	//GPIO_GPS_nRST dig
-	{ S5PV210_GPG3(1), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_UP},	//GPIO_GPS_EN : MIDAS[2010.09.04] temporary out0 for sleep
-#else
+#elif !defined(CONFIG_SAMSUNG_GALAXYS4G)
   	{ S5PV210_GPG3(0), S3C_GPIO_SLP_OUT1,   S3C_GPIO_PULL_NONE},
   	{ S5PV210_GPG3(1), S3C_GPIO_SLP_OUT0,   S3C_GPIO_PULL_NONE},
 #endif
@@ -4812,6 +4844,23 @@ static unsigned int aries_sleep_gpio_table[][3] = {
 	/* Memory part ending and off part ending */
 };
 
+static unsigned int telus_galaxys4g_sleep_gpio_table[][3] = {
+	{ S5PV210_GPA0(4), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE},
+	{ S5PV210_GPA0(5), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE},
+	{ S5PV210_GPA0(6), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE},
+	{ S5PV210_GPA0(7), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE},
+	{ S5PV210_GPG3(0), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_UP},	//GPIO_GPS_nRST dig
+	{ S5PV210_GPG3(1), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_UP},	//GPIO_GPS_EN : MIDAS[2010.09.04] temporary out0 for sleep
+};
+static unsigned int tmobile_galaxys4g_sleep_gpio_table[][3] = {
+	{ S5PV210_GPA0(4), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
+	{ S5PV210_GPA0(5), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
+	{ S5PV210_GPA0(6), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN},
+	{ S5PV210_GPA0(7), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN},
+	{ S5PV210_GPG3(0), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_NONE},
+	{ S5PV210_GPG3(1), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_NONE},
+};
+
 void s3c_config_sleep_gpio_table(int array_size, unsigned int (*gpio_table)[3])
 {
 	u32 i, gpio;
@@ -4999,6 +5048,18 @@ void s3c_config_sleep_gpio(void)
 #endif
 	gpio_set_value(S5PV210_GPH2(3), 1);
 #endif /* CONFIG_SAMSUNG_GALAXYS4G */
+
+	s3c_config_sleep_gpio_table(ARRAY_SIZE(aries_sleep_gpio_table),
+			aries_sleep_gpio_table);
+
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+	if(is_telus_galaxys4g)
+		s3c_config_sleep_gpio_table(ARRAY_SIZE(telus_galaxys4g_sleep_gpio_table),
+				aries_sleep_gpio_table);
+	else
+		s3c_config_sleep_gpio_table(ARRAY_SIZE(tmobile_galaxys4g_sleep_gpio_table),
+				aries_sleep_gpio_table);
+#endif
 
 #if !defined(CONFIG_SAMSUNG_FASCINATE)
 	if (gpio_get_value(GPIO_PS_ON)) {
@@ -5664,6 +5725,11 @@ static void __init aries_machine_init(void)
 	printk(KERN_INFO "HWREV is 0x%x\n", HWREV);
 
 #if defined(CONFIG_SAMSUNG_GALAXYS4G)
+	if(HWREV == 0xF)
+		is_telus_galaxys4g = true;
+	else
+		is_telus_galaxys4g = false;
+
 	s3c_gpio_cfgpin(S5PV210_GPH3(5), S3C_GPIO_INPUT);
 	s3c_gpio_setpull( S5PV210_GPH3(5), S3C_GPIO_PULL_NONE);
 	VPLUSVER = gpio_get_value(S5PV210_GPH3(5));
@@ -5789,9 +5855,7 @@ static void __init aries_machine_init(void)
 
 	aries_switch_init();
 
-#if !defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
  	gps_gpio_init();
-#endif
 
 	uart_switch_init();
 
@@ -5963,15 +6027,26 @@ void s3c_setup_uart_cfg_gpio(unsigned char port)
 		s3c_gpio_slp_setpull_updown(GPIO_BT_RTS, S3C_GPIO_PULL_NONE);
 		break;
 	case 1:
-#ifdef CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION /* STE for CG2900 */
-		s3c_gpio_cfgpin(GPIO_GPS_RXD, S3C_GPIO_SFN(GPIO_GPS_RXD_AF));
-		s3c_gpio_setpull(GPIO_GPS_RXD, S3C_GPIO_PULL_NONE);// up -> none
-		s3c_gpio_cfgpin(GPIO_GPS_TXD, S3C_GPIO_SFN(GPIO_GPS_TXD_AF));
-		s3c_gpio_setpull(GPIO_GPS_TXD, S3C_GPIO_PULL_NONE);
-		s3c_gpio_cfgpin(GPIO_GPS_CTS, S3C_GPIO_SFN(GPIO_GPS_CTS_AF));
-		s3c_gpio_setpull(GPIO_GPS_CTS, S3C_GPIO_PULL_NONE);
-		s3c_gpio_cfgpin(GPIO_GPS_RTS, S3C_GPIO_SFN(GPIO_GPS_RTS_AF));
-		s3c_gpio_setpull(GPIO_GPS_RTS, S3C_GPIO_PULL_NONE);
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+		if(is_telus_galaxys4g) {
+			s3c_gpio_cfgpin(GPIO_GPS_RXD, S3C_GPIO_SFN(GPIO_GPS_RXD_AF));
+			s3c_gpio_setpull(GPIO_GPS_RXD, S3C_GPIO_PULL_NONE);// up -> none
+			s3c_gpio_cfgpin(GPIO_GPS_TXD, S3C_GPIO_SFN(GPIO_GPS_TXD_AF));
+			s3c_gpio_setpull(GPIO_GPS_TXD, S3C_GPIO_PULL_NONE);
+			s3c_gpio_cfgpin(GPIO_GPS_CTS, S3C_GPIO_SFN(GPIO_GPS_CTS_AF));
+			s3c_gpio_setpull(GPIO_GPS_CTS, S3C_GPIO_PULL_NONE);
+			s3c_gpio_cfgpin(GPIO_GPS_RTS, S3C_GPIO_SFN(GPIO_GPS_RTS_AF));
+			s3c_gpio_setpull(GPIO_GPS_RTS, S3C_GPIO_PULL_NONE);
+		} else {
+			s3c_gpio_cfgpin(GPIO_GPS_RXD, S3C_GPIO_SFN(GPIO_GPS_RXD_AF));
+			s3c_gpio_setpull(GPIO_GPS_RXD, S3C_GPIO_PULL_UP);
+			s3c_gpio_cfgpin(GPIO_GPS_TXD, S3C_GPIO_SFN(GPIO_GPS_TXD_AF));
+			s3c_gpio_setpull(GPIO_GPS_TXD, S3C_GPIO_PULL_NONE);
+			s3c_gpio_cfgpin(GPIO_GPS_CTS, S3C_GPIO_SFN(GPIO_GPS_CTS_AF));
+			s3c_gpio_setpull(GPIO_GPS_CTS, S3C_GPIO_PULL_NONE);
+			s3c_gpio_cfgpin(GPIO_GPS_RTS, S3C_GPIO_SFN(GPIO_GPS_RTS_AF));
+			s3c_gpio_setpull(GPIO_GPS_RTS, S3C_GPIO_PULL_NONE);
+		}
 #else
 		s3c_gpio_cfgpin(GPIO_GPS_RXD, S3C_GPIO_SFN(GPIO_GPS_RXD_AF));
 		s3c_gpio_setpull(GPIO_GPS_RXD, S3C_GPIO_PULL_UP);
@@ -6001,7 +6076,7 @@ void s3c_setup_uart_cfg_gpio(unsigned char port)
 }
 EXPORT_SYMBOL(s3c_setup_uart_cfg_gpio);
 
-#if defined (CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)  /* STE for CG2900 */
+#if defined (CONFIG_MFD_CG2900)  /* STE for CG2900 */
 void cg29xx_uart_disable(void)
 {
 	printk("cg29xx_uart_disable");

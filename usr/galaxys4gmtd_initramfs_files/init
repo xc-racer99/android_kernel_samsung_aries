@@ -38,13 +38,13 @@ elif ! busybox test -e /system/build.prop ; then
 	busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
 	busybox sleep 1
 
-	if busybox test -e /sdcard/omni.cfg ; then
-		busybox echo "installing: `busybox cat /sdcard/omni.cfg`" >>boot.txt
+	if busybox test -e /sdcard/galaxys4g.cfg ; then
+		busybox echo "installing: `busybox cat /sdcard/galaxys4g.cfg`" >>boot.txt
 		busybox echo "creating recovery command" >>boot.txt
 		busybox touch /cache/recovery/command
-		busybox echo "--update_package=`busybox cat /sdcard/omni.cfg`" > /cache/recovery/command
+		busybox echo "--update_package=`busybox cat /sdcard/galaxys4g.cfg`" > /cache/recovery/command
 	else
-		busybox echo "omni.cfg not found" >>boot.txt
+		busybox echo "galaxys4g.cfg not found" >>boot.txt
 	fi
 
 	busybox echo "loading ramdisk-recovery.cpio" >>boot.txt

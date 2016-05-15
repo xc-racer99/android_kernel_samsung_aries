@@ -22,7 +22,7 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-#if defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
+#if defined(CONFIG_MFD_CG2900)
 #ifndef N_BT_HCI
 #define N_BT_HCI	22
 #endif

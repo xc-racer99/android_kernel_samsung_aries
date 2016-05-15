@@ -314,26 +314,7 @@ config SAMSUNG_GALAXYS4G
 	bool "select SGHT959V/SGHT959W/SGHT959P"
 	depends on MACH_ARIES
 	help
-	 Select Samsung Galaxy S 4G SGH-T959V
-
-if SAMSUNG_GALAXYS4G
-choice
-prompt "Select device variant"
-config SAMSUNG_GALAXYS4G_TMOBILE_VERSION
-	bool "select T959V"
-	help
-	 Select Samsung Galaxy S 4G SGH-T959V
-config SAMSUNG_GALAXYS4G_WIND_VERSION
-	bool "select T959W"
-	help
-	 Select Samsung Galaxy S 4G SGH-T959W
-config SAMSUNG_GALAXYS4G_TELUS_VERSION
-	bool "select T959P"
-	select MFD_CG2900
-	help
-	 Select Samsung Galaxy S Fascinate 4G SGH-T959P
-endchoice
-endif
+	 Select Samsung Galaxy S 4G SGH-T959V/SGH-T959W/SGH-T959P (unified)
 
 config SAMSUNG_GALAXYSB
 	bool "select GTI9000B"
