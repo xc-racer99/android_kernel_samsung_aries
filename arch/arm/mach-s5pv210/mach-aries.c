@@ -2674,8 +2674,6 @@ static struct i2c_board_info i2c_devs6[] __initdata = {
 		I2C_BOARD_INFO("max8998", (0xCC >> 1)),
 		.platform_data	= &max8998_pdata,
 		.irq		= IRQ_EINT7,
-	}, {
-		I2C_BOARD_INFO("rtc_max8998", (0x0D >> 1)),
 	},
 #endif
 };
