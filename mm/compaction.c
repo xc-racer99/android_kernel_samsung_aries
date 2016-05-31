@@ -56,7 +56,8 @@ static inline bool migrate_async_suitable(int migratetype)
  * pages inside of the pageblock (even though it may still end up isolating
  * some pages).
  */
-static unsigned long isolate_freepages_block(unsigned long blockpfn,
+static unsigned long isolate_freepages_block(struct zone *zone,
+				unsigned long blockpfn,
 				unsigned long end_pfn,
 				struct list_head *freelist,
 				bool strict)
@@ -76,6 +77,14 @@ static unsigned long isolate_freepages_block(unsigned long blockpfn,
 				return 0;
 			continue;
 		}
+
+		/* Watch for unexpected holes punched in the memmap */
+		if (!memmap_valid_within(blockpfn, page, zone)) {
+			if (strict)
+				return 0;
+			continue;
+		}
+
 		nr_scanned++;
 
 		if (!PageBuddy(page)) {
@@ -140,7 +149,7 @@ isolate_freepages_range(unsigned long start_pfn, unsigned long end_pfn)
 		block_end_pfn = min(block_end_pfn, end_pfn);
 
 		spin_lock_irqsave(&zone->lock, flags);
-		isolated = isolate_freepages_block(pfn, block_end_pfn,
+		isolated = isolate_freepages_block(zone, pfn, block_end_pfn,
 						   &freelist, true);
 		spin_unlock_irqrestore(&zone->lock, flags);
 
@@ -290,6 +299,11 @@ isolate_migratepages_range(struct zone *zone, struct compact_control *cc,
 		 * as memory compaction should not move pages between nodes.
 		 */
 		page = pfn_to_page(low_pfn);
+
+		/* Watch for unexpected holes punched in the memmap */
+		if (!memmap_valid_within(low_pfn, page, zone))
+			continue;
+
 		if (page_zone(page) != zone)
 			continue;
 
@@ -433,6 +447,11 @@ static void isolate_freepages(struct zone *zone,
 		 * pages do not belong to a single zone.
 		 */
 		page = pfn_to_page(pfn);
+
+		/* Watch for unexpected holes punched in the memmap */
+		if (!memmap_valid_within(pfn, page, zone))
+			continue;
+
 		if (page_zone(page) != zone)
 			continue;
 
@@ -450,7 +469,7 @@ static void isolate_freepages(struct zone *zone,
 		spin_lock_irqsave(&zone->lock, flags);
 		if (suitable_migration_target(page)) {
 			end_pfn = min(pfn + pageblock_nr_pages, zone_end_pfn);
-			isolated = isolate_freepages_block(pfn, end_pfn,
+			isolated = isolate_freepages_block(zone, pfn, end_pfn,
 							   freelist, false);
 			nr_freepages += isolated;
 		}
