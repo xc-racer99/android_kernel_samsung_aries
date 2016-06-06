@@ -1554,6 +1554,10 @@ static struct s3c_adc_mach_info s3c_adc_platform __initdata = {
 unsigned int HWREV;
 EXPORT_SYMBOL(HWREV);
 
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+unsigned int VPLUSVER = 0;
+#endif
+
 /* in revisions before 0.9, there is a common mic bias gpio */
 
 static DEFINE_SPINLOCK(mic_bias_lock);
@@ -2963,7 +2967,7 @@ static struct platform_device sec_device_jack = {
 // just4info
 // S3C_GPIO_SFN(0xF) = S3C_GPIO_EINT = S3C_GPIO_SPECIAL(0xF)
 
-struct gpio_init_data {//equivalent to initial_gpio_table in blastoff
+struct gpio_init_data {
 	uint num;
 	uint cfg;
 	uint val;
@@ -4353,7 +4357,7 @@ static unsigned int aries_sleep_gpio_table[][3] = {
 	{ S5PV210_GPA0(5), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
 	{ S5PV210_GPA0(6), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
 	{ S5PV210_GPA0(7), S3C_GPIO_SLP_PREV,	S3C_GPIO_PULL_NONE}, 
-#elif defined (CONFIG_SAMSUNG_VIBRANT) || defined (CONFIG_SAMSUNG_GALAXYS4G) && !defined(CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION)
+#elif defined (CONFIG_SAMSUNG_VIBRANT) || defined (CONFIG_SAMSUNG_GALAXYS4G)
     { S5PV210_GPA0(4), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP},
   	{ S5PV210_GPA0(5), S3C_GPIO_SLP_PREV,   S3C_GPIO_PULL_UP}, 
   	{ S5PV210_GPA0(6), S3C_GPIO_SLP_INPUT,  S3C_GPIO_PULL_DOWN}, 
@@ -5004,6 +5008,10 @@ void s3c_config_sleep_gpio(void)
 		s3c_gpio_setpull(GPIO_PS_VOUT, S3C_GPIO_PULL_DOWN);
 	}
 #endif
+
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+       s3c_gpio_setpull(S5PV210_GPH3(5), S3C_GPIO_PULL_DOWN);
+#endif
 }
 EXPORT_SYMBOL(s3c_config_sleep_gpio);
 
@@ -5545,9 +5553,6 @@ static void __init sound_init(void)
         gpio_request(GPIO_MICBIAS_EN2, "micbias_enable2");
         gpio_request(GPIO_MICBIAS_EN, "micbias_enable");
     }
-#elif defined(CONFIG_SAMSUNG_GALAXYS4G)
-	gpio_request(GPIO_MICBIAS_EN2, "micbias_enable2");
-	gpio_request(GPIO_MICBIAS_EN, "micbias_enable");
 #else
 	gpio_request(GPIO_MICBIAS_EN, "micbias_enable");
 #endif
@@ -5658,12 +5663,19 @@ static void __init aries_machine_init(void)
 #endif
 	printk(KERN_INFO "HWREV is 0x%x\n", HWREV);
 
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+	s3c_gpio_cfgpin(S5PV210_GPH3(5), S3C_GPIO_INPUT);
+	s3c_gpio_setpull( S5PV210_GPH3(5), S3C_GPIO_PULL_NONE);
+	VPLUSVER = gpio_get_value(S5PV210_GPH3(5));
+	printk("VPLUSVER is 0x%x\n", VPLUSVER);
+#endif
+
 	/*initialise the gpio's*/
 	aries_init_gpio();
 
+#if defined(CONFIG_SAMSUNG_CAPTIVATE)
 	/* headset/earjack detection */
-#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_GALAXYS4G)
-    gpio_request(GPIO_EAR_MICBIAS_EN, "ear_micbias_enable");
+	gpio_request(GPIO_EAR_MICBIAS_EN, "ear_micbias_enable");
 #endif
 
 	gpio_request(GPIO_TOUCH_EN, "touch en");
@@ -5790,6 +5802,15 @@ static void __init aries_machine_init(void)
 	 * writes a small integer code to INFORM6).
 	 */
 	__raw_writel(0xee, S5P_INFORM6);
+
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+	if (gpio_is_valid(GPIO_MSENSE_nRST)) {
+		if (gpio_request(GPIO_MSENSE_nRST, "GPB"))
+			printk(KERN_ERR "Failed to request GPIO_MSENSE_nRST!\n");
+		gpio_direction_output(GPIO_MSENSE_nRST, 1);
+	}
+	gpio_free(GPIO_MSENSE_nRST);
+#endif
 }
 
 #ifdef CONFIG_USB_SUPPORT
