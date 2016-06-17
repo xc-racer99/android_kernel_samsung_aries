@@ -101,10 +101,18 @@ int s5p_alloc_media_memory_bank(int dev_id, int bank)
 		return -EBUSY;
 	}
 
-	mdev->cmapages = dma_alloc_from_contiguous_fixed_addr(
-			mdev->cmadev, mdev->paddr, mdev->memsize / PAGE_SIZE);
+	mdev->cmapages = dma_alloc_from_contiguous(
+			mdev->cmadev, mdev->memsize / PAGE_SIZE, 0);
 	if (!mdev->cmapages) {
 		printk(KERN_ERR "s5p-cma: unable to alloc pages for %s\n", mdev->name);
+		return -ENOMEM;
+	}
+
+	if (page_to_phys(mdev->cmapages) != mdev->paddr) {
+		// XXX: would work in normal cases... but we sometimes set paddr at init
+		printk(KERN_ERR "s5p-cma: allocated page does not match paddr for %s\n", mdev->name);
+		//mdev->paddr = page_to_phys(mdev->cmapages);
+		s5p_release_media_memory_bank(dev_id, bank);
 		return -ENOMEM;
 	}
 
