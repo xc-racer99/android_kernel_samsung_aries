@@ -163,7 +163,6 @@ static struct notifier_block aries_reboot_notifier = {
 	.notifier_call = aries_notifier_call,
 };
 
-#ifndef CONFIG_SAMSUNG_GALAXYS4G_TELUS_VERSION
 static void gps_gpio_init(void)
 {
 #if defined(CONFIG_SAMSUNG_GALAXYS4G)
@@ -201,7 +200,6 @@ static void gps_gpio_init(void)
  err:
 	return;
 }
-#endif
 
 static void uart_switch_init(void)
 {
