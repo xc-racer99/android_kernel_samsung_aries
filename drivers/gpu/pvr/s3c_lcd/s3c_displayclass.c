@@ -1,28 +1,43 @@
-/**********************************************************************
- *
- * Copyright (C) Imagination Technologies Ltd. All rights reserved.
- * 
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- * 
- * This program is distributed in the hope it will be useful but, except 
- * as otherwise stated in writing, without any warranty; without even the 
- * implied warranty of merchantability or fitness for a particular purpose. 
- * See the GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
- * 
- * The full GNU General Public License is included in this distribution in
- * the file called "COPYING".
- *
- * Contact Information:
- * Imagination Technologies Ltd. <gpl-support@imgtec.com>
- * Home Park Estate, Kings Langley, Herts, WD4 8LZ, UK 
- *
- */
+/*************************************************************************/ /*!
+@Title          S3C common display driver components.
+@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+@License        Dual MIT/GPLv2
+
+The contents of this file are subject to the MIT license as set out below.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+Alternatively, the contents of this file may be used under the terms of
+the GNU General Public License Version 2 ("GPL") in which case the provisions
+of GPL are applicable instead of those above.
+
+If you wish to allow use of your version of this file only under the terms of
+GPL, and not to allow others to use your version of this file under the terms
+of the MIT license, indicate your decision by deleting the provisions above
+and replace them with the notice and other provisions required by GPL as set
+out in the file called "GPL-COPYING" included in this distribution. If you do
+not delete the provisions above, a recipient may use your version of this file
+under the terms of either the MIT license or GPL.
+
+This License is also included in this distribution in the file called
+"MIT-COPYING".
+
+EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/ /**************************************************************************/
 
 /* Copyright (C) Samsung Electronics System LSI. */
 
@@ -150,48 +165,6 @@ typedef struct S3C_LCD_DEVINFO_TAG
 static PVRSRV_DC_DISP2SRV_KMJTABLE gsPVRJTable;
 
 static S3C_LCD_DEVINFO *gpsLCDInfo;
-
-/*****************************************************************************
- * Video-decode carveout decls
- */
-
-#define S3C_MAX_VIDEO_BUFFERS	3
-
-/* Y planes + UV planes @ max resolution, page aligned */
-#define S3C_VIDEO_Y_SIZE	ALIGN(1280 * 720, PAGE_SIZE)
-#define S3C_VIDEO_UV_SIZE	ALIGN(1280 * 360, PAGE_SIZE)
-#define S3C_VIDEO_CARVEOUT_SIZE	\
-	S3C_MAX_VIDEO_BUFFERS * (S3C_VIDEO_Y_SIZE + S3C_VIDEO_UV_SIZE)
-
-typedef struct S3C_VIDBUF_DEVINFO_TAG
-{
-	IMG_UINT32			ui32DeviceID;
-	S3C_SWAPCHAIN		*psSwapChain;
-	DISPLAY_INFO 		sDisplayInfo;
-	S3C_FRAME_BUFFER	asVideoBuffers[S3C_MAX_VIDEO_BUFFERS];
-
-} S3C_VIDBUF_DEVINFO;
-
-static S3C_VIDBUF_DEVINFO gsYBufInfo =
-{
-	.sDisplayInfo.ui32MaxSwapInterval		= 1,
-	.sDisplayInfo.ui32MaxSwapChains			= 1,
-	.sDisplayInfo.ui32MaxSwapChainBuffers	= S3C_MAX_VIDEO_BUFFERS,
-	.sDisplayInfo.szDisplayName				= "s3c_lcd_y",
-};
-
-static S3C_VIDBUF_DEVINFO gsUVBufInfo =
-{
-	.sDisplayInfo.ui32MaxSwapInterval		= 1,
-	.sDisplayInfo.ui32MaxSwapChains			= 1,
-	.sDisplayInfo.ui32MaxSwapChainBuffers	= S3C_MAX_VIDEO_BUFFERS,
-	.sDisplayInfo.szDisplayName				= "s3c_lcd_uv",
-};
-
-static int InitVidBufs(IMG_UINT32 ui32FBOffset);
-static void DeinitVidBufs(void);
-
-/****************************************************************************/
 
 extern IMG_BOOL IMG_IMPORT PVRGetDisplayClassJTable(PVRSRV_DC_DISP2SRV_KMJTABLE *psJTable);
 
@@ -419,14 +392,6 @@ static PVRSRV_ERROR OpenDCDevice(IMG_UINT32 ui32DeviceID,
 	{
 		*phDevice = (IMG_HANDLE)gpsLCDInfo;
 	}
-	else if(ui32DeviceID == gsYBufInfo.ui32DeviceID)
-	{
-		*phDevice = (IMG_HANDLE)&gsYBufInfo;
-	}
-	else if(ui32DeviceID == gsUVBufInfo.ui32DeviceID)
-	{
-		*phDevice = (IMG_HANDLE)&gsUVBufInfo;
-	}
 	else
 	{
 		return PVRSRV_ERROR_INVALID_PARAMS;
@@ -563,7 +528,7 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE hDevice,
 	PVR_UNREFERENCED_PARAMETER(ui32OEMFlags);
 	PVR_UNREFERENCED_PARAMETER(pui32SwapChainID);
 
-	if(!hDevice || !psDstSurfAttrib || !psSrcSurfAttrib || !ppsSyncData || !phSwapChain)
+	if(!hDevice || !psDstSurfAttrib || !psSrcSurfAttrib || !ppsSyncData || !phSwapChain || !ui32BufferCount)
 	{
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
@@ -750,18 +715,6 @@ static PVRSRV_ERROR SwapToDCBuffer(IMG_HANDLE	hDevice,
 	PVR_UNREFERENCED_PARAMETER(psClipRect);
 
 	if(!hDevice || !hBuffer || ui32ClipRectCount != 0)
-	{
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	return PVRSRV_OK;
-}
-
-static PVRSRV_ERROR SwapToDCSystem(IMG_HANDLE hDevice,
-								   IMG_HANDLE hSwapChain)
-{
-
-	if(!hDevice	|| !hSwapChain)
 	{
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
@@ -1031,7 +984,6 @@ int s3c_displayclass_init(void)
 	gpsLCDInfo->sDCJTable.pfnSetDCSrcColourKey = SetDCSrcColourKey;
 	gpsLCDInfo->sDCJTable.pfnGetDCBuffers = GetDCBuffers;
 	gpsLCDInfo->sDCJTable.pfnSwapToDCBuffer = SwapToDCBuffer;
-	gpsLCDInfo->sDCJTable.pfnSwapToDCSystem = SwapToDCSystem;
 	gpsLCDInfo->sDCJTable.pfnSetDCState = S3CSetState;
 
 	gpsLCDInfo->sDisplayInfo.ui32MinSwapInterval=0;
@@ -1042,16 +994,6 @@ int s3c_displayclass_init(void)
 	gpsLCDInfo->sDisplayInfo.ui32PhysicalHeightmm= psLINFBInfo->var.height;// height of lcd in mm 
 
 	strncpy(gpsLCDInfo->sDisplayInfo.szDisplayName, "s3c_lcd", MAX_DISPLAY_NAME_SIZE);
-
-	if(ui32FBOffset + S3C_VIDEO_CARVEOUT_SIZE <= fb_size)
-	{
-		if(InitVidBufs(ui32FBOffset))
-			return 1;
-	}
-	else
-	{
-		printk("No space for NV12 video carveout\n");
-	}
 
 	if(gsPVRJTable.pfnPVRSRVRegisterDCDevice(&gpsLCDInfo->sDCJTable,
 		&gpsLCDInfo->ui32DeviceID) != PVRSRV_OK)
@@ -1088,301 +1030,8 @@ void s3c_displayclass_deinit(void)
 	gsPVRJTable.pfnPVRSRVRemoveCmdProcList(gpsLCDInfo->ui32DeviceID,
 										   DC_S3C_LCD_COMMAND_COUNT);
 
-	DeinitVidBufs();
-
 	gsPVRJTable.pfnPVRSRVRemoveDCDevice(gpsLCDInfo->ui32DeviceID);
 
 	kfree(gpsLCDInfo);
 	gpsLCDInfo = NULL;
-}
-
-/*****************************************************************************
- * Video-decode carveout workaround starts here
- */
-
-static PVRSRV_ERROR EnumVidBufFormats(IMG_HANDLE hDevice,
-									  IMG_UINT32 *pui32NumFormats,
-									  DISPLAY_FORMAT *psFormat)
-{
-	DISPLAY_FORMAT sVidBufFormat = {
-		/* Fake format to keep PVR2D happy */
-		.pixelformat = PVRSRV_PIXEL_FORMAT_ARGB8888,
-	};
-
-	PVR_UNREFERENCED_PARAMETER(hDevice);
-
-	if(pui32NumFormats)
-		*pui32NumFormats = 1;
-
-	if(psFormat)
-		*psFormat = sVidBufFormat;
-
-	return PVRSRV_OK;
-}
-
-static PVRSRV_ERROR EnumVidBufDims(IMG_HANDLE hDevice,
-								   DISPLAY_FORMAT *psFormat,
-								   IMG_UINT32 *pui32NumDims,
-								   DISPLAY_DIMS *psDim)
-{
-	DISPLAY_DIMS sVidBufDim = {
-        .ui32Width = 1280,
-        .ui32Height = 720,
-		.ui32ByteStride = 1280,
-	};
-
-	PVR_UNREFERENCED_PARAMETER(hDevice);
-	PVR_UNREFERENCED_PARAMETER(psFormat);
-
-	if((S3C_VIDBUF_DEVINFO *)hDevice == &gsUVBufInfo)
-		sVidBufDim.ui32Height /= 2;
-
-	if(pui32NumDims)
-		*pui32NumDims = 1;
-
-	if(psDim)
-		psDim[0] = sVidBufDim;
-
-	return PVRSRV_OK;
-}
-
-static PVRSRV_ERROR GetVidBufSystemBuffer(IMG_HANDLE hDevice,
-										  IMG_HANDLE *phBuffer)
-{
-	S3C_VIDBUF_DEVINFO *psDevInfo = (S3C_VIDBUF_DEVINFO *)hDevice;
-
-	if(!hDevice || !phBuffer)
-	{
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	/* FIXME: Is this really necessary? */
-	*phBuffer = (IMG_HANDLE)&psDevInfo->asVideoBuffers[0];
-	return PVRSRV_OK;
-}
-
-static PVRSRV_ERROR GetVidBufInfo(IMG_HANDLE hDevice, DISPLAY_INFO *psDCInfo)
-{
-	S3C_VIDBUF_DEVINFO *psDevInfo = (S3C_VIDBUF_DEVINFO*)hDevice;
-
-	if(!hDevice || !psDCInfo)
-	{
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	*psDCInfo = psDevInfo->sDisplayInfo;
-	return PVRSRV_OK;
-}
-
-static PVRSRV_ERROR
-CreateVidBufSwapChain(IMG_HANDLE hDevice,
-					  IMG_UINT32 ui32Flags,
-					  DISPLAY_SURF_ATTRIBUTES *psDstSurfAttrib,
-					  DISPLAY_SURF_ATTRIBUTES *psSrcSurfAttrib,
-					  IMG_UINT32 ui32BufferCount,
-					  PVRSRV_SYNC_DATA **ppsSyncData,
-					  IMG_UINT32 ui32OEMFlags,
-					  IMG_HANDLE *phSwapChain,
-					  IMG_UINT32 *pui32SwapChainID)
-{
-	S3C_VIDBUF_DEVINFO *psDevInfo = (S3C_VIDBUF_DEVINFO*)hDevice;
-	S3C_FRAME_BUFFER *psBuffer;
-	S3C_SWAPCHAIN *psSwapChain;
-	IMG_UINT32 i;
-
-	PVR_UNREFERENCED_PARAMETER(pui32SwapChainID);
-	PVR_UNREFERENCED_PARAMETER(psDstSurfAttrib);
-	PVR_UNREFERENCED_PARAMETER(psSrcSurfAttrib);
-	PVR_UNREFERENCED_PARAMETER(ui32OEMFlags);
-	PVR_UNREFERENCED_PARAMETER(ppsSyncData);
-
-	if(!hDevice || !phSwapChain || (psDevInfo != &gsYBufInfo &&
-									psDevInfo != &gsUVBufInfo))
-	{
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	if(ui32BufferCount > S3C_MAX_VIDEO_BUFFERS)
-	{
-		return PVRSRV_ERROR_TOOMANYBUFFERS;
-	}
-
-	if(psDevInfo->psSwapChain)
-	{
-		return PVRSRV_ERROR_FLIP_CHAIN_EXISTS;
-	}
-
-	psSwapChain = (S3C_SWAPCHAIN *)kmalloc(sizeof(S3C_SWAPCHAIN), GFP_KERNEL);
-	if(!psSwapChain)
-	{
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
-	}
-
-	psBuffer = (S3C_FRAME_BUFFER *)kmalloc(sizeof(S3C_FRAME_BUFFER) * ui32BufferCount, GFP_KERNEL);
-	if(!psBuffer)
-	{
-		kfree(psSwapChain);
-		return PVRSRV_ERROR_OUT_OF_MEMORY;
-	}
-
-	psSwapChain->ulBufferCount = (unsigned long)ui32BufferCount;
-	psSwapChain->psBuffer = psBuffer;
-
-	for (i = 0; i < ui32BufferCount; i++)
-	{
-		psBuffer[i] = psDevInfo->asVideoBuffers[i];
-	}
-
-	*phSwapChain = (IMG_HANDLE)psSwapChain;
-	*pui32SwapChainID =(IMG_UINT32)psSwapChain;	
-	psDevInfo->psSwapChain = psSwapChain;
-
-	return PVRSRV_OK;
-}
-
-static PVRSRV_ERROR DestroyVidBufSwapChain(IMG_HANDLE hDevice,
-										   IMG_HANDLE hSwapChain)
-{
-	S3C_VIDBUF_DEVINFO *psDevInfo = (S3C_VIDBUF_DEVINFO*)hDevice;
-
-	if(!psDevInfo || hSwapChain != (IMG_HANDLE)psDevInfo->psSwapChain)
-	{
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	kfree(psDevInfo->psSwapChain->psBuffer);
-
-	kfree(psDevInfo->psSwapChain);
-	psDevInfo->psSwapChain = NULL;
-
-	return PVRSRV_OK;
-}
-
-static IMG_VOID SetVidBufState(IMG_HANDLE hDevice, IMG_UINT32 ui32State)
-{
-	PVR_UNREFERENCED_PARAMETER(hDevice);
-	PVR_UNREFERENCED_PARAMETER(ui32State);
-}
-
-static PVRSRV_ERROR GetVidBufBuffers(IMG_HANDLE hDevice,
-									 IMG_HANDLE hSwapChain,
-									 IMG_UINT32 *pui32BufferCount,
-									 IMG_HANDLE *phBuffer)
-{
-	S3C_VIDBUF_DEVINFO *psDevInfo = (S3C_VIDBUF_DEVINFO*)hDevice;
-	int	i;
-
-	if(!hDevice || !hSwapChain || !pui32BufferCount || !phBuffer)
-	{
-		return PVRSRV_ERROR_INVALID_PARAMS;
-	}
-
-	*pui32BufferCount = psDevInfo->psSwapChain->ulBufferCount;
-
-	for (i = 0; i < *pui32BufferCount; i++)
-	{
-		phBuffer[i] = (IMG_HANDLE)&psDevInfo->asVideoBuffers[i];
-	}
-
-	return PVRSRV_OK;
-}
-
-static PVRSRV_DC_SRV2DISP_KMJTABLE gsYUVDCJTable =
-{
-	.ui32TableSize			= sizeof(PVRSRV_DC_SRV2DISP_KMJTABLE),
-
-	/* These understand video buffers, or are no-ops */
-	.pfnOpenDCDevice		= OpenDCDevice,
-	.pfnCloseDCDevice		= CloseDCDevice,
-	.pfnSetDCDstRect		= SetDCDstRect,
-	.pfnSetDCSrcRect		= SetDCSrcRect,
-	.pfnSetDCDstColourKey	= SetDCDstColourKey,
-	.pfnSetDCSrcColourKey	= SetDCSrcColourKey,
-	.pfnSwapToDCBuffer		= SwapToDCBuffer,
-	.pfnSwapToDCSystem		= SwapToDCSystem,
-	.pfnGetBufferAddr		= GetDCBufferAddr,
-
-	/* These return PVRSRV_ERROR_NOT_SUPPORTED */
-	.pfnGetDCSystemBuffer	= GetVidBufSystemBuffer,
-	.pfnGetDCInfo			= GetVidBufInfo,
-
-	/* These work as documented */
-	.pfnEnumDCFormats		= EnumVidBufFormats,
-	.pfnEnumDCDims			= EnumVidBufDims,
-	.pfnCreateDCSwapChain	= CreateVidBufSwapChain,
-	.pfnDestroyDCSwapChain	= DestroyVidBufSwapChain,
-	.pfnGetDCBuffers		= GetVidBufBuffers,
-	.pfnSetDCState			= SetVidBufState,
-};
-
-static int InitVidBufs(IMG_UINT32 ui32FBOffset)
-{
-	int i;
-
-	if(gsPVRJTable.pfnPVRSRVRegisterDCDevice(&gsYUVDCJTable,
-		&gsYBufInfo.ui32DeviceID) != PVRSRV_OK)
-	{
-		printk("Failed to register YBuf device!\n");
-		return 1;
-	}
-
-	if(gsPVRJTable.pfnPVRSRVRegisterDCDevice(&gsYUVDCJTable,
-		&gsUVBufInfo.ui32DeviceID) != PVRSRV_OK)
-	{
-		printk("Failed to register UVBuf device!\n");
-		return 1;
-	}
-
-	for (i = 0; i < S3C_MAX_VIDEO_BUFFERS; i++)
-	{
-		gsYBufInfo.asVideoBuffers[i].bufferPAddr.uiAddr =
-			gpsLCDInfo->sSysBuffer.bufferPAddr.uiAddr + ui32FBOffset +
-			(i * S3C_VIDEO_Y_SIZE);
-		gsYBufInfo.asVideoBuffers[i].bufferVAddr =
-			gpsLCDInfo->sSysBuffer.bufferVAddr + ui32FBOffset +
-			(i * S3C_VIDEO_Y_SIZE);
-		gsYBufInfo.asVideoBuffers[i].byteSize = S3C_VIDEO_Y_SIZE;
-		gsYBufInfo.asVideoBuffers[i].yoffset = 0;
-
-		printk("Video Y Buffer[%d].VAddr=%p PAddr=%p size=%d\n",
-			i, 
-			(void*)gsYBufInfo.asVideoBuffers[i].bufferVAddr,
-			(void*)gsYBufInfo.asVideoBuffers[i].bufferPAddr.uiAddr,
-			(int)gsYBufInfo.asVideoBuffers[i].byteSize);
-	}
-
-	for (i = 0; i < S3C_MAX_VIDEO_BUFFERS; i++)
-	{
-		gsUVBufInfo.asVideoBuffers[i].bufferPAddr.uiAddr =
-			gpsLCDInfo->sSysBuffer.bufferPAddr.uiAddr + ui32FBOffset +
-			(S3C_MAX_VIDEO_BUFFERS * S3C_VIDEO_Y_SIZE) +
-			(i * S3C_VIDEO_UV_SIZE);
-		gsUVBufInfo.asVideoBuffers[i].bufferVAddr =
-			gpsLCDInfo->sSysBuffer.bufferVAddr + ui32FBOffset +
-			(S3C_MAX_VIDEO_BUFFERS * S3C_VIDEO_Y_SIZE) +
-			(i * S3C_VIDEO_UV_SIZE);
-		gsUVBufInfo.asVideoBuffers[i].byteSize = S3C_VIDEO_UV_SIZE;
-		gsUVBufInfo.asVideoBuffers[i].yoffset = 0;
-
-		printk("Video UV Buffer[%d].VAddr=%p PAddr=%p size=%d\n",
-			i, 
-			(void*)gsUVBufInfo.asVideoBuffers[i].bufferVAddr,
-			(void*)gsUVBufInfo.asVideoBuffers[i].bufferPAddr.uiAddr,
-			(int)gsUVBufInfo.asVideoBuffers[i].byteSize);
-	}
-
-	return 0;
-}
-
-static void DeinitVidBufs(void)
-{
-	if(gsUVBufInfo.ui32DeviceID)
-	{
-		gsPVRJTable.pfnPVRSRVRemoveDCDevice(gsUVBufInfo.ui32DeviceID);
-	}
-
-	if(gsYBufInfo.ui32DeviceID)
-	{
-		gsPVRJTable.pfnPVRSRVRemoveDCDevice(gsYBufInfo.ui32DeviceID);
-	}
 }

@@ -1,28 +1,44 @@
-/**********************************************************************
- *
- * Copyright (C) Imagination Technologies Ltd. All rights reserved.
- * 
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- * 
- * This program is distributed in the hope it will be useful but, except 
- * as otherwise stated in writing, without any warranty; without even the 
- * implied warranty of merchantability or fitness for a particular purpose. 
- * See the GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin St - Fifth Floor, Boston, MA 02110-1301 USA.
- * 
- * The full GNU General Public License is included in this distribution in
- * the file called "COPYING".
- *
- * Contact Information:
- * Imagination Technologies Ltd. <gpl-support@imgtec.com>
- * Home Park Estate, Kings Langley, Herts, WD4 8LZ, UK 
- *
-******************************************************************************/
+/*************************************************************************/ /*!
+@Title          System Configuration
+@Copyright      Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+@Description    System Configuration functions
+@License        Dual MIT/GPLv2
+
+The contents of this file are subject to the MIT license as set out below.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+Alternatively, the contents of this file may be used under the terms of
+the GNU General Public License Version 2 ("GPL") in which case the provisions
+of GPL are applicable instead of those above.
+
+If you wish to allow use of your version of this file only under the terms of
+GPL, and not to allow others to use your version of this file under the terms
+of the MIT license, indicate your decision by deleting the provisions above
+and replace them with the notice and other provisions required by GPL as set
+out in the file called "GPL-COPYING" included in this distribution. If you do
+not delete the provisions above, a recipient may use your version of this file
+under the terms of either the MIT license or GPL.
+
+This License is also included in this distribution in the file called
+"MIT-COPYING".
+
+EXCEPT AS OTHERWISE STATED IN A NEGOTIATED AGREEMENT: (A) THE SOFTWARE IS
+PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT; AND (B) IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/ /**************************************************************************/
 
 #include "sgxdefs.h"
 #include "services_headers.h"
@@ -47,7 +63,6 @@
 #define MAPPING_SIZE 0x10000
 #define SGX540_IRQ IRQ_3D
 
-#define SYS_SGX_CLOCK_SPEED					(200000000)
 #define SYS_SGX_HWRECOVERY_TIMEOUT_FREQ		(100) // 10ms (100hz)
 #define SYS_SGX_PDS_TIMER_FREQ				(1000) // 1ms (1000hz)
 #ifndef SYS_SGX_ACTIVE_POWER_LATENCY_MS
@@ -101,7 +116,7 @@ static struct regulator *g3d_pd_regulator;
 
 #ifndef CONFIG_DVFS_LIMIT
 static int limit_adjust_cpufreq_notifier(struct notifier_block *nb,
-					 unsigned long event, void *data)
+										 unsigned long event, void *data)
 {
 	struct cpufreq_policy *policy = data;
 
@@ -111,7 +126,7 @@ static int limit_adjust_cpufreq_notifier(struct notifier_block *nb,
 	/* This is our indicator of GPU activity */
 	if (regulator_is_enabled(g3d_pd_regulator))
 		cpufreq_verify_within_limits(policy, MIN_CPU_KHZ_FREQ,
-					     policy->cpuinfo.max_freq);
+									 policy->cpuinfo.max_freq);
 
 	return 0;
 }
@@ -126,6 +141,7 @@ static PVRSRV_ERROR EnableSGXClocks(void)
 #ifdef CONFIG_DVFS_LIMIT
 	s5pv210_lock_dvfs_high_level(DVFS_LOCK_TOKEN_PVR, L3); /* 200 MHz */
 #endif
+
 	regulator_enable(g3d_pd_regulator);
 	clk_enable(g3d_clock);
 #ifndef CONFIG_DVFS_LIMIT
@@ -139,6 +155,7 @@ static PVRSRV_ERROR DisableSGXClocks(void)
 {
 	clk_disable(g3d_clock);
 	regulator_disable(g3d_pd_regulator);
+
 #ifdef CONFIG_DVFS_LIMIT
 	s5pv210_unlock_dvfs_high_level(DVFS_LOCK_TOKEN_PVR);
 #else
@@ -549,7 +566,7 @@ PVRSRV_ERROR SysFinalise(IMG_VOID)
 	DisableSGXClocks();
 #ifndef CONFIG_DVFS_LIMIT
 	cpufreq_register_notifier(&cpufreq_limit_notifier,
-				  CPUFREQ_POLICY_NOTIFIER);
+							  CPUFREQ_POLICY_NOTIFIER);
 #endif
 #endif 
 
@@ -580,12 +597,12 @@ PVRSRV_ERROR SysDeinitialise (SYS_DATA *psSysData)
 	psSysSpecData = (SYS_SPECIFIC_DATA *) psSysData->pvSysSpecificData;
 
 #if defined(SUPPORT_ACTIVE_POWER_MANAGEMENT)
-	/* TODO: regulator and clk put. */
+	/* INTEGRATION_POINT: regulator and clk put. */
 #ifdef CONFIG_DVFS_LIMIT
 	s5pv210_unlock_dvfs_high_level(DVFS_LOCK_TOKEN_PVR);
 #else
 	cpufreq_unregister_notifier(&cpufreq_limit_notifier,
-				    CPUFREQ_POLICY_NOTIFIER);
+								CPUFREQ_POLICY_NOTIFIER);
 	cpufreq_update_policy(current_thread_info()->cpu);
 #endif
 #endif
@@ -670,21 +687,22 @@ PVRSRV_ERROR SysGetDeviceMemoryMap(PVRSRV_DEVICE_TYPE eDeviceType,
 }
 
 
-/*----------------------------------------------------------------------------
-<function>
-	FUNCTION:   SysCpuPAddrToDevPAddr
+/*!
+******************************************************************************
 
-	PURPOSE:    Compute a device physical address from a cpu physical
-	            address. Relevant when 
+ @Function      SysCpuPAddrToDevPAddr
 
-	PARAMETERS:	In:  cpu_paddr - cpu physical address.
-				In:  eDeviceType - device type required if DevPAddr 
-									address spaces vary across devices 
-									in the same system
-	RETURNS:	device physical address.
+ @Description	Compute a device physical address from a cpu physical
+                address. Relevant when
 
-</function>
-------------------------------------------------------------------------------*/
+ @Input         cpu_paddr - cpu physical address.
+ @Input         eDeviceType - device type required if DevPAddr
+                    address spaces vary across devices
+                    in the same system
+
+ @Return        device physical address.
+
+******************************************************************************/
 IMG_DEV_PHYADDR SysCpuPAddrToDevPAddr (PVRSRV_DEVICE_TYPE eDeviceType, 
 										IMG_CPU_PHYADDR CpuPAddr)
 {
@@ -698,18 +716,19 @@ IMG_DEV_PHYADDR SysCpuPAddrToDevPAddr (PVRSRV_DEVICE_TYPE eDeviceType,
 	return DevPAddr;
 }
 
-/*----------------------------------------------------------------------------
-<function>
-	FUNCTION:   SysSysPAddrToCpuPAddr
+/*!
+******************************************************************************
 
-	PURPOSE:    Compute a cpu physical address from a system physical
-	            address.
+ @Function      SysSysPAddrToCpuPAddr
 
-	PARAMETERS:	In:  sys_paddr - system physical address.
-	RETURNS:	cpu physical address.
+ @Description	Compute a cpu physical address from a system physical
+                address.
 
-</function>
-------------------------------------------------------------------------------*/
+ @Input         sys_paddr - system physical address.
+
+ @Return        cpu physical address.
+
+******************************************************************************/
 IMG_CPU_PHYADDR SysSysPAddrToCpuPAddr (IMG_SYS_PHYADDR sys_paddr)
 {
 	IMG_CPU_PHYADDR cpu_paddr;
@@ -720,18 +739,19 @@ IMG_CPU_PHYADDR SysSysPAddrToCpuPAddr (IMG_SYS_PHYADDR sys_paddr)
 	return cpu_paddr;
 }
 
-/*----------------------------------------------------------------------------
-<function>
-	FUNCTION:   SysCpuPAddrToSysPAddr
+/*!
+******************************************************************************
 
-	PURPOSE:    Compute a system physical address from a cpu physical
-	            address.
+ @Function      SysCpuPAddrToSysPAddr
 
-	PARAMETERS:	In:  cpu_paddr - cpu physical address.
-	RETURNS:	device physical address.
+ @Description	Compute a system physical address from a cpu physical
+                address.
 
-</function>
-------------------------------------------------------------------------------*/
+ @Input         cpu_paddr - cpu physical address.
+
+ @Return        device physical address.
+
+******************************************************************************/
 IMG_SYS_PHYADDR SysCpuPAddrToSysPAddr (IMG_CPU_PHYADDR cpu_paddr)
 {
 	IMG_SYS_PHYADDR sys_paddr;
@@ -743,22 +763,22 @@ IMG_SYS_PHYADDR SysCpuPAddrToSysPAddr (IMG_CPU_PHYADDR cpu_paddr)
 }
 
 
-/*----------------------------------------------------------------------------
-<function>
-	FUNCTION:   SysSysPAddrToDevPAddr
+/*!
+******************************************************************************
 
-	PURPOSE:    Compute a device physical address from a system physical
-	            address.
+ @Function      SysSysPAddrToDevPAddr
 
-	PARAMETERS: In:  SysPAddr - system physical address.
-				In:  eDeviceType - device type required if DevPAddr 
-									address spaces vary across devices 
-									in the same system
+ @Description	Compute a device physical address from a system physical
+                address.
 
-	RETURNS:    Device physical address.
+ @Input         SysPAddr - system physical address.
+ @Input         eDeviceType - device type required if DevPAddr
+                    address spaces vary across devices
+                    in the same system
 
-</function>
------------------------------------------------------------------------------*/
+ @Return        Device physical address.
+
+******************************************************************************/
 IMG_DEV_PHYADDR SysSysPAddrToDevPAddr (PVRSRV_DEVICE_TYPE eDeviceType, IMG_SYS_PHYADDR SysPAddr)
 {
 	IMG_DEV_PHYADDR DevPAddr;
@@ -772,22 +792,22 @@ IMG_DEV_PHYADDR SysSysPAddrToDevPAddr (PVRSRV_DEVICE_TYPE eDeviceType, IMG_SYS_P
 }
 
 
-/*----------------------------------------------------------------------------
-<function>
-	FUNCTION:   SysDevPAddrToSysPAddr
+/*!
+******************************************************************************
 
-	PURPOSE:    Compute a device physical address from a system physical
-	            address.
+ @Function      SysDevPAddrToSysPAddr
 
-	PARAMETERS: In:  DevPAddr - device physical address.
-				In:  eDeviceType - device type required if DevPAddr 
-									address spaces vary across devices 
-									in the same system
+ @Description	Compute a device physical address from a system physical
+                address.
 
-	RETURNS:    System physical address.
+ @Input         DevPAddr - device physical address.
+ @Input         eDeviceType - device type required if DevPAddr
+                    address spaces vary across devices
+                    in the same system
 
-</function>
------------------------------------------------------------------------------*/
+ @Return        System physical address.
+
+******************************************************************************/
 IMG_SYS_PHYADDR SysDevPAddrToSysPAddr (PVRSRV_DEVICE_TYPE eDeviceType, IMG_DEV_PHYADDR DevPAddr)
 {
 	IMG_SYS_PHYADDR SysPAddr;
@@ -802,13 +822,15 @@ IMG_SYS_PHYADDR SysDevPAddrToSysPAddr (PVRSRV_DEVICE_TYPE eDeviceType, IMG_DEV_P
 
 
 /*****************************************************************************
- FUNCTION	: SysRegisterExternalDevice
 
- PURPOSE	: Called when a 3rd party device registers with services
+ @Function      SysRegisterExternalDevice
 
- PARAMETERS: In:  psDeviceNode - the new device node.
+ @Description   Called when a 3rd party device registers with services
 
- RETURNS	: IMG_VOID
+ @Input	        psDeviceNode - the new device node.
+
+ @Return        none
+
 *****************************************************************************/
 IMG_VOID SysRegisterExternalDevice(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
@@ -817,13 +839,15 @@ IMG_VOID SysRegisterExternalDevice(PVRSRV_DEVICE_NODE *psDeviceNode)
 
 
 /*****************************************************************************
- FUNCTION	: SysRemoveExternalDevice
 
- PURPOSE	: Called when a 3rd party device unregisters from services
+ @Function      SysRemoveExternalDevice
 
- PARAMETERS: In:  psDeviceNode - the device node being removed.
+ @Description	Called when a 3rd party device unregisters from services
 
- RETURNS	: IMG_VOID
+ @Input	        psDeviceNode - the device node being removed.
+
+ @Return    	none
+
 *****************************************************************************/
 IMG_VOID SysRemoveExternalDevice(PVRSRV_DEVICE_NODE *psDeviceNode)
 {
@@ -831,21 +855,21 @@ IMG_VOID SysRemoveExternalDevice(PVRSRV_DEVICE_NODE *psDeviceNode)
 }
 
 
-/*----------------------------------------------------------------------------
-<function>
-	FUNCTION:   SysGetInterruptSource
+/*!
+******************************************************************************
 
-	PURPOSE:    Returns System specific information about the device(s) that 
-				generated the interrupt in the system
+ @Function      SysGetInterruptSource
 
-	PARAMETERS: In:  psSysData
-				In:  psDeviceNode
+ @Description 	Returns System specific information about the device(s) that
+                generated the interrupt in the system
 
-	RETURNS:    System specific information indicating which device(s) 
-				generated the interrupt
+ @Input         psSysData
+ @Input         psDeviceNode
 
-</function>
------------------------------------------------------------------------------*/
+ @Return        System specific information indicating which device(s)
+                generated the interrupt
+
+******************************************************************************/
 IMG_UINT32 SysGetInterruptSource(SYS_DATA* psSysData,
 								 PVRSRV_DEVICE_NODE *psDeviceNode)
 {	
@@ -861,19 +885,19 @@ IMG_UINT32 SysGetInterruptSource(SYS_DATA* psSysData,
 }
 
 
-/*----------------------------------------------------------------------------
-<function>
-	FUNCTION:	SysGetInterruptSource
+/*!
+******************************************************************************
 
-	PURPOSE:	Clears specified system interrupts
+ @Function      SysClearInterrupts
 
-	PARAMETERS: psSysData
-				ui32ClearBits
+ @Description 	Clears specified system interrupts
 
-	RETURNS:	IMG_VOID
+ @Input         psSysData
+ @Input         ui32ClearBits
 
-</function>
------------------------------------------------------------------------------*/
+ @Return        none
+
+******************************************************************************/
 IMG_VOID SysClearInterrupts(SYS_DATA* psSysData, IMG_UINT32 ui32ClearBits)
 {
 	PVR_UNREFERENCED_PARAMETER(psSysData);
@@ -1005,15 +1029,15 @@ PVRSRV_ERROR SysDevicePostPowerState(IMG_UINT32			ui32DeviceIndex,
 
 
 /*****************************************************************************
- FUNCTION	: SysOEMFunction
+ @Function      SysOEMFunction
 
- PURPOSE	: marshalling function for custom OEM functions
+ @Description   marshalling function for custom OEM functions
 
- PARAMETERS	: ui32ID  - function ID
-			  pvIn - in data
-			  pvOut - out data
+ @Input	        ui32ID  - function ID
+ @Input	        pvIn - in data
+                pvOut - out data
 
- RETURNS	: PVRSRV_ERROR
+ @Return        PVRSRV_ERROR
 *****************************************************************************/
 PVRSRV_ERROR SysOEMFunction(IMG_UINT32	ui32ID, 
 							IMG_VOID	*pvIn,
@@ -1038,14 +1062,14 @@ PVRSRV_ERROR SysOEMFunction(IMG_UINT32	ui32ID,
 
 PVRSRV_ERROR SysPowerLockWrap(IMG_BOOL bTryLock)
 {
-	/* FIXME: This should not be empty */
+	/* INTEGRATION_POINT: This should not be empty */
 	PVR_UNREFERENCED_PARAMETER(bTryLock);
 	return PVRSRV_OK;
 }
 
 IMG_VOID SysPowerLockUnwrap(IMG_VOID)
 {
-	/* FIXME: This should not be empty */
+	/* INTEGRATION_POINT: This should not be empty */
 }
 
 /******************************************************************************
