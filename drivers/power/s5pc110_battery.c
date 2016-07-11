@@ -190,12 +190,6 @@ static struct device_attribute s3c_battery_attrs[] = {
 	SEC_BATTERY_ATTR(disable_charger),
 };
 
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-struct regulator *vADC_regulator; /*LDO4*/
-EXPORT_SYMBOL(vADC_regulator);
-extern bool jack_mic_bias;
-#endif
-
 static bool max8998_check_vdcin(struct chg_data *chg)
 {
 	u8 data = 0;
@@ -910,27 +904,6 @@ static __devinit int max8998_charger_probe(struct platform_device *pdev)
 		goto err_wake_lock;
 	}
 
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-// LDO4 enable
-	if (IS_ERR_OR_NULL(vADC_regulator))
-	{
-		vADC_regulator = regulator_get(NULL, "vadcldo4");
-		printk("vADC_regulator = %p\n", vADC_regulator);
-
-		if (IS_ERR_OR_NULL(vADC_regulator)) {
-			pr_err("[ERROR] failed to get vADC_regulator");
-			return -1;
-		}
-	}
-
-	/* Turn LDO4*/
-	int err = regulator_enable(vADC_regulator);
-	if (err) {
-			pr_err("[ERROR] Failed to enable vADC_regulator \n");
-			return err;
-	}
-#endif
-
 	chg->last_poll = alarm_get_elapsed_realtime();
 	alarm_init(&chg->alarm, ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
 		s3c_battery_alarm);
@@ -1021,68 +994,17 @@ static int __devexit max8998_charger_remove(struct platform_device *pdev)
 	power_supply_unregister(&chg->psy_ac);
 
 	wake_lock_destroy(&chg->vbus_wake_lock);
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-// LDO4 enable
 
-	if (IS_ERR_OR_NULL(vADC_regulator) )
-	{
-		pr_err("vADC_regulator  not initialized\n");
-		return -EINVAL;
-	}
-
-	/* Turn LDO4*/
-	if(!jack_mic_bias)
-	{
-		int err = regulator_disable(vADC_regulator);
-		if (err)
-		{
-				pr_err("[ERROR] Failed to enable vADC_regulator \n");
-				return err;
-		}
-	}
-#endif
 	mutex_destroy(&chg->mutex);
 	kfree(chg);
 
 	return 0;
 }
 
-#if defined(CONFIG_SAMSUNG_GALAXYS4G)
-static void s3c_temp_data_clear(struct chg_data *chg)
-{
-	int tmp_erase;
-	for(tmp_erase = 0; tmp_erase < 10; tmp_erase++) {
-		chg->adc_sample[S3C_ADC_TEMPERATURE].adc_arr[tmp_erase]=0;
-	}
-	chg->adc_sample[S3C_ADC_TEMPERATURE].average_adc=0;
-	chg->adc_sample[S3C_ADC_TEMPERATURE].total_adc=0;
-	chg->adc_sample[S3C_ADC_TEMPERATURE].cnt=0;
-	chg->adc_sample[S3C_ADC_TEMPERATURE].index=0;
-
-}
-#endif
-
 static int max8998_charger_suspend(struct device *dev)
 {
 
 	struct chg_data *chg = dev_get_drvdata(dev);
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-	int err = 0;
-	if (IS_ERR_OR_NULL(vADC_regulator) )
-	{
-		pr_err("vADC_regulator  not initialized\n");
-	}
-
-	/* Turn LDO4*/
-	if(!jack_mic_bias)
-	{
-		err = regulator_disable(vADC_regulator);
-		if (err)
-		{
-			pr_err("[ERROR] Failed to enable vADC_regulator \n");
-		}
-	}
-#endif
 
 	if (!chg->charging) {
 		s3c_program_alarm(chg, SLOW_POLL);
@@ -1102,24 +1024,6 @@ static void max8998_charger_resume(struct device *dev)
 	 * so, and move back to sampling every minute until
 	 * we suspend again.
 	 */
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-	int err = 0;
-	s3c_temp_data_clear(chg);
-	if (IS_ERR_OR_NULL(vADC_regulator) )
-	{
-		pr_err("vADC_regulator  not initialized\n");
-	}
-
-	/* Turn LDO4*/
-       if( ! regulator_is_enabled(vADC_regulator) )
-       {
-		err = regulator_enable(vADC_regulator);
-		if (err)
-		{
-				pr_err("[ERROR] Failed to enable vADC_regulator \n");
-		}
-       }
-#endif
 	if (chg->slow_poll) {
 		s3c_program_alarm(chg, FAST_POLL);
 		chg->slow_poll = 0;

@@ -22,11 +22,6 @@
 #include <linux/slab.h>
 #include <linux/time.h>
 
-#if defined (CONFIG_SAMSUNG_GALAXYS4G)
-#include <linux/interrupt.h>
-#include <linux/irq.h>
-#endif
-
 #define MAX17040_VCELL_MSB	0x02
 #define MAX17040_VCELL_LSB	0x03
 #define MAX17040_SOC_MSB	0x04
@@ -59,27 +54,7 @@ struct max17040_chip {
 	int status;
 };
 
-#if defined(CONFIG_SAMSUNG_GALAXYS4G)
-struct i2c_client *fg_i2c_client;
-struct max17040_chip *fg_chip;
-
-#define FUEL_INT_1ST	0
-#define FUEL_INT_2ND	1
-#define FUEL_INT_3RD	2
-#define LOW_BATTERY_IRQ	 IRQ_EINT(27)
-#define S5PV210_GPH3_3_EXT_INT33_3  (0xf << 12)
-
-static int rcomp_status;
-
-static struct work_struct low_bat_work;
-static struct wake_lock low_battery_wake_lock;
-#endif
-
 static void max17040_update_values(struct max17040_chip *chip);
-
-#if defined(CONFIG_SAMSUNG_GALAXYS4G)
-static void max17043_set_threshold(struct i2c_client *client, int mode);
-#endif
 
 static int max17040_get_property(struct power_supply *psy,
 				enum power_supply_property psp,
@@ -265,100 +240,6 @@ static void max17040_get_status(struct i2c_client *client)
 	if (chip->soc > MAX17040_BATTERY_FULL)
 		chip->status = POWER_SUPPLY_STATUS_FULL;
 }
-#if defined (CONFIG_SAMSUNG_GALAXYS4G)
-static void max17043_set_threshold(struct i2c_client *client, int mode)
-{
-	u16 regValue;
-
-	switch (mode)
-	{
-		case FUEL_INT_1ST:
-			regValue = 0x10; // 15%
-			rcomp_status = 0;
-			break;
-
-		case FUEL_INT_2ND:
-			regValue = 0x1A; // 5%
-			rcomp_status = 1;
-			break;
-
-		case FUEL_INT_3RD:
-			regValue = 0x1F; // 1%
-			rcomp_status = 2;
-			break;
-
-		default:
-			regValue = 0x1F; // 1%
-			rcomp_status = 2;
-			break;
-	}
-
-	regValue = fg_chip->pdata->rcomp_value |regValue;
-	//printk("[ max17043] max17043_set_threshold %d, regValue = %x \n",mode,regValue);
-	i2c_smbus_write_word_data(client, MAX17040_RCOMP_MSB, swab16(regValue));
-}
-
-static irqreturn_t low_battery_isr(int irq, void * client)
-{
-	schedule_work(&low_bat_work);
-
-	return IRQ_HANDLED;
-}
-
-static void s3c_low_bat_work(struct work_struct *work)
-{
-	struct i2c_client *client = fg_i2c_client;
-	struct max17040_chip *chip = i2c_get_clientdata(client);
-
-	wake_lock(&low_battery_wake_lock);
-
-	max17040_get_soc(client);
-
-	if ( chip->soc < 0)
-	{
-		dev_err(&client->dev,"%s : Failed to request pmic irq\n", __func__);
-		return;
-	}
-
-	printk("[ max17043] s3c_low_bat_work [LBW] RCS= %d, SOC= %d\n", rcomp_status, chip->soc);
-
-	switch (rcomp_status){
-		case 0:
-			if(chip->soc <= 18)
-			{
-				max17043_set_threshold(chip->client, FUEL_INT_2ND);
-				wake_lock_timeout(&low_battery_wake_lock, HZ * 5);
-			} else {
-				max17043_set_threshold(chip->client, FUEL_INT_1ST);
-				wake_lock_timeout(&low_battery_wake_lock, HZ * 5);
-			}
-			break;
-		case 1:
-			if(chip->soc <= 8)
-			{
-				max17043_set_threshold(chip->client, FUEL_INT_3RD);
-				wake_lock_timeout(&low_battery_wake_lock, HZ * 5);
-			} else {
-				max17043_set_threshold(chip->client, FUEL_INT_2ND);
-				wake_lock_timeout(&low_battery_wake_lock, HZ * 5);
-			}
-			break;
-		case 2:
-			if(chip->soc <= 3)
-			{
-				wake_lock_timeout(&low_battery_wake_lock, HZ * 30);
-			} else {
-				max17043_set_threshold(chip->client, FUEL_INT_3RD);
-				wake_lock_timeout(&low_battery_wake_lock, HZ * 5);
-			}
-			break;
-		default:
-			dev_err(&client->dev,"%s : Failed to request pmic irq\n", __func__); // [[ junghyunseok edit for exception code 20100511
-			break;
-	}
-}
-
-#endif
 
 static void max17040_update_values(struct max17040_chip *chip)
 {
@@ -366,15 +247,6 @@ static void max17040_update_values(struct max17040_chip *chip)
 	max17040_get_soc(chip->client);
 	max17040_get_online(chip->client);
 	max17040_get_status(chip->client);
-
-#if defined(CONFIG_SAMSUNG_GALAXYS4G)
-	if(chip->soc >= 16)
-		max17043_set_threshold(chip->client, FUEL_INT_1ST);
-	else if(chip->soc >= 6)
-		max17043_set_threshold(chip->client, FUEL_INT_2ND);
-	else
-		max17043_set_threshold(chip->client, FUEL_INT_3RD);
-#endif
 
 	/* next update must be at least 1 second later */
 	ktime_get_ts(&chip->next_update_time);
@@ -414,9 +286,7 @@ static int __devinit max17040_probe(struct i2c_client *client,
 	chip->battery.properties	= max17040_battery_props;
 	chip->battery.num_properties	= ARRAY_SIZE(max17040_battery_props);
 
-#if !defined(CONFIG_SAMSUNG_GALAXYS4G)
 	max17040_update_values(chip);
-#endif
 
 	if (chip->pdata && chip->pdata->power_supply_register)
 		ret = chip->pdata->power_supply_register(&client->dev, &chip->battery);
@@ -428,54 +298,13 @@ static int __devinit max17040_probe(struct i2c_client *client,
 		return ret;
 	}
 
-#if !defined(CONFIG_SAMSUNG_GALAXYS4G)
 	max17040_get_version(client);
-#endif
 
 	if (chip->pdata)
 		i2c_smbus_write_word_data(client, MAX17040_RCOMP_MSB,
 			swab16(chip->pdata->rcomp_value));
 
-#if defined (CONFIG_SAMSUNG_GALAXYS4G)
-	fg_i2c_client = client;
-	fg_chip = chip;
-
-	rcomp_status = -1;
-
-	max17040_update_values(chip);
-	max17040_get_version(client);
-
-	INIT_WORK(&low_bat_work, s3c_low_bat_work);
-	wake_lock_init(&low_battery_wake_lock, WAKE_LOCK_SUSPEND, "low_battery_wake_lock");
-
-	irq_set_irq_type(LOW_BATTERY_IRQ, IRQ_TYPE_EDGE_FALLING);
-	ret = request_irq(LOW_BATTERY_IRQ, low_battery_isr, IRQF_SAMPLE_RANDOM, "low battery irq", (void *) client);
-
-	if (ret)
-	{
-		dev_err(&client->dev,"%s : Failed to request pmic irq\n", __func__);
-		goto err_fg_atcmd;
-	}
-
-	ret = enable_irq_wake(client->irq);
-	if (ret)
-	{
-		dev_err(&client->dev, "%s : Failed to enable pmic irq wake\n", __func__);
-		goto err_irq;
-	}
-#endif
-
 	return 0;
-
-#if defined(CONFIG_SAMSUNG_GALAXYS4G)
-err_irq:
-		free_irq(client->irq, NULL);
-err_fg_atcmd:
-	if (chip->pdata && chip->pdata->power_supply_unregister)
-		chip->pdata->power_supply_unregister(&chip->battery);
-	else
-		power_supply_unregister(&chip->battery);
-#endif
 }
 
 static int __devexit max17040_remove(struct i2c_client *client)

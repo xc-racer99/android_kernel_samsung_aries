@@ -433,12 +433,6 @@ static struct regulator_consumer_supply ldo3_consumer[] = {
 	REGULATOR_SUPPLY("pd_io", "s3c-usbgadget")
 };
 
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-static struct regulator_consumer_supply ldo4_consumer[] = {
-	REGULATOR_SUPPLY("vadcldo4", NULL),
-};
-#endif
-
 #ifndef CONFIG_SAMSUNG_FASCINATE
 static struct regulator_consumer_supply ldo5_consumer[] = {
 	REGULATOR_SUPPLY("vmmc", NULL),
@@ -528,24 +522,6 @@ static struct regulator_init_data aries_ldo3_data = {
 	.consumer_supplies	= ldo3_consumer,
 };
 
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-static struct regulator_init_data aries_ldo4_data = {
-	.constraints	= {
-		.name		= "VADC_3.3V",
-		.min_uV		= 3300000,
-		.max_uV		= 3300000,
-		.apply_uV	= 1,
-		.always_on	= 0,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
-		.state_mem	= {
-			.disabled = 1,
-			.enabled = 0,
-		},
-	},
-	.num_consumer_supplies	= ARRAY_SIZE(ldo4_consumer),
-	.consumer_supplies	= ldo4_consumer,
-};
-#else
 static struct regulator_init_data aries_ldo4_data = {
 	.constraints	= {
 		.name		= "VADC_3.3V",
@@ -559,7 +535,6 @@ static struct regulator_init_data aries_ldo4_data = {
 		},
 	},
 };
-#endif
 
 #ifndef CONFIG_SAMSUNG_FASCINATE
 static struct regulator_init_data aries_ldo5_data = {
@@ -1571,12 +1546,7 @@ unsigned int VPLUSVER = 0;
 
 static DEFINE_SPINLOCK(mic_bias_lock);
 static bool wm8994_mic_bias;
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-bool jack_mic_bias;
-EXPORT_SYMBOL(jack_mic_bias); // needed for battery hack
-#else
 static bool jack_mic_bias;
-#endif
 static void set_shared_mic_bias(void)
 {
 #if defined(CONFIG_SAMSUNG_CAPTIVATE)
