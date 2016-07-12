@@ -34,9 +34,6 @@
 #include <linux/uaccess.h>
 #include <linux/gp2a.h>
 
-#ifdef CONFIG_TOUCH_WAKE
-#include <linux/touch_wake.h>
-#endif
 
 /* Note about power vs enable/disable:
  *  The chip has two functions, proximity and ambient light sensing.
@@ -260,10 +257,6 @@ static ssize_t proximity_enable_store(struct device *dev,
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_TOUCH_WAKE
-	if (!new_value)
-		proximity_off();
-#endif	
 	mutex_lock(&gp2a->power_lock);
 	gp2a_dbgmsg("new_value = %d, old state = %d\n",
 		    new_value, (gp2a->power_state & PROXIMITY_ENABLED) ? 1 : 0);
@@ -367,14 +360,6 @@ irqreturn_t gp2a_irq_handler(int irq, void *data)
 	ip->val_state = val;
 	pr_err("gp2a: proximity val = %d\n", val);
 
-#ifdef CONFIG_TOUCH_WAKE
-	if (!val) {
-		proximity_detected();
-	}
-	else {
-		proximity_off();
-	}
-#endif
 	/* 0 is close, 1 is far */
 	input_report_abs(ip->proximity_input_dev, ABS_DISTANCE, val);
 	input_sync(ip->proximity_input_dev);
