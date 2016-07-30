@@ -5684,6 +5684,13 @@ static void __init aries_machine_init(void)
 #endif
 	printk(KERN_INFO "HWREV is 0x%x\n", HWREV);
 
+#if defined(CONFIG_SAMSUNG_GALAXYS4G)
+	if(HWREV == 0xF)
+		is_telus_galaxys4g = true;
+	else
+		is_telus_galaxys4g = false;
+#endif
+
 	/*initialise the gpio's*/
 	aries_init_gpio();
 
