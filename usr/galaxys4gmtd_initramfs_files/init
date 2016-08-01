@@ -10,15 +10,16 @@ busybox mount -t proc proc /proc
 busybox mount -t sysfs sysfs /sys
 busybox mount -t yaffs2 /dev/block/mtdblock2 /system
 busybox mount -t yaffs2 /dev/block/mtdblock5 /cache
+busybox mount -t yaffs2 -o ro /dev/block/mtdblock1 /ramdisk
 
-image=/stage1/ramdisk.cpio
+image=/ramdisk/ramdisk.img
 
 if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmdline ; then
 	# recovery boot
 	busybox echo 'RECOVERY BOOT' >>boot.txt
 	busybox rm -fr /cache/.startrecovery
-	image=/stage1/ramdisk-recovery.cpio
-	busybox echo "loading ramdisk-recovery.cpio" >>boot.txt
+	image=/ramdisk/ramdisk-recovery.img
+	busybox echo "loading ramdisk-recovery.img" >>boot.txt
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
@@ -43,12 +44,20 @@ elif ! busybox test -e /system/build.prop ; then
 		busybox echo "creating recovery command" >>boot.txt
 		busybox touch /cache/recovery/command
 		busybox echo "--update_package=`busybox cat /sdcard/galaxys4g.cfg`" > /cache/recovery/command
+
+		busybox umount /ramdisk
+		erase_image ramdisk
+		busybox mount -t yaffs2 /dev/block/mtdblock1 /ramdisk
+
+		busybox cp /sdcard/ramdisk-recovery.img /ramdisk/ramdisk-recovery.img
+
+		busybox mount -t yaffs2 -o remount,ro /dev/block/mtdblock1 /ramdisk
 	else
 		busybox echo "galaxys4g.cfg not found" >>boot.txt
 	fi
 
-	busybox echo "loading ramdisk-recovery.cpio" >>boot.txt
-	image=/stage1/ramdisk-recovery.cpio
+	busybox echo "loading ramdisk-recovery.img" >>boot.txt
+	image=/ramdisk/ramdisk-recovery.img
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
@@ -59,18 +68,22 @@ elif ! busybox test -e /system/build.prop ; then
 else
 	# android boot
 	busybox echo "ANDROID BOOT" >>boot.txt
-	busybox echo "loading ramdisk.cpio" >>boot.txt
+	busybox echo "loading ramdisk.img" >>boot.txt
 fi
 
 busybox umount /cache
 busybox umount /system
 busybox rmdir /sdcard
 
-busybox cpio -ui < $image
+busybox gzip -d < $image > /stage1/ramdisk.cpio
+
+busybox umount /ramdisk
+
+busybox cpio -ui < /stage1/ramdisk.cpio
 
 busybox umount /sys
 busybox umount /proc
 busybox date >>boot.txt
-busybox rm -rf /stage1 /dev/*
+busybox rm -rf /stage1 /ramdisk /dev/*
 export PATH="${_PATH}"
 exec /init

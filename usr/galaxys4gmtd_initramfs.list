@@ -37,11 +37,10 @@ dir /proc 755 0 0
 dir /stage1 755 0 0
 dir /system 755 0 0
 dir /cache 755 0 0
+dir /ramdisk 755 0 0
 dir /sdcard 755 0 0
 file /stage1/busybox ../../utilities/busybox 755 0 0
 file /stage1/init source/usr/galaxys4gmtd_initramfs_files/init 755 0 0
 file /stage1/erase_image ../../utilities/erase_image 755 0 0
-file /stage1/ramdisk.cpio ../../ramdisk.cpio 700 0 0
-file /stage1/ramdisk-recovery.cpio ../../ramdisk-recovery.cpio 700 0 0
 dir /sys 755 0 0
 
