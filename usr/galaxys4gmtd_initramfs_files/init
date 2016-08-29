@@ -39,11 +39,11 @@ elif ! busybox test -e /system/build.prop ; then
 	busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
 	busybox sleep 1
 
-	if busybox test -e /sdcard/galaxys4g.cfg ; then
-		busybox echo "installing: `busybox cat /sdcard/galaxys4g.cfg`" >>boot.txt
+	if busybox test -e /sdcard/aries.cfg ; then
+		busybox echo "installing: `busybox cat /sdcard/aries.cfg`" >>boot.txt
 		busybox echo "creating recovery command" >>boot.txt
 		busybox touch /cache/recovery/command
-		busybox echo "--update_package=`busybox cat /sdcard/galaxys4g.cfg`" > /cache/recovery/command
+		busybox echo "--update_package=`busybox cat /sdcard/aries.cfg`" > /cache/recovery/command
 
 		busybox umount /ramdisk
 		erase_image ramdisk
@@ -53,7 +53,7 @@ elif ! busybox test -e /system/build.prop ; then
 
 		busybox mount -t yaffs2 -o remount,ro /dev/block/mtdblock1 /ramdisk
 	else
-		busybox echo "galaxys4g.cfg not found" >>boot.txt
+		busybox echo "aries.cfg not found" >>boot.txt
 	fi
 
 	busybox echo "loading ramdisk-recovery.img" >>boot.txt
