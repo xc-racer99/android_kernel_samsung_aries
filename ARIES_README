@@ -1,0 +1,15 @@
+BUILDING THE KERNEL
+
+You can build the kernel for AOSP outside of the build system as AOSP does not
+support inline kernel building like CM and Omni.  To do so, run
+    export ARCH=arm CROSS_COMPILE=/home/jon/android/aosp-7.0/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+assuming you are running on Linux (otherwise, replace linux with darwin).
+
+Next, run
+    make aosp_deviceName_defconfig
+followed by
+    make -jN
+where N is the number of cores or threads on your machine.
+
+The resulting arch/arm/boot/zImage can be copied to your device tree
+folder to be used as the kernel.
