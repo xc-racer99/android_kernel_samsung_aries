@@ -35,7 +35,7 @@ struct mtd_partition s3c_partition_info[] = {
 		.size		= (30*SZ_256K), //101
 	},
 	{
-		.name		= "ramdisk",
+		.name		= "recovery",
 		.offset		= (102*SZ_256K),
 		.size		= (30*SZ_256K), //131
 	},
