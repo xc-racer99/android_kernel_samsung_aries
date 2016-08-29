@@ -14,32 +14,13 @@
 #ifndef __ASM_ARCH_VOLTAGES_H
 #define __ASM_ARCH_VOLTAGES_H
 
-#if defined(CONFIG_SAMSUNG_GALAXYS4G)
-
-#define ARMVOLTMAX 1450000
-#define INTVOLTMAX 1200000
-
-#else
-
 #define ARMVOLTMAX 1500001
 #define INTVOLTMAX 1250001
-
-#endif
 
 #define ARMBOOT 1250000
 #define INTBOOT 1125000
 
-#if defined(CONFIG_SAMSUNG_GALAXYS4G)
-
-// DVS ARM
-#define DVSARM0 1425000 // 1400 MHz
-#define DVSARM1 1400000 // 1300 MHz
-#define DVSARM2 1375000 // 1200 MHz
-#define DVSARM3 1350000 // 1100 MHz
-#define DVSARM4 1325000 // 1000 MHz
-#define DVSARM5 1250000 //  800 MHz
-
-#elif defined(CONFIG_MACH_ARIES)
+#ifdef CONFIG_MACH_ARIES
 
 // DVS ARM
 #define DVSARM0 1400000 // 1400 MHz
@@ -61,20 +42,10 @@
 
 #endif
 
-#ifdef CONFIG_SAMSUNG_GALAXYS4G
-
-// DVS ARM
-#define DVSARM6 1100000 // 400 MHz
-#define DVSARM7 1000000 // 100, 200 MHz
-
-#else
-
 // Default values for Aries and P1 devices
 // DVS ARM
 #define DVSARM6 1050000 // 400 MHz
 #define DVSARM7  950000 // 100, 200 MHz
-
-#endif
 
 // DVS INT
 #define DVSINT0 1175000 // 1300, 1400 MHz
