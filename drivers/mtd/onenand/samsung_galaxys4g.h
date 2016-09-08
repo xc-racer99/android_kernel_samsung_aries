@@ -45,7 +45,7 @@ struct mtd_partition s3c_partition_info[] = {
 		.size		= (2400*SZ_256K), //2531
 	},
 	{
-		.name		= "datadata",
+		.name		= "cache",
 		.offset		= (2532*SZ_256K),
 		.size		= (1220*SZ_256K), //3751
 	},
@@ -55,7 +55,7 @@ struct mtd_partition s3c_partition_info[] = {
 		.size		= (23*SZ_256K), //3774
 	},
 	{
-		.name		= "cache",
+		.name		= "ramdisk-recovery",
 		.offset		= (3775*SZ_256K),
 		.size		= (160*SZ_256K), //3934
 	},
