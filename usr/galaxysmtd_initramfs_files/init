@@ -20,14 +20,15 @@ done
 busybox mount -t ext4 /dev/lvpool/system /system
 busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 busybox mount -t yaffs2 -o ro /dev/block/mtdblock1 /ramdisk
+busybox mount -t yaffs2 -o ro /dev/block/mtdblock2 /ramdisk-recovery
 
-image=/ramdisk/ramdisk.cpio
+image=/ramdisk/ramdisk.img
 
 if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmdline ; then
 	# recovery boot
 	busybox echo 'RECOVERY BOOT' >>boot.txt
 	busybox rm -fr /cache/.startrecovery
-	image=/ramdisk/ramdisk-recovery.cpio
+	image=/ramdisk-recovery/ramdisk.img
 	busybox echo "loading ramdisk-recovery.img" >>boot.txt
 
 	# disable lpm
@@ -54,19 +55,19 @@ elif ! busybox test -e /system/build.prop ; then
 		busybox touch /cache/recovery/command
 		busybox echo "--update_package=`busybox cat /sdcard/aries.cfg`" > /cache/recovery/command
 
-		busybox umount /ramdisk
-		erase_image ramdisk
-		busybox mount -t yaffs2 /dev/block/mtdblock1 /ramdisk
+		busybox umount /ramdisk-recovery
+		erase_image ramdisk-recovery
+		busybox mount -t yaffs2 /dev/block/mtdblock2 /ramdisk-recovery
 
-		busybox cp /sdcard/ramdisk-recovery.img /ramdisk/ramdisk-recovery.img
+		busybox cp /sdcard/ramdisk-recovery.img /ramdisk-recovery/ramdisk-recovery.img
 
-		busybox mount -t yaffs2 -o remount,ro /dev/block/mtdblock1 /ramdisk
+		busybox mount -t yaffs2 -o remount,ro /dev/block/mtdblock2 /ramdisk-recovery
 	else
 		busybox echo "aries.cfg not found" >>boot.txt
 	fi
 
 	busybox echo "loading ramdisk-recovery.img" >>boot.txt
-	image=/ramdisk/ramdisk-recovery.cpio
+	image=/ramdisk-recovery/ramdisk-recovery.img
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
@@ -87,12 +88,13 @@ busybox rmdir /sdcard
 busybox gzip -d < $image > /stage1/ramdisk.cpio
 
 busybox umount /ramdisk
+busybox umount /ramdisk-recovery
 
 busybox cpio -ui < /stage1/ramdisk.cpio
 
 busybox umount /sys
 busybox umount /proc
 busybox date >>boot.txt
-busybox rm -fr /stage1 /ramdisk /dev/*
+busybox rm -fr /stage1 /ramdisk* /dev/*
 export PATH="${_PATH}"
 exec /init
