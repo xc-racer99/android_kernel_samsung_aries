@@ -120,8 +120,8 @@ busybox umount /ramdisk-recovery
 busybox cpio -ui < /stage1/ramdisk.cpio
 
 if [ "$VFAT" = "true" ] ; then
-	busybox sed -i -- 's/data/sdcard/g' twrp.fstab
-	busybox sed -i -- 's/auto/vfat/g' twrp.fstab
+	busybox sed -i -- 's/data/sdcard/g' /etc/twrp.fstab
+	busybox sed -i -- 's/auto/vfat/g' /etc/twrp.fstab
 fi
 
 busybox umount /sys

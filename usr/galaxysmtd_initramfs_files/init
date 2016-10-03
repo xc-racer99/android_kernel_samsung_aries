@@ -28,7 +28,7 @@ if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmd
 	# recovery boot
 	busybox echo 'RECOVERY BOOT' >>boot.txt
 	busybox rm -fr /cache/.startrecovery
-	image=/ramdisk-recovery/ramdisk.img
+	image=/ramdisk-recovery/ramdisk-recovery.img
 	busybox echo "loading ramdisk-recovery.img" >>boot.txt
 
 	# disable lpm
@@ -95,6 +95,6 @@ busybox cpio -ui < /stage1/ramdisk.cpio
 busybox umount /sys
 busybox umount /proc
 busybox date >>boot.txt
-busybox rm -fr /stage1 /ramdisk* /dev/*
+busybox rm -rf /stage1 /ramdisk* /dev/*
 export PATH="${_PATH}"
 exec /init
