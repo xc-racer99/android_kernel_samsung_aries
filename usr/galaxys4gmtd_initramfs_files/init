@@ -120,8 +120,8 @@ busybox umount /ramdisk-recovery
 busybox cpio -ui < /stage1/ramdisk.cpio
 
 if [ "$VFAT" = "true" ] ; then
-	busybox sed -i -- 's/data/sdcard/g' /etc/twrp.fstab
-	busybox sed -i -- 's/auto/vfat/g' /etc/twrp.fstab
+    # Replace the twrp.fstab with the previous one
+	busybox printf "/boot mtd boot\n/ramdisk yaffs2 ramdisk flags=backup=1\n/ramdisk-recovery yaffs2 ramdisk-recovery flags=backup=1\n/radio mtd radio\n/efs yaffs2 efs flags=display="EFS";backup=1\n/cache yaffs2 cache flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n/system yaffs2 system flags=backup=1;canbewiped;wipeingui\n/sdcard vfat /dev/block/mmcblk0p1" > /etc/twrp.fstab
 fi
 
 busybox umount /sys
