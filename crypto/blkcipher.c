@@ -41,22 +41,22 @@ static int blkcipher_walk_first(struct blkcipher_desc *desc,
 
 static inline void blkcipher_map_src(struct blkcipher_walk *walk)
 {
-	walk->src.virt.addr = scatterwalk_map(&walk->in);
+	walk->src.virt.addr = scatterwalk_map(&walk->in, 0);
 }
 
 static inline void blkcipher_map_dst(struct blkcipher_walk *walk)
 {
-	walk->dst.virt.addr = scatterwalk_map(&walk->out);
+	walk->dst.virt.addr = scatterwalk_map(&walk->out, 1);
 }
 
 static inline void blkcipher_unmap_src(struct blkcipher_walk *walk)
 {
-	scatterwalk_unmap(walk->src.virt.addr);
+	scatterwalk_unmap(walk->src.virt.addr, 0);
 }
 
 static inline void blkcipher_unmap_dst(struct blkcipher_walk *walk)
 {
-	scatterwalk_unmap(walk->dst.virt.addr);
+	scatterwalk_unmap(walk->dst.virt.addr, 1);
 }
 
 /* Get a spot of the specified length that does not straddle a page.
