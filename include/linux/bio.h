@@ -101,10 +101,10 @@ static inline int bio_has_allocated_vec(struct bio *bio)
  * I/O completely on that queue (see ide-dma for example)
  */
 #define __bio_kmap_atomic(bio, idx, kmtype)				\
-	(kmap_atomic(bio_iovec_idx((bio), (idx))->bv_page) +	\
+	(kmap_atomic(bio_iovec_idx((bio), (idx))->bv_page, kmtype) +	\
 		bio_iovec_idx((bio), (idx))->bv_offset)
 
-#define __bio_kunmap_atomic(addr, kmtype) kunmap_atomic(addr)
+#define __bio_kunmap_atomic(addr, kmtype) kunmap_atomic(addr, kmtype)
 
 /*
  * merge helpers etc
@@ -325,7 +325,7 @@ static inline char *bvec_kmap_irq(struct bio_vec *bvec, unsigned long *flags)
 	 * balancing is a lot nicer this way
 	 */
 	local_irq_save(*flags);
-	addr = (unsigned long) kmap_atomic(bvec->bv_page);
+	addr = (unsigned long) kmap_atomic(bvec->bv_page, KM_BIO_SRC_IRQ);
 
 	BUG_ON(addr & ~PAGE_MASK);
 
@@ -336,7 +336,7 @@ static inline void bvec_kunmap_irq(char *buffer, unsigned long *flags)
 {
 	unsigned long ptr = (unsigned long) buffer & PAGE_MASK;
 
-	kunmap_atomic((void *) ptr);
+	kunmap_atomic((void *) ptr, KM_BIO_SRC_IRQ);
 	local_irq_restore(*flags);
 }
 

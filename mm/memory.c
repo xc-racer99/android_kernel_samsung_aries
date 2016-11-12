@@ -2498,7 +2498,7 @@ static inline void cow_user_page(struct page *dst, struct page *src, unsigned lo
 	 * fails, we just zero-fill it. Live with it.
 	 */
 	if (unlikely(!src)) {
-		void *kaddr = kmap_atomic(dst);
+		void *kaddr = kmap_atomic(dst, KM_USER0);
 		void __user *uaddr = (void __user *)(va & PAGE_MASK);
 
 		/*
@@ -2509,7 +2509,7 @@ static inline void cow_user_page(struct page *dst, struct page *src, unsigned lo
 		 */
 		if (__copy_from_user_inatomic(kaddr, uaddr, PAGE_SIZE))
 			clear_page(kaddr);
-		kunmap_atomic(kaddr);
+		kunmap_atomic(kaddr, KM_USER0);
 		flush_dcache_page(dst);
 	} else
 		copy_user_highpage(dst, src, va, vma);

@@ -1351,13 +1351,13 @@ int remove_arg_zero(struct linux_binprm *bprm)
 			ret = -EFAULT;
 			goto out;
 		}
-		kaddr = kmap_atomic(page);
+		kaddr = kmap_atomic(page, KM_USER0);
 
 		for (; offset < PAGE_SIZE && kaddr[offset];
 				offset++, bprm->p++)
 			;
 
-		kunmap_atomic(kaddr);
+		kunmap_atomic(kaddr, KM_USER0);
 		put_arg_page(page);
 
 		if (offset == PAGE_SIZE)
