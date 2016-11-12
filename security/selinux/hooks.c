@@ -28,6 +28,7 @@
 #include <linux/kernel.h>
 #include <linux/tracehook.h>
 #include <linux/errno.h>
+#include <linux/ext2_fs.h>
 #include <linux/sched.h>
 #include <linux/security.h>
 #include <linux/xattr.h>
@@ -3139,15 +3140,15 @@ static int selinux_file_ioctl(struct file *file, unsigned int cmd,
 	/* fall through */
 	case FIGETBSZ:
 	/* fall through */
-	case FS_IOC_GETFLAGS:
+	case EXT2_IOC_GETFLAGS:
 	/* fall through */
-	case FS_IOC_GETVERSION:
+	case EXT2_IOC_GETVERSION:
 		error = file_has_perm(cred, file, FILE__GETATTR);
 		break;
 
-	case FS_IOC_SETFLAGS:
+	case EXT2_IOC_SETFLAGS:
 	/* fall through */
-	case FS_IOC_SETVERSION:
+	case EXT2_IOC_SETVERSION:
 		error = file_has_perm(cred, file, FILE__SETATTR);
 		break;
 
