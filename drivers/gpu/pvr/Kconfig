@@ -1,11 +1,26 @@
+
 config PVR_SGX
 	tristate "PowerVR SGX support"
-	depends on ARCH_S5PV210
+	depends on ARCH_OMAP && OMAP2_DSS
+	select PVR_OMAP_DSS2
 	help
 	  Enable this option to build support for the PowerVR SGX 3D core.
 
 	  To compile this driver as a module, choose M here:
-	  this will generate two modules, called pvrsrvkm and s3c_lcd.
+	  this will generate two modules, called pvrsrvkm and omaplfb.
+
+choice
+	prompt "PowerVR SGX core"
+	depends on PVR_SGX
+	default PVR_SGXCORE_540
+
+config PVR_SGXCORE_540
+	bool "SGX 540"
+
+config PVR_SGXCORE_544
+	bool "SGX 544"
+
+endchoice
 
 choice
 	prompt "PowerVR build type"
@@ -24,6 +39,10 @@ endchoice
 
 config PVR_NEED_PVR_DPF
 	bool "Enable debugging messages in release build"
+	depends on PVR_BUILD_RELEASE
+
+config PVR_NEED_PVR_TRACE
+	bool "Enable trace in release build"
 	depends on PVR_BUILD_RELEASE
 
 config PVR_NEED_PVR_ASSERT
@@ -70,7 +89,7 @@ config PVR_ACTIVE_POWER_MANAGEMENT
 config PVR_ACTIVE_POWER_LATENCY_MS
 	int "Active power event latency (ms)"
 	depends on PVR_ACTIVE_POWER_MANAGEMENT
-	default 100
+	default 2
 
 config PVR_SGX_LOW_LATENCY_SCHEDULING
 	bool "Enable low-latency scheduling"
@@ -100,8 +119,13 @@ config PVR_LINUX_MEM_AREA_POOL
 config PVR_LINUX_MEM_AREA_POOL_MAX_PAGES
 	int "Maximum number of pages in pool"
 	depends on PVR_LINUX_MEM_AREA_POOL
-	default 5400
+	default 10800
 	help
 		Pool size in pages.
 		A size of 0 disables the pool.
 		A size of -1 allows the pool to grow indefinitely.
+
+config CONFIG_PVR_SUPPORT_TI_LIBION
+	bool "Support TI libion"
+	depends on PVR_SGX
+	default y
