@@ -1,13 +1,12 @@
 
 config PVR_SGX
 	tristate "PowerVR SGX support"
-	depends on ARCH_OMAP && OMAP2_DSS
-	select PVR_OMAP_DSS2
+	depends on ARCH_OMAP && OMAP2_DSS || ARCH_S5PV210
 	help
 	  Enable this option to build support for the PowerVR SGX 3D core.
 
 	  To compile this driver as a module, choose M here:
-	  this will generate two modules, called pvrsrvkm and omaplfb.
+	  this will generate two modules, called pvrsrvkm and omaplfb or s3c_lcd (chipset dependent).
 
 choice
 	prompt "PowerVR SGX core"
@@ -127,5 +126,5 @@ config PVR_LINUX_MEM_AREA_POOL_MAX_PAGES
 
 config CONFIG_PVR_SUPPORT_TI_LIBION
 	bool "Support TI libion"
-	depends on PVR_SGX
+	depends on PVR_SGX && ARCH_OMAP && OMAP2_DSS
 	default y

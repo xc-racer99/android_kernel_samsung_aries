@@ -360,7 +360,9 @@ PVRSRV_ERROR SGXPrePowerState (IMG_HANDLE				hDevHandle,
 		if (psDevInfo->bSGXIdle == IMG_FALSE)
 		{
 			psDevInfo->bSGXIdle = IMG_TRUE;
+#if defined(ARCH_OMAP4)
 			SysSGXIdleEntered();
+#endif
 		}
 
 		#if defined(PDUMP)

@@ -1,11 +1,14 @@
-ccflags-y = -DLINUX -D__linux__ -DANDROID -DPVR_BUILD_DIR="\"omap4430_android\""
-ccflags-y += -Idrivers/gpu/pvr -Idrivers/gpu/pvr/omap4 -Idrivers/video/omap2
+ccflags-y = -DLINUX -D__linux__ -DANDROID
+ccflags-y += -Idrivers/gpu/pvr
+
+ccflags-$(CONFIG_ARCH_OMAP4) += -DPVR_BUILD_DIR="\"omap4430_android\"" -Idrivers/gpu/pvr/omap4 -Idrivers/video/omap2
+
+ccflags-$(CONFIG_ARCH_S5PV210) += -DPVR_BUILD_DIR="\"smdkc110_android\"" -Idrivers/gpu/pvr/s5pc110
 
 ccflags-y += \
 	-DPVRSRV_MODNAME="\"pvrsrvkm\"" \
 	-DTRANSFER_QUEUE \
 	-DPVR_SECURE_HANDLES \
-	-DDISPLAY_CONTROLLER="\"omaplfb\"" \
 	-DSUPPORT_HW_RECOVERY \
 	-DSUPPORT_SGX_HWPERF \
 	-DSUPPORT_MEMINFO_IDS \
@@ -13,7 +16,6 @@ ccflags-y += \
 	-DSYS_USING_INTERRUPTS \
 	-DSUPPORT_LINUX_X86_WRITECOMBINE \
 	-DSUPPORT_LINUX_X86_PAT \
-	-DSGX_DYNAMIC_TIMING_INFO \
 	-DSYS_CUSTOM_POWERLOCK_WRAP \
 	-DPVR_LINUX_USING_WORKQUEUES \
 	-DPVR_LINUX_MISR_USING_PRIVATE_WORKQUEUE \
@@ -23,10 +25,18 @@ ccflags-y += \
 	-DPVR_LDM_PLATFORM_PRE_REGISTERED_DEV="\"pvrsrvkm\"" \
 	-DPVR_LDM_DRIVER_REGISTRATION_NAME="\"pvrsrvkm\"" \
 	-DSUPPORT_LARGE_GENERAL_HEAP \
-	-DPVR_NO_OMAP_TIMER \
-	-DSYS_OMAP4_HAS_DVFS_FRAMEWORK \
 	-DSUPPORT_DC_CMDCOMPLETE_WHEN_NO_LONGER_DISPLAYED \
 	-Idrivers/gpu/pvr/sgx
+
+ccflags-$(CONFIG_ARCH_OMAP4) += \
+    -DARCH_OMAP4 \
+	-DPVR_NO_OMAP_TIMER \
+	-DSYS_OMAP4_HAS_DVFS_FRAMEWORK \
+	-DSGX_DYNAMIC_TIMING_INFO
+
+ccflags-$(CONFIG_ARCH_OMAP4) += -DDISPLAY_CONTROLLER="\"omaplfb\""
+
+ccflags-$(CONFIG_ARCH_S5PV210) += -DDISPLAY_CONTROLLER=s3c_lcd
 
 
 ccflags-$(CONFIG_PVR_SGXCORE_540) += \
@@ -115,8 +125,6 @@ pvrsrvkm-y := \
 	refcount.o \
 	ttrace.o \
 	sysfs.o \
-	omap4/sysconfig.o \
-	omap4/sysutils.o \
 	sgx/bridged_sgx_bridge.o \
 	sgx/sgxinit.o \
 	sgx/sgxpower.o \
@@ -127,8 +135,22 @@ pvrsrvkm-y := \
 	sgx/mmu.o \
 	sgx/pb.o
 
+pvrsrvkm-$(CONFIG_ARCH_OMAP4) += \
+	omap4/sysconfig.o \
+	omap4/sysutils.o
+
+pvrsrvkm-$(CONFIG_ARCH_S5PV210) += \
+    s5pc110/sysconfig.o \
+    s5pc110/sysutils.o
+
 pvrsrvkm-$(CONFIG_ION_OMAP) += ion.o
 
 pvrsrvkm-$(CONFIG_GCBV) += gc_bvmapping.o
 
 obj-$(CONFIG_PVR_SGX) += pvrsrvkm.o
+
+s3c_lcd-y := \
+    s3c_lcd/s3c_displayclass.o \
+    s3c_lcd/s3c_lcd.o
+
+obj-$(CONFIG_ARCH_S5PV210) += s3c_lcd.o
