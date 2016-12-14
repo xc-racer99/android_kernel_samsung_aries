@@ -1252,7 +1252,9 @@ static INLINE IMG_UINT32 GetDirListBaseReg(IMG_UINT32 ui32Index)
 }
 #endif
 
+#if defined(ARCH_OMAP4)
 void dsscomp_kdump(void);
+#endif
 /*!
 *******************************************************************************
 
@@ -1274,7 +1276,9 @@ IMG_VOID SGXDumpDebugInfo (PVRSRV_SGXDEV_INFO	*psDevInfo,
 {
 	IMG_UINT32	ui32CoreNum;
 
+#if defined(ARCH_OMAP4)
 	dsscomp_kdump();
+#endif
 
 	PVR_LOG(("SGX debug (%s)", PVRVERSION_STRING));
 
@@ -1593,8 +1597,10 @@ IMG_VOID HWRecoveryResetSGX (PVRSRV_DEVICE_NODE *psDeviceNode,
 	
 	PVR_UNREFERENCED_PARAMETER(ui32Component);
 
+#if defined(ARCH_OMAP4)
 	/* Debug dumps associated with HWR can be long. Delay system suspend */
 	SysLockSystemSuspend();
+#endif
 
 	/*
 		Ensure that hardware recovery is serialised with any power transitions.
@@ -1651,7 +1657,9 @@ IMG_VOID HWRecoveryResetSGX (PVRSRV_DEVICE_NODE *psDeviceNode,
 
 	PVRSRVPowerUnlock(ui32CallerID);
 
+#if defined(ARCH_OMAP4)
 	SysUnlockSystemSuspend();
+#endif
 
 	/* Send a dummy kick so that we start processing again */
 	SGXScheduleProcessQueuesKM(psDeviceNode);

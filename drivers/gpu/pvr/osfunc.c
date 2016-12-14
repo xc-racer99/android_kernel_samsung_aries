@@ -89,10 +89,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "linkage.h"
 #include "pvr_uaccess.h"
 #include "lock.h"
+
+#if defined (ARCH_OMAP4)
 #include <syslocal.h>
+#else
+//TODO Make this work for S5PC110
+#define pvr_access_process_vm(tsk, addr, buf, len, write) -1
+#endif
 
 #if defined (SUPPORT_ION)
 #include "ion.h"
+
 #endif
 
 #if defined (CONFIG_X86_PAE)
