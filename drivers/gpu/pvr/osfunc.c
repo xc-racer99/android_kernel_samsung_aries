@@ -230,6 +230,7 @@ OSAllocPages_Impl(IMG_UINT32 ui32AllocFlags,
     }
 #endif
 
+#if defined (ARCH_OMAP4)
     if(ui32AllocFlags & PVRSRV_MEM_ION)
     {
         /* We'll only see HAP_SINGLE_PROCESS with MEM_ION */
@@ -245,6 +246,13 @@ OSAllocPages_Impl(IMG_UINT32 ui32AllocFlags,
         PVRMMapRegisterArea(psLinuxMemArea);
         goto ExitSkipSwitch;
     }
+#else
+    /* Ugly hack to force the right allocation type when using OMAP blobs on S5PV210 */
+    if(ui32AllocFlags == 838943232)
+    {
+        ui32AllocFlags = 302060032;
+    }
+#endif
 
     switch(ui32AllocFlags & PVRSRV_HAP_MAPTYPE_MASK)
     {
