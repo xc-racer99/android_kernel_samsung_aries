@@ -161,7 +161,12 @@ PVRSRV_ERROR PVRSRVPowerLock(IMG_UINT32	ui32CallerID,
 {
 	PVRSRV_ERROR	eError;
 	SYS_DATA	*psSysData;
+#if defined (ARCH_OMAP4)
 	IMG_UINT32	ui32Timeout = 1000000;
+#else
+	// S5PV210 needs a longer timeout
+	IMG_UINT32	ui32Timeout = 5000000;
+#endif
 	IMG_BOOL	bTryLock = (ui32CallerID == ISR_ID);
 
 	SysAcquireData(&psSysData);
