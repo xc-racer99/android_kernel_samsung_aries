@@ -22,6 +22,12 @@ busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 busybox mount -t yaffs2 -o ro /dev/block/mtdblock1 /ramdisk
 busybox mount -t yaffs2 -o ro /dev/block/mtdblock2 /ramdisk-recovery
 
+if busybox test -e /cache/.sd_as_data ; then
+	SD_AS_DATA=true
+elif busybox test -e /cache/.sd2_as_data ; then
+	SD2_AS_DATA=true
+fi
+
 image=/ramdisk/ramdisk.img
 
 if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmdline ; then
@@ -91,6 +97,48 @@ busybox umount /ramdisk
 busybox umount /ramdisk-recovery
 
 busybox cpio -ui < /stage1/ramdisk.cpio
+
+if [ "$SD_AS_DATA" = "true" ] ; then
+	# modify fstab.aries for the right paths
+	busybox printf "/dev/lvpool/system   /system ext4 ro,discard wait\n" > /fstab.aries
+	busybox printf "/dev/block/mmcblk1p1 /data   ext4 noatime,discard,nodev,nosuid,nomblk_io_submit,errors=panic wait,encryptable=footer,length=-16384\n" >> /fstab.aries
+	busybox printf "/dev/block/mmcblk1p1 /data   f2fs rw,noatime,discard,nosuid,nodev,nodiratime,inline_xattr wait,encryptable=footer,length=-16384\n" >> /fstab.aries
+	busybox printf "/devices/platform/s3c-sdhci.0/mmc_host/mmc0/*/mmcblk0 auto auto defaults voldmanaged=sdcard0:1,noemulatedsd" >> /fstab.aries
+
+	# if /etc/twrp.fstab exists, modify it as well
+	if busybox test -e /etc/twrp.fstab ; then
+		busybox printf "# mount point        fstype    device                  options (length for cryptfs encryption footer)\n" > /etc/fstab.aries
+		busybox printf "/boot                mtd       boot\n" >> /etc/fstab.aries
+		busybox printf "/ramdisk             yaffs2    ramdisk                                  flags=backup=1,subpartitionof=/boot\n" >> /etc/fstab.aries
+		busybox printf "/ramdisk-recovery    yaffs2    ramdisk-recovery                         flags=backup=1,subpartitionof=/boot\n" >> /etc/fstab.aries
+		busybox printf "/radio               mtd       radio\n" >> /etc/fstab.aries
+		busybox printf "/cache               yaffs2    cache                                    flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n" >> /etc/fstab.aries
+		busybox printf "/system              ext4      /dev/lvpool/system                       flags=backup=1;canbewiped;wipeingui\n" >> /etc/fstab.aries
+		busybox printf "/data                auto      /dev/block/mmcblk1p1    length=-16384    flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n" >> /etc/fstab.aries
+		busybox printf "/sdcard              vfat      /dev/block/mmcblk0p1                     flags=display="Internal SD Card";storage;wipeingui;settingsstorage" >> /etc/fstab.aries
+	fi
+elif [ "$SD2_AS_DATA" = "true" ] ; then
+	# modify fstab.aries for the right paths
+	busybox printf "/dev/lvpool/system   /system ext4 ro,discard wait\n" > /fstab.aries
+	busybox printf "/dev/block/mmcblk1p2 /data   ext4 noatime,discard,nodev,nosuid,nomblk_io_submit,errors=panic wait,encryptable=footer,length=-16384\n" >> /fstab.aries
+	busybox printf "/dev/block/mmcblk1p2 /data   f2fs rw,noatime,discard,nosuid,nodev,nodiratime,inline_xattr wait,encryptable=footer,length=-16384\n" >> /fstab.aries
+	busybox printf "/devices/platform/s3c-sdhci.0/mmc_host/mmc0/*/mmcblk0 auto auto defaults voldmanaged=sdcard0:1,noemulatedsd\n" >> /fstab.aries
+	busybox printf "/devices/platform/s3c-sdhci.2/mmc_host/mmc2* auto auto defaults voldmanaged=sdcard1:auto,encryptable=userdata" >> /fstab.aries
+
+	# if /etc/twrp.fstab exists, modify it as well
+	if busybox test -e /etc/twrp.fstab ; then
+		busybox printf "# mount point        fstype    device                  options (length for cryptfs encryption footer)\n" > /etc/fstab.aries
+		busybox printf "/boot                mtd       boot\n" >> /etc/fstab.aries
+		busybox printf "/ramdisk             yaffs2    ramdisk                                  flags=backup=1,subpartitionof=/boot\n" >> /etc/fstab.aries
+		busybox printf "/ramdisk-recovery    yaffs2    ramdisk-recovery                         flags=backup=1,subpartitionof=/boot\n" >> /etc/fstab.aries
+		busybox printf "/radio               mtd       radio\n" >> /etc/fstab.aries
+		busybox printf "/cache               yaffs2    cache                                    flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n" >> /etc/fstab.aries
+		busybox printf "/system              ext4      /dev/lvpool/system                       flags=backup=1;canbewiped;wipeingui\n" >> /etc/fstab.aries
+		busybox printf "/data                auto      /dev/block/mmcblk1p2    length=-16384    flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n" >> /etc/fstab.aries
+		busybox printf "/sdcard              vfat      /dev/block/mmcblk0p1                     flags=display="Internal SD Card";storage;wipeingui;settingsstorage\n" >> /etc/fstab.aries
+		busybox printf "/external_sd         vfat      /dev/block/mmcblk1p1                     flags=display="External SD Card";storage;wipeingui;removable" >> /etc/fstab.aries
+	fi
+fi
 
 busybox umount /sys
 busybox umount /proc
