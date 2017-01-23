@@ -13,7 +13,9 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/platform_device.h>
+#ifdef CONFIG_CMA
 #include <linux/dma-mapping.h>
+#endif
 #include <mach/map.h>
 #include <asm/irq.h>
 #include <plat/mfc.h>
@@ -52,6 +54,7 @@ struct platform_device s3c_device_mfc = {
 	},
 };
 
+#ifdef CONFIG_CMA
 /*
  * MFC hardware has 2 memory interfaces which are modelled as two separate
  * platform devices to let dma-mapping distinguish between them.
@@ -79,6 +82,7 @@ struct platform_device s3c_device_mfc_r = {
 		.coherent_dma_mask	= DMA_BIT_MASK(32),
 	},
 };
+#endif
 
 void __init s3c_mfc_set_platdata(struct s3c_platform_mfc *pd)
 {

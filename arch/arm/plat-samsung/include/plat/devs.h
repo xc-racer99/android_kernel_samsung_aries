@@ -65,8 +65,10 @@ extern struct platform_device s3c_device_fimc1;
 extern struct platform_device s3c_device_fimc2;
 extern struct platform_device s3c_device_ipc;
 extern struct platform_device s3c_device_mfc;
+#ifdef CONFIG_CMA
 extern struct platform_device s3c_device_mfc_l;
 extern struct platform_device s3c_device_mfc_r;
+#endif
 extern struct platform_device s3c_device_jpeg;
 extern struct platform_device s3c_device_g3d;
 

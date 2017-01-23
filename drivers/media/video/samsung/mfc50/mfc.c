@@ -69,6 +69,7 @@ static struct clk *mfc_sclk;
 static struct regulator *mfc_pd_regulator;
 const struct firmware	*mfc_fw_info;
 
+#ifdef CONFIG_CMA
 static void release_mfc_mem(struct work_struct * mfc_work);
 static DECLARE_DELAYED_WORK(mfc_work, release_mfc_mem);
 bool mfc_mem_allocated = false;
@@ -82,6 +83,7 @@ static void release_mfc_mem(struct work_struct * mfc_work)
 
 	mfc_mem_allocated = false;
 }
+#endif
 
 static int mfc_open(struct inode *inode, struct file *file)
 {
@@ -93,6 +95,7 @@ static int mfc_open(struct inode *inode, struct file *file)
 
 	if (!mfc_is_running()) {
 
+#ifdef CONFIG_CMA
 		if(mfc_mem_allocated) {
 			/* MFC memory still allocated, cancel deallocation */
 			cancel_delayed_work(&mfc_work);
@@ -112,13 +115,18 @@ static int mfc_open(struct inode *inode, struct file *file)
 
 			mfc_mem_allocated = true;
 		}
+#endif
 
 		/* Turn on mfc power domain regulator */
 		ret = regulator_enable(mfc_pd_regulator);
 		if (ret < 0) {
 			mfc_err("MFC_RET_POWER_ENABLE_FAIL\n");
 			ret = -EINVAL;
+#ifdef CONFIG_CMA
 			goto err_alloc1;
+#else
+			goto err_open;
+#endif
 		}
 
 #ifdef CONFIG_DVFS_LIMIT
@@ -237,8 +245,9 @@ static int mfc_release(struct inode *inode, struct file *file)
 			mfc_err("MFC_RET_POWER_DISABLE_FAIL\n");
 			goto out_release;
 		}
-
+#ifdef CONFIG_CMA
 		schedule_delayed_work(&mfc_work, msecs_to_jiffies(5000));
+#endif
 	}
 
 out_release:
@@ -571,6 +580,9 @@ static void mfc_firmware_request_complete_handler(const struct firmware *fw,
 						  void *context)
 {
 	if (fw != NULL) {
+#ifndef CONFIG_CMA
+		mfc_load_firmware(fw->data, fw->size);
+#endif
 		mfc_fw_info = fw;
 	} else {
 		mfc_err("failed to load MFC F/W, MFC will not working\n");

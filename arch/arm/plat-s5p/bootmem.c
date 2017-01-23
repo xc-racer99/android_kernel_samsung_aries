@@ -14,7 +14,9 @@
 #include <linux/memblock.h>
 #include <linux/mm.h>
 #include <linux/swap.h>
+#ifdef CONFIG_CMA
 #include <linux/dma-contiguous.h>
+#endif
 #include <asm/setup.h>
 #include <linux/io.h>
 #include <mach/memory.h>
@@ -81,6 +83,7 @@ size_t s5p_get_media_memsize_bank(int dev_id, int bank)
 }
 EXPORT_SYMBOL(s5p_get_media_memsize_bank);
 
+#ifdef CONFIG_CMA
 int s5p_alloc_media_memory_bank(int dev_id, int bank)
 {
 	struct s5p_media_device *mdev;
@@ -147,6 +150,7 @@ int s5p_release_media_memory_bank(int dev_id, int bank)
 	return 0;
 }
 EXPORT_SYMBOL(s5p_release_media_memory_bank);
+#endif
 
 dma_addr_t s5p_get_media_membase_bank(int bank)
 {
@@ -164,13 +168,18 @@ void s5p_reserve_bootmem(struct s5p_media_device *mdevs,
 {
 	struct s5p_media_device *mdev;
 	u64 start, end;
-	int i, ret, cma_align;
+	int i, ret;
+#ifdef CONFIG_CMA
+	int cma_align;
+#endif
 
 	media_devs = mdevs;
 	nr_media_devs = nr_mdevs;
 
+#ifdef CONFIG_CMA
 	// From drivers/base/dma-contiguous.c
 	cma_align = PAGE_SIZE << max(MAX_ORDER, pageblock_order);
+#endif
 
 	for (i = 0; i < meminfo.nr_banks; i++)
 		media_base[i] = meminfo.bank[i].start + meminfo.bank[i].size;
@@ -187,6 +196,7 @@ void s5p_reserve_bootmem(struct s5p_media_device *mdevs,
 			if (boundary && (boundary < end - start))
 				start = end - boundary;
 
+#ifdef CONFIG_CMA
 			mdev->paddr = memblock_find_in_range(start, end,
 						mdev->memsize, mdev->cmadev ? cma_align : PAGE_SIZE);
 		}
@@ -200,14 +210,32 @@ void s5p_reserve_bootmem(struct s5p_media_device *mdevs,
 				pr_err("memblock_reserve(%x, %x) failed\n",
 					mdev->paddr, mdev->memsize);
 		}
+#else
+			mdev->paddr = memblock_find_in_range(start, end,
+						mdev->memsize, PAGE_SIZE);
+		}
+
+
+		ret = memblock_remove(mdev->paddr, mdev->memsize);
+		if (ret < 0)
+			pr_err("memblock_reserve(%x, %x) failed\n",
+				mdev->paddr, mdev->memsize);
+#endif
 
 		if (media_base[mdev->bank] > mdev->paddr)
 			media_base[mdev->bank] = mdev->paddr;
 
+#ifdef CONFIG_CMA
 		printk(KERN_INFO "s5p: %lu bytes system memory reserved "
 			"for %s at 0x%08x, %d-bank base(0x%08x) cmadev=%p\n",
 			(unsigned long) mdev->memsize, mdev->name, mdev->paddr,
 			mdev->bank, media_base[mdev->bank], mdev->cmadev);
+#else
+		printk(KERN_INFO "s5p: %lu bytes system memory reserved "
+			"for %s at 0x%08x, %d-bank base(0x%08x)\n",
+			(unsigned long) mdev->memsize, mdev->name, mdev->paddr,
+			mdev->bank, media_base[mdev->bank]);
+#endif
 	}
 }
 

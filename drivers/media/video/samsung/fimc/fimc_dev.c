@@ -44,6 +44,7 @@
 
 struct fimc_global *fimc_dev;
 
+#ifdef CONFIG_CMA
 static void release_fimc0_mem(struct work_struct * fimc0_work);
 static void release_fimc2_mem(struct work_struct * fimc2_work);
 static DECLARE_DELAYED_WORK(fimc0_work, release_fimc0_mem);
@@ -64,6 +65,7 @@ static void release_fimc2_mem(struct work_struct * fimc2_work)
 
 	fimc0_mem_allocated = false;
 }
+#endif
 
 int fimc_dma_alloc(struct fimc_control *ctrl, struct fimc_buf_set *bs,
 							int i, int align)
@@ -1024,6 +1026,7 @@ static int fimc_open(struct file *filp)
 		goto kzalloc_err;
 	}
 
+#ifdef CONFIG_CMA
 	if (0 == ctrl->id) {
 		if (fimc0_mem_allocated) {
 			/* FIMC0 still allocated, cancel the pending deallocation */
@@ -1059,6 +1062,7 @@ static int fimc_open(struct file *filp)
 			fimc2_mem_allocated = true;
 		}
 	}
+#endif
 
 	prv_data->ctx_id = fimc_get_free_ctx(ctrl);
 	if (prv_data->ctx_id < 0) {
@@ -1284,11 +1288,13 @@ static int fimc_release(struct file *filp)
 	ctrl->ctx_busy[ctx_id] = 0;
 #endif
 
+#ifdef CONFIG_CMA
 	if (2 == ctrl->id) {
 		schedule_delayed_work(&fimc2_work, msecs_to_jiffies(5000));
 	} else if (0 == ctrl->id) {
 		schedule_delayed_work(&fimc0_work, msecs_to_jiffies(5000));
 	}
+#endif
 
         mutex_unlock(&ctrl->lock);
 
