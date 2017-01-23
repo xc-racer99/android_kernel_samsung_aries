@@ -21,7 +21,6 @@
 #include <linux/io.h>
 #include <mach/memory.h>
 #include <plat/media.h>
-#include <mach/media.h>
 
 static struct s5p_media_device *media_devs;
 static int nr_media_devs;
