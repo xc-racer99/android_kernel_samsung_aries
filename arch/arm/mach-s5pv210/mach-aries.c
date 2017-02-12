@@ -5021,18 +5021,6 @@ void s3c_config_sleep_gpio(void)
 	gpio_set_value(S5PV210_GPH2(3), 1);
 #endif /* CONFIG_SAMSUNG_GALAXYS4G */
 
-	s3c_config_sleep_gpio_table(ARRAY_SIZE(aries_sleep_gpio_table),
-			aries_sleep_gpio_table);
-
-#if defined(CONFIG_SAMSUNG_GALAXYS4G)
-	if(is_telus_galaxys4g)
-		s3c_config_sleep_gpio_table(ARRAY_SIZE(telus_galaxys4g_sleep_gpio_table),
-				aries_sleep_gpio_table);
-	else
-		s3c_config_sleep_gpio_table(ARRAY_SIZE(tmobile_galaxys4g_sleep_gpio_table),
-				aries_sleep_gpio_table);
-#endif
-
 #if !defined(CONFIG_SAMSUNG_FASCINATE)
 	if (gpio_get_value(GPIO_PS_ON)) {
 		s3c_gpio_slp_setpull_updown(GPIO_ALS_SDA_28V, S3C_GPIO_PULL_NONE);
