@@ -118,6 +118,10 @@ struct adc_sample_info {
 	int index;
 };
 
+static const int charger_current_map_desc_max8998[] = {
+       90, 380, 475, 550, 570, 600, 700, 800
+};
+
 struct chg_data {
 	struct device		*dev;
 	struct max8998_dev	*iodev;
@@ -162,6 +166,7 @@ static enum power_supply_property max8998_battery_props[] = {
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 };
@@ -203,6 +208,24 @@ static bool max8998_check_vdcin(struct chg_data *chg)
 	}
 
 	return data & MAX8998_MASK_VDCIN;
+}
+
+static int max8998_get_current(struct chg_data *chg)
+{
+       int reg = MAX8998_REG_CHGR1;
+       int shift = 0;
+       int mask = 0x7;
+       int ret;
+       u8 val;
+
+       ret = max8998_read_reg(chg->iodev->i2c, reg, &val);
+       if (ret)
+               return ret;
+
+       val >>= shift;
+       val &= mask;
+
+       return charger_current_map_desc_max8998[val] * 1000;
 }
 
 static void max8998_set_cable(struct max8998_charger_callbacks *ptr,
@@ -264,6 +287,12 @@ static int s3c_bat_get_property(struct power_supply *bat_ps,
 	case POWER_SUPPLY_PROP_ONLINE:
 		/* battery is always online */
 		val->intval = 1;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		if (chg->bat_info.charging_status != POWER_SUPPLY_STATUS_DISCHARGING)
+			val->intval = max8998_get_current(chg);
+		else
+			val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 	case POWER_SUPPLY_PROP_CAPACITY:
