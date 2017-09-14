@@ -147,12 +147,12 @@ static void alarm_enqueue_locked(struct alarm *alarm)
 }
 
 /**
- * alarm_init - initialize an alarm
+ * android_alarm_init - initialize an alarm
  * @alarm:	the alarm to be initialized
  * @type:	the alarm type to be used
  * @function:	alarm callback function
  */
-void alarm_init(struct alarm *alarm,
+void android_alarm_init(struct alarm *alarm,
 	enum android_alarm_type type, void (*function)(struct alarm *))
 {
 	RB_CLEAR_NODE(&alarm->node);
@@ -164,12 +164,12 @@ void alarm_init(struct alarm *alarm,
 
 
 /**
- * alarm_start_range - (re)start an alarm
+ * android_alarm_start_range - (re)start an alarm
  * @alarm:	the alarm to be added
  * @start:	earliest expiry time
  * @end:	expiry time
  */
-void alarm_start_range(struct alarm *alarm, ktime_t start, ktime_t end)
+void android_alarm_start_range(struct alarm *alarm, ktime_t start, ktime_t end)
 {
 	unsigned long flags;
 
@@ -181,7 +181,7 @@ void alarm_start_range(struct alarm *alarm, ktime_t start, ktime_t end)
 }
 
 /**
- * alarm_try_to_cancel - try to deactivate an alarm
+ * android_alarm_try_to_cancel - try to deactivate an alarm
  * @alarm:	alarm to stop
  *
  * Returns:
@@ -190,7 +190,7 @@ void alarm_start_range(struct alarm *alarm, ktime_t start, ktime_t end)
  * -1 when the alarm may currently be excuting the callback function and
  *    cannot be stopped (it may also be inactive)
  */
-int alarm_try_to_cancel(struct alarm *alarm)
+int android_alarm_try_to_cancel(struct alarm *alarm)
 {
 	struct alarm_queue *base = &alarms[alarm->type];
 	unsigned long flags;
@@ -221,17 +221,17 @@ int alarm_try_to_cancel(struct alarm *alarm)
 }
 
 /**
- * alarm_cancel - cancel an alarm and wait for the handler to finish.
+ * android_alarm_cancel - cancel an alarm and wait for the handler to finish.
  * @alarm:	the alarm to be cancelled
  *
  * Returns:
  *  0 when the alarm was not active
  *  1 when the alarm was active
  */
-int alarm_cancel(struct alarm *alarm)
+int android_alarm_cancel(struct alarm *alarm)
 {
 	for (;;) {
-		int ret = alarm_try_to_cancel(alarm);
+		int ret = android_alarm_try_to_cancel(alarm);
 		if (ret >= 0)
 			return ret;
 		cpu_relax();
@@ -239,10 +239,10 @@ int alarm_cancel(struct alarm *alarm)
 }
 
 /**
- * alarm_set_rtc - set the kernel and rtc walltime
+ * android_alarm_set_rtc - set the kernel and rtc walltime
  * @new_time:	timespec value containing the new time
  */
-int alarm_set_rtc(struct timespec new_time)
+int android_alarm_set_rtc(struct timespec new_time)
 {
 	int i;
 	int ret;
@@ -281,17 +281,17 @@ int alarm_set_rtc(struct timespec new_time)
 	}
 	spin_unlock_irqrestore(&alarm_slock, flags);
 	if (ret < 0) {
-		pr_alarm(ERROR, "alarm_set_rtc: Failed to set time\n");
+		pr_alarm(ERROR, "android_alarm_set_rtc: Failed to set time\n");
 		goto err;
 	}
 	if (!alarm_rtc_dev) {
 		pr_alarm(ERROR,
-			"alarm_set_rtc: no RTC, time will be lost on reboot\n");
+			"android_alarm_set_rtc: no RTC, time will be lost on reboot\n");
 		goto err;
 	}
 	ret = rtc_set_time(alarm_rtc_dev, &rtc_new_rtc_time);
 	if (ret < 0)
-		pr_alarm(ERROR, "alarm_set_rtc: "
+		pr_alarm(ERROR, "android_alarm_set_rtc: "
 			"Failed to set RTC, time will be lost on reboot\n");
 err:
 	wake_unlock(&alarm_rtc_wake_lock);
@@ -299,12 +299,113 @@ err:
 	return ret;
 }
 
+#if defined(CONFIG_RTC_ALARM_BOOT)
+#define BOOTALM_BIT_EN		0
+#define BOOTALM_BIT_YEAR	1
+#define BOOTALM_BIT_MONTH	5
+#define BOOTALM_BIT_DAY		7
+#define BOOTALM_BIT_HOUR	9
+#define BOOTALM_BIT_MIN		11
+#define BOOTALM_BIT_TOTAL	13
+
+int android_alarm_set_alarm_boot(char *alarm_data)
+{
+	struct rtc_wkalrm alm;
+	int ret;
+	char buf_ptr[BOOTALM_BIT_TOTAL + 1];
+
+	if (!alarm_rtc_dev) {
+		pr_alarm(ERROR,
+			 "android_alarm_set_alarm_boot: no RTC, time will be lost on reboot\n");
+		return -1;
+	}
+
+	strlcpy(buf_ptr, alarm_data, BOOTALM_BIT_TOTAL + 1);
+
+	alm.time.tm_sec = 0;
+
+	alm.time.tm_min = (buf_ptr[BOOTALM_BIT_MIN] - '0') * 10
+	    + (buf_ptr[BOOTALM_BIT_MIN + 1] - '0');
+	alm.time.tm_hour = (buf_ptr[BOOTALM_BIT_HOUR] - '0') * 10
+	    + (buf_ptr[BOOTALM_BIT_HOUR + 1] - '0');
+	alm.time.tm_mday = (buf_ptr[BOOTALM_BIT_DAY] - '0') * 10
+	    + (buf_ptr[BOOTALM_BIT_DAY + 1] - '0');
+	alm.time.tm_mon = (buf_ptr[BOOTALM_BIT_MONTH] - '0') * 10
+	    + (buf_ptr[BOOTALM_BIT_MONTH + 1] - '0');
+	alm.time.tm_year = (buf_ptr[BOOTALM_BIT_YEAR] - '0') * 1000
+	    + (buf_ptr[BOOTALM_BIT_YEAR + 1] - '0') * 100
+	    + (buf_ptr[BOOTALM_BIT_YEAR + 2] - '0') * 10
+	    + (buf_ptr[BOOTALM_BIT_YEAR + 3] - '0');
+	alm.enabled = (*buf_ptr == '1');
+
+	alm.time.tm_mon -= 1;
+	alm.time.tm_year -= 1900;
+
+	ret = rtc_set_alarm_boot(alarm_rtc_dev, &alm);
+
+	return ret;
+}
+#endif
+
+#if defined(CONFIG_RTC_POWER_OFF)
+#define PWROFFALM_BIT_EN	0
+#define PWROFFALM_BIT_YEAR	1
+#define PWROFFALM_BIT_MONTH	5
+#define PWROFFALM_BIT_DAY	7
+#define PWROFFALM_BIT_HOUR	9
+#define PWROFFALM_BIT_MIN	11
+#define PWROFFALM_BIT_TOTAL	13
+
+int android_alarm_set_alarm_poweroff(char *alarm_data)
+{
+	struct rtc_wkalrm alm;
+	int ret;
+	char buf_ptr[PWROFFALM_BIT_TOTAL + 1];
+
+	if (!alarm_rtc_dev) {
+		pr_alarm(ERROR, "android_alarm_set_alarm_poweroff: "
+			"no RTC, time will be lost on reboot\n");
+		return -1;
+	}
+
+	strlcpy(buf_ptr, alarm_data, PWROFFALM_BIT_TOTAL + 1);
+
+	alm.time.tm_sec = 0;
+
+	alm.time.tm_min = (buf_ptr[PWROFFALM_BIT_MIN] - '0') * 10
+	    + (buf_ptr[PWROFFALM_BIT_MIN + 1] - '0');
+	alm.time.tm_hour = (buf_ptr[PWROFFALM_BIT_HOUR] - '0') * 10
+	    + (buf_ptr[PWROFFALM_BIT_HOUR + 1] - '0');
+	alm.time.tm_mday = (buf_ptr[PWROFFALM_BIT_DAY] - '0') * 10
+	    + (buf_ptr[PWROFFALM_BIT_DAY + 1] - '0');
+	alm.time.tm_mon = (buf_ptr[PWROFFALM_BIT_MONTH] - '0') * 10
+	    + (buf_ptr[PWROFFALM_BIT_MONTH + 1] - '0');
+	alm.time.tm_year = (buf_ptr[PWROFFALM_BIT_YEAR] - '0') * 1000
+	    + (buf_ptr[PWROFFALM_BIT_YEAR + 1] - '0') * 100
+	    + (buf_ptr[PWROFFALM_BIT_YEAR + 2] - '0') * 10
+	    + (buf_ptr[PWROFFALM_BIT_YEAR + 3] - '0');
+	alm.enabled = (*buf_ptr == '1');
+
+	alm.time.tm_mon -= 1;
+	alm.time.tm_year -= 1900;
+
+	printk(KERN_INFO "%s: %d/%d/%d %d:%d:%d(%d)\n", __func__,
+		1900 + alm.time.tm_year, 1 + alm.time.tm_mon,
+		alm.time.tm_mday, alm.time.tm_hour, alm.time.tm_min,
+		alm.time.tm_sec, alm.time.tm_wday);
+
+	ret = rtc_set_alarm_poweroff(alarm_rtc_dev, &alm);
+
+	return ret;
+}
+#endif
+
 /**
- * alarm_get_elapsed_realtime - get the elapsed real time in ktime_t format
+ * android_alarm_get_elapsed_realtime - get the elapsed real time in ktime_t format
  *
  * returns the time in ktime_t format
  */
-ktime_t alarm_get_elapsed_realtime(void)
+ktime_t android_alarm_get_elapsed_realtime(void)
 {
 	ktime_t now;
 	unsigned long flags;
