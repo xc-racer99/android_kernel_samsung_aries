@@ -517,7 +517,7 @@ static void s3c_bat_discharge_reason(struct chg_data *chg)
 			POWER_SUPPLY_HEALTH_OVERHEAT ?
 			DISCONNECT_TEMP_OVERHEAT : DISCONNECT_TEMP_FREEZE;
 
-	ktime = alarm_get_elapsed_realtime();
+	ktime = android_alarm_get_elapsed_realtime();
 	cur_time = ktime_to_timespec(ktime);
 
 	if (chg->discharging_time &&
@@ -610,7 +610,7 @@ static int s3c_cable_status_update(struct chg_data *chg)
 			chg->set_batt_full = 0;
 			goto update;
 		} else if (chg->discharging_time == 0) {
-			ktime = alarm_get_elapsed_realtime();
+			ktime = android_alarm_get_elapsed_realtime();
 			cur_time = ktime_to_timespec(ktime);
 			chg->discharging_time =
 				chg->bat_info.batt_is_full ||
@@ -666,7 +666,7 @@ static void s3c_program_alarm(struct chg_data *chg, int seconds)
 	ktime_t next;
 
 	next = ktime_add(chg->last_poll, low_interval);
-	alarm_start_range(&chg->alarm, next, ktime_add(next, slack));
+	android_alarm_start_range(&chg->alarm, next, ktime_add(next, slack));
 }
 
 static void s3c_bat_work(struct work_struct *work)
@@ -689,7 +689,7 @@ static void s3c_bat_work(struct work_struct *work)
 
 	power_supply_changed(&chg->psy_bat);
 
-	chg->last_poll = alarm_get_elapsed_realtime();
+	chg->last_poll = android_alarm_get_elapsed_realtime();
 	ts = ktime_to_timespec(chg->last_poll);
 	chg->timestamp = ts.tv_sec;
 
@@ -933,8 +933,8 @@ static __devinit int max8998_charger_probe(struct platform_device *pdev)
 		goto err_wake_lock;
 	}
 
-	chg->last_poll = alarm_get_elapsed_realtime();
-	alarm_init(&chg->alarm, ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
+	chg->last_poll = android_alarm_get_elapsed_realtime();
+	android_alarm_init(&chg->alarm, ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
 		s3c_battery_alarm);
 
 	check_lpm_charging_mode(chg);
@@ -999,7 +999,7 @@ err_supply_unreg_bat:
 err_wqueue:
 	destroy_workqueue(chg->monitor_wqueue);
 	cancel_work_sync(&chg->bat_work);
-	alarm_cancel(&chg->alarm);
+	android_alarm_cancel(&chg->alarm);
 err_wake_lock:
 	wake_lock_destroy(&chg->work_wake_lock);
 	wake_lock_destroy(&chg->vbus_wake_lock);
@@ -1014,7 +1014,7 @@ static int __devexit max8998_charger_remove(struct platform_device *pdev)
 {
 	struct chg_data *chg = platform_get_drvdata(pdev);
 
-	alarm_cancel(&chg->alarm);
+	android_alarm_cancel(&chg->alarm);
 	free_irq(chg->iodev->i2c->irq, NULL);
 	flush_workqueue(chg->monitor_wqueue);
 	destroy_workqueue(chg->monitor_wqueue);
