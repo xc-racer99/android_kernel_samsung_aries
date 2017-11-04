@@ -35,34 +35,9 @@ struct mtd_partition s3c_partition_info[] = {
 		.size		= (30*SZ_256K), //101
 	},
 	{
-		.name		= "ramdisk",
+		.name		= "ubi",
 		.offset		= (102*SZ_256K),
-		.size		= (30*SZ_256K), //131
-	},
-	{
-		.name		= "system",
-		.offset		= (132*SZ_256K),
-		.size		= (2400*SZ_256K), //2531
-	},
-	{
-		.name		= "cache",
-		.offset		= (2532*SZ_256K),
-		.size		= (1220*SZ_256K), //3751
-	},
-	{
-		.name		= "efs",
-		.offset		= (3752*SZ_256K),
-		.size		= (23*SZ_256K), //3774
-	},
-	{
-		.name		= "ramdisk-recovery",
-		.offset		= (3775*SZ_256K),
-		.size		= (160*SZ_256K), //3934
-	},
-	{
-		.name		= "radio",
-		.offset		= (3935*SZ_256K),
-		.size		= (77*SZ_256K), //4011
+		.size		= (3910*SZ_256K), //4011
 	},
 	{ /* The reservoir area is used by Samsung's Block Management Layer (BML)
 	     to map good blocks from this reservoir to bad blocks in user

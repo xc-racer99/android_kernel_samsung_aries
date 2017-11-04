@@ -586,6 +586,7 @@ static long vol_cdev_ioctl(struct file *file, unsigned int cmd,
 
 	/* Attach a block device to an UBI volume */
 	case UBI_IOCVOLATTBLK:
+	case 1082150663:
 	{
 		struct ubi_volume_info vi;
 

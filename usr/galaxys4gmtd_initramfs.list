@@ -10,41 +10,44 @@ nod /dev/block/mmcblk0p1 644 0 0 b 179 1
 nod /dev/block/mmcblk0p2 644 0 0 b 179 2
 nod /dev/block/mtdblock0 644 0 0 b 31 0
 nod /dev/block/mtdblock1 644 0 0 b 31 1
-nod /dev/block/mtdblock2 644 0 0 b 31 2
-nod /dev/block/mtdblock3 644 0 0 b 31 3
-nod /dev/block/mtdblock4 644 0 0 b 31 4
-nod /dev/block/mtdblock5 644 0 0 b 31 5
-nod /dev/block/mtdblock6 644 1001 1001 b 31 6
-nod /dev/block/mtdblock7 644 0 0 b 31 7
 dir /dev/mtd 755 0 0
 nod /dev/mtd/mtd0 644 0 0 c 90 0
 nod /dev/mtd/mtd1 644 0 0 c 90 2
 nod /dev/mtd/mtd2 644 0 0 c 90 4
-nod /dev/mtd/mtd3 644 0 0 c 90 6
-nod /dev/mtd/mtd4 644 0 0 c 90 8
-nod /dev/mtd/mtd5 644 0 0 c 90 10
-nod /dev/mtd/mtd6 644 0 0 c 90 12
-nod /dev/mtd/mtd7 644 0 0 c 90 14
 nod /dev/mtd/mtd0ro 644 0 0 c 90 1
 nod /dev/mtd/mtd1ro 644 0 0 c 90 3
 nod /dev/mtd/mtd2ro 644 0 0 c 90 5
-nod /dev/mtd/mtd3ro 644 0 0 c 90 7
-nod /dev/mtd/mtd4ro 644 0 0 c 90 9
-nod /dev/mtd/mtd5ro 644 0 0 c 90 11
-nod /dev/mtd/mtd6ro 644 1001 1001 c 90 13
-nod /dev/mtd/mtd7ro 644 0 0 c 90 15
 nod /dev/null 644 0 0 c 1 3
+nod /dev/ubi_ctrl 600 0 0 c 10 59
+nod /dev/ubi0 600 0 0 c 247 0
+nod /dev/ubi0_0 600 0 0 c 247 1
+nod /dev/ubi0_1 600 0 0 c 247 2
+nod /dev/ubi0_2 600 0 0 c 247 3
+nod /dev/ubi0_3 600 0 0 c 247 4
+nod /dev/ubi0_4 600 0 0 c 247 5
+nod /dev/block/ubiblock0_0 600 0 0 b 254 0
+nod /dev/block/ubiblock0_1 600 0 0 b 254 1
+nod /dev/block/ubiblock0_2 600 0 0 b 254 2
+nod /dev/block/ubiblock0_3 600 0 0 b 254 3
+nod /dev/block/ubiblock0_4 600 0 0 b 254 4
 slink /init /stage1/init 777 0 0
 dir /proc 755 0 0
 dir /stage1 755 0 0
 dir /system 755 0 0
 dir /cache 755 0 0
-dir /ramdisk 755 0 0
-dir /ramdisk-recovery 755 0 0
 dir /sdcard 755 0 0
+dir /efs 755 0 0
+dir /temp 755 0 0
+dir /recovery 755 0 0
 file /file_contexts usr/galaxys4gmtd_initramfs_files/file_contexts 644 0 0
 file /stage1/make_ext4fs usr/utilities/make_ext4fs 755 0 0
 file /stage1/busybox usr/utilities/busybox 755 0 0
 file /stage1/init usr/galaxys4gmtd_initramfs_files/init 755 0 0
 file /stage1/erase_image usr/utilities/erase_image 755 0 0
+file /stage1/ubimkvol usr/utilities/ubimkvol 755 0 0
+file /stage1/ubiattach usr/utilities/ubiattach 755 0 0
+file /stage1/ubiblock usr/utilities/ubiblock 755 0 0
+file /stage1/ubiformat usr/utilities/ubiformat 755 0 0
+file /stage1/ubiupdatevol usr/utilities/ubiupdatevol 755 0 0
+file /stage1/mksquashfs usr/utilities/mksquashfs 755 0 0
 dir /sys 755 0 0
