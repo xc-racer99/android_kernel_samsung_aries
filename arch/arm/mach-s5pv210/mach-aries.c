@@ -5634,15 +5634,7 @@ static void __init aries_inject_cmdline(void) {
 		if (bootmode < 10) {
 			size += sprintf(new_command_line + size, " bootmode=%d", bootmode);
 		}
-#if 0//defined(CONFIG_SAMSUNG_GALAXYS4G)
-		if (bootmode ==2) {
-			size += sprintf(new_command_line + size, " androidboot.selinux=permissive");
-		} else {
-			size += sprintf(new_command_line + size, " androidboot.selinux=enforcing");
-		}
-#else
 		size += sprintf(new_command_line + size, " androidboot.selinux=permissive");
-#endif
 	}
 
 	saved_command_line = new_command_line;

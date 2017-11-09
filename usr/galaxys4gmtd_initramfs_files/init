@@ -2,131 +2,29 @@
 export _PATH="$PATH"
 export PATH=/stage1
 
-busybox cd /
-busybox date >>boot.txt
-exec >>boot.txt 2>&1
+cd /
+busybox date >>/boot.txt
 busybox rm init
 busybox mount -t proc proc /proc
 busybox mount -t sysfs sysfs /sys
-busybox mount -t yaffs2 /dev/block/mtdblock2 /system
-busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
-busybox mount -t yaffs2 -o ro /dev/block/mtdblock1 /ramdisk
-busybox mount -t yaffs2 -o ro /dev/block/mtdblock5 /ramdisk-recovery
 
-image=/ramdisk/ramdisk.img
+exec >> /boot.txt
+exec 2>&1
 
-if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmdline ; then
-	# recovery boot
-	busybox echo 'RECOVERY BOOT' >>boot.txt
-	busybox rm -fr /cache/.startrecovery
-	image=/ramdisk-recovery/ramdisk-recovery.img
-	busybox echo "loading ramdisk-recovery.img" >>boot.txt
-
-	# disable lpm
-	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
-
-elif busybox test -e /cache/.format_sd ; then
-	# boot from repartitionning
-	busybox echo 'REPARTITION BOOT' >>boot.txt
-
-	# purge all partitions and create one new primary one
-	# benign errors if only one partition is present
-	# commands in order are:
-		# delete both partitions
-		# create new partition
-		# make it primary
-		# make it partition number 1
-		# start at default address
-		# end at default address
-		# write to disk
-	busybox fdisk /dev/block/mmcblk0 <<EOF
-o
-n
-p
-1
-
-
-w
-EOF
-
-	make_ext4fs -l -16384 -a /data /dev/block/mmcblk0p1
-
-	busybox rm -fr /cache/.format_sd
-	image=/ramdisk-recovery/ramdisk-recovery.img
-	busybox echo "loading ramdisk-recovery.img" >>boot.txt
-
-	# disable lpm
-	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
-
-elif ! busybox test -e /system/build.prop ; then
-
-	# emergency boot
-	busybox echo "EMERGENCY BOOT" >>boot.txt
-	busybox umount /cache
-	erase_image cache
-	busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
-
-	if ! busybox test -e /cache/recovery ; then
-		busybox mkdir /cache/recovery
-	fi
-
-	busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
-	busybox sleep 1
-
-	if busybox test -e /sdcard/aries.cfg ; then
-		busybox echo "installing: `busybox cat /sdcard/aries.cfg`" >>boot.txt
-		busybox echo "creating recovery command" >>boot.txt
-		busybox touch /cache/recovery/command
-		busybox echo "--update_package=`busybox cat /sdcard/aries.cfg`" > /cache/recovery/command
-
-		busybox umount /ramdisk-recovery
-		erase_image ramdisk-recovery
-		busybox mount -t yaffs2 /dev/block/mtdblock5 /ramdisk-recovery
-
-		busybox cp /sdcard/ramdisk-recovery.img /ramdisk-recovery/ramdisk-recovery.img
-
-		busybox mount -t yaffs2 -o remount,ro /dev/block/mtdblock5 /ramdisk-recovery
-
-		VFAT=true
-	else
-		busybox echo "aries.cfg not found" >>boot.txt
-	fi
-
-	busybox echo "loading ramdisk-recovery.img" >>boot.txt
-	image=/ramdisk-recovery/ramdisk-recovery.img
-
-	# disable lpm
-	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
-
-	# umount sdcard
-	busybox umount /sdcard
-
+if busybox grep -q bootmode=2 /proc/cmdline; then
+	busybox mount /dev/block/ubiblock0_2 /ramdisk -t squashfs -o ro
 else
-	# android boot
-	busybox echo "ANDROID BOOT" >>boot.txt
-	busybox echo "loading ramdisk.img" >>boot.txt
+	busybox mount /dev/block/ubiblock0_1 /ramdisk -t squashfs -o ro
 fi
 
-busybox umount /cache
-busybox umount /system
-busybox rmdir /sdcard
-busybox rm -f /file_contexts
-
-busybox gzip -d < $image > /stage1/ramdisk.cpio
-
+busybox cp -Rfp /ramdisk/* /
 busybox umount /ramdisk
-busybox umount /ramdisk-recovery
-
-busybox cpio -ui < /stage1/ramdisk.cpio
-
-if [ "$VFAT" = "true" ] ; then
-    # Replace the twrp.fstab with the previous one
-	busybox printf "/boot mtd boot\n/ramdisk yaffs2 ramdisk flags=backup=1\n/ramdisk-recovery yaffs2 ramdisk-recovery flags=backup=1\n/radio mtd radio\n/efs yaffs2 efs flags=display="EFS";backup=1\n/cache yaffs2 cache flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n/system yaffs2 system flags=backup=1;canbewiped;wipeingui\n/sdcard vfat /dev/block/mmcblk0p1" > /etc/twrp.fstab
-fi
 
 busybox umount /sys
 busybox umount /proc
 busybox date >>boot.txt
-busybox rm -rf /stage1 /ramdisk* /dev/*
+busybox rm -rf /stage1 /sdcard /file_contexts /efs /temp /ramdisk
+busybox find /dev/* ! -name '*ubi*' -delete
 export PATH="${_PATH}"
 exec /init
+
