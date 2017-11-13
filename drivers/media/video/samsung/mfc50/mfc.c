@@ -192,6 +192,7 @@ err_regulator:
 		if (ret < 0)
 			mfc_err("MFC_RET_POWER_DISABLE_FAIL\n");
 	}
+#ifdef CONFIG_CMA
 err_alloc1:
 	if (!mfc_is_running())
 		s5p_release_media_memory_bank(S5P_MDEV_MFC, 1);
@@ -199,6 +200,7 @@ err_alloc0:
 	if (!mfc_is_running())
 		s5p_release_media_memory_bank(S5P_MDEV_MFC, 0);
 	mfc_mem_allocated = false;
+#endif
 err_open:
 	mutex_unlock(&mfc_mutex);
 
