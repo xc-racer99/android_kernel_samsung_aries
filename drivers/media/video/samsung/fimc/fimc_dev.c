@@ -44,29 +44,6 @@
 
 struct fimc_global *fimc_dev;
 
-#ifdef CONFIG_CMA
-static void release_fimc0_mem(struct work_struct * fimc0_work);
-static void release_fimc2_mem(struct work_struct * fimc2_work);
-static DECLARE_DELAYED_WORK(fimc0_work, release_fimc0_mem);
-static DECLARE_DELAYED_WORK(fimc2_work, release_fimc2_mem);
-bool fimc0_mem_allocated = false;
-bool fimc2_mem_allocated = false;
-
-static void release_fimc0_mem(struct work_struct * fimc0_work)
-{
-	s5p_release_media_memory_bank(S5P_MDEV_FIMC0, 1);
-
-	fimc2_mem_allocated = false;
-}
-
-static void release_fimc2_mem(struct work_struct * fimc2_work)
-{
-	s5p_release_media_memory_bank(S5P_MDEV_FIMC2, 1);
-
-	fimc0_mem_allocated = false;
-}
-#endif
-
 int fimc_dma_alloc(struct fimc_control *ctrl, struct fimc_buf_set *bs,
 							int i, int align)
 {
@@ -1026,44 +1003,6 @@ static int fimc_open(struct file *filp)
 		goto kzalloc_err;
 	}
 
-#ifdef CONFIG_CMA
-	if (0 == ctrl->id) {
-		if (fimc0_mem_allocated) {
-			/* FIMC0 still allocated, cancel the pending deallocation */
-			cancel_delayed_work(&fimc0_work);
-		} else {
-			printk(KERN_INFO "FIMC%d: CMA allocating\n",ctrl->id);
-			ret = s5p_alloc_media_memory_bank(S5P_MDEV_FIMC0, 1);
-
-			if (ret < 0) {
-				ret = -ENOMEM;
-				printk(KERN_INFO "FIMC%d: dma_alloc_coherent failed\n",
-									ctrl->id);
-				goto ctx_err;
-			}
-
-			fimc0_mem_allocated = true;
-		}
-	} else if (2 == ctrl->id) {
-		if (fimc2_mem_allocated) {
-			/* FIMC2 still allocated, cancel the pending deallocation */
-			cancel_delayed_work(&fimc2_work);
-		} else {
-			printk(KERN_INFO "FIMC%d: CMA allocating\n",ctrl->id);
-			ret = s5p_alloc_media_memory_bank(S5P_MDEV_FIMC2, 1);
-
-			if (ret < 0) {
-				ret = -ENOMEM;
-				printk(KERN_INFO "FIMC%d: dma_alloc_coherent failed\n",
-								ctrl->id);
-				goto ctx_err;
-			}
-
-			fimc2_mem_allocated = true;
-		}
-	}
-#endif
-
 	prv_data->ctx_id = fimc_get_free_ctx(ctrl);
 	if (prv_data->ctx_id < 0) {
 		fimc_err("%s: Context busy flag not reset.\n", __func__);
@@ -1287,16 +1226,7 @@ static int fimc_release(struct file *filp)
 #ifdef CONFIG_MACH_P1
 	ctrl->ctx_busy[ctx_id] = 0;
 #endif
-
-#ifdef CONFIG_CMA
-	if (2 == ctrl->id) {
-		schedule_delayed_work(&fimc2_work, msecs_to_jiffies(5000));
-	} else if (0 == ctrl->id) {
-		schedule_delayed_work(&fimc0_work, msecs_to_jiffies(5000));
-	}
-#endif
-
-        mutex_unlock(&ctrl->lock);
+	mutex_unlock(&ctrl->lock);
 
 	fimc_info1("%s released.\n", ctrl->name);
 
