@@ -32,11 +32,65 @@
 #include <plat/media.h>
 
 static int uacma_ctrl;
+bool mfc_cma_allocated = false;
+bool fimc_cma_allocated = false;
+EXPORT_SYMBOL(mfc_cma_allocated);
+EXPORT_SYMBOL(fimc_cma_allocated);
+
+static int uacma_alloc_mfc(void) {
+        if (mfc_cma_allocated) {
+                printk(KERN_INFO "uacma: MFC already allocated \n");
+                return 0;
+        }
+        printk(KERN_INFO "uacma: preparing to allocate MFC memory \n");
+        s5p_alloc_media_memory_bank(S5P_MDEV_MFC, 0);
+        s5p_alloc_media_memory_bank(S5P_MDEV_MFC, 1);
+        mfc_cma_allocated=true;
+        return 0;
+}
+
+static int uacma_alloc_fimc(void) {
+        if (fimc_cma_allocated) {
+                printk(KERN_INFO "uacma: FIMC already allocated \n");
+                return 0;
+        }
+        printk(KERN_INFO "uacma: preparing to allocate FIMC memory \n");
+        s5p_alloc_media_memory_bank(S5P_MDEV_FIMC2, 1);
+        s5p_alloc_media_memory_bank(S5P_MDEV_FIMC0, 1);
+        fimc_cma_allocated = true;
+        return 0;
+}
+
+static int uacma_release_mfc(void) {
+        if (!mfc_cma_allocated) {
+                printk(KERN_INFO "uacma: MFC already deallocated \n");
+                return 0;
+        }
+        printk(KERN_INFO "uacma: preparing to release MFC memory \n");
+        s5p_release_media_memory_bank(S5P_MDEV_MFC, 0);
+        s5p_release_media_memory_bank(S5P_MDEV_MFC, 1);
+        mfc_cma_allocated=false;
+        return 0;
+}
+
+static int uacma_release_fimc(void) {
+        if (!fimc_cma_allocated) {
+                printk(KERN_INFO "uacma: FIMC already deallocated \n");
+                return 0;
+        }
+        printk(KERN_INFO "uacma: preparing to release FIMC memory \n");
+        s5p_release_media_memory_bank(S5P_MDEV_FIMC2, 1);
+        s5p_release_media_memory_bank(S5P_MDEV_FIMC0, 1);
+        fimc_cma_allocated = false;
+        return 0;
+}
+
 
 /* sysfs interface */
 static ssize_t enable_show(struct kobject *kobj,
                            struct kobj_attribute *attr, char *buf)
 {
+        // TODO: show more info
         return sprintf(buf, "%d\n", uacma_ctrl);
 }
 
@@ -46,6 +100,29 @@ static ssize_t enable_store(struct kobject *kobj, struct kobj_attribute *attr,
         int input;
         sscanf(buf, "%du", &input);
         uacma_ctrl = input;
+        // 0 = disable both,
+        // 1 = enable MFC, disable FIMC
+        // 2 = enable FIMC,disable MFC
+        // 3 = enable both
+        printk(KERN_INFO "uacma: userspace said: %d \n", uacma_ctrl);
+        switch (uacma_ctrl) {
+        case 0:
+                uacma_release_mfc();
+                uacma_release_fimc();
+                break;
+        case 1:
+                uacma_release_fimc();
+                uacma_alloc_mfc();
+                break;
+        case 2:
+                uacma_release_mfc();
+                uacma_alloc_fimc();
+                break;
+        case 3:
+                uacma_alloc_mfc();
+                uacma_alloc_fimc();
+                break;
+        }
         return count;
 }
 
@@ -78,6 +155,9 @@ static int __init uacma_init(void)
         printk(KERN_INFO "uacma: boot time alloc for fimc2 returned: %d \n", retval);
         retval = s5p_alloc_media_memory_bank(S5P_MDEV_FIMC0, 1);
         printk(KERN_INFO "uacma: boot time alloc for fimc0 returned: %d \n", retval);
+
+        mfc_cma_allocated = true;
+        fimc_cma_allocated = true;
 
         // sysfs_interface
         enable_kobj = kobject_create_and_add("uacma", kernel_kobj);

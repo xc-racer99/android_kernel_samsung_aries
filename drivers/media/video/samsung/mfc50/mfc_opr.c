@@ -772,7 +772,7 @@ int mfc_load_firmware(const unsigned char *data, size_t size)
 {
 	volatile unsigned char *fw_virbuf;
 
-	mfc_debug("mfc_load_firmware : MFC F/W Loading Start.................\n");
+	printk(KERN_INFO "mfc_load_firmware : MFC F/W Loading Start.................\n");
 
 	fw_virbuf = mfc_get_fw_buff_vaddr();
 	memset((void *)fw_virbuf, 0, MFC_FW_MAX_SIZE);
@@ -781,7 +781,7 @@ int mfc_load_firmware(const unsigned char *data, size_t size)
 	memcpy((void *)fw_virbuf, data, size);
 	flush_kernel_vmap_range((void *)fw_virbuf, size);
 
-	mfc_debug("mfc_load_firmware : MFC F/W Loading Stop.................(fw_virbuf: 0x%08x)\n", fw_virbuf);
+	printk(KERN_INFO "mfc_load_firmware : MFC F/W Loading Stop.................(fw_virbuf: 0x%08x)\n", fw_virbuf);
 
 	return 0;
 }
