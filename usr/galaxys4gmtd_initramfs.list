@@ -10,6 +10,7 @@ nod /dev/block/mmcblk0p1 644 0 0 b 179 1
 nod /dev/block/mmcblk0p2 644 0 0 b 179 2
 nod /dev/block/mtdblock0 644 0 0 b 31 0
 nod /dev/block/mtdblock1 644 0 0 b 31 1
+nod /dev/block/mtdblock2 644 0 0 b 31 2
 dir /dev/mtd 755 0 0
 nod /dev/mtd/mtd0 644 0 0 c 90 0
 nod /dev/mtd/mtd1 644 0 0 c 90 2
@@ -24,12 +25,10 @@ nod /dev/ubi0_0 600 0 0 c 247 1
 nod /dev/ubi0_1 600 0 0 c 247 2
 nod /dev/ubi0_2 600 0 0 c 247 3
 nod /dev/ubi0_3 600 0 0 c 247 4
-nod /dev/ubi0_4 600 0 0 c 247 5
 nod /dev/block/ubiblock0_0 600 0 0 b 254 0
 nod /dev/block/ubiblock0_1 600 0 0 b 254 1
 nod /dev/block/ubiblock0_2 600 0 0 b 254 2
 nod /dev/block/ubiblock0_3 600 0 0 b 254 3
-nod /dev/block/ubiblock0_4 600 0 0 b 254 4
 slink /init /stage1/init 777 0 0
 dir /proc 755 0 0
 dir /stage1 755 0 0

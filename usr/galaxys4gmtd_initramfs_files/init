@@ -26,7 +26,6 @@ if busybox test -e /sdcard/backup/efs.tar ; then
 	ubimkvol /dev/ubi0 -N ramdisk -s 10MiB -n 1
 	ubimkvol /dev/ubi0 -N ramdisk-recovery -s 10MiB -n 2
 	ubimkvol /dev/ubi0 -N radio -s 20MiB -n 3
-	ubimkvol /dev/ubi0 -N efs -s 10MiB -n 4
 	ubimkvol /dev/ubi0 -N system -m -n 0
 
 	# create ubiblocks for system, ramdisk, ramdisk-recovery, radio
@@ -36,7 +35,7 @@ if busybox test -e /sdcard/backup/efs.tar ; then
 	ubiblock -c /dev/ubi0_3
 
 	# copy efs to its own partition
-	busybox mount -t ubifs /dev/ubi0_4 /efs
+	busybox mount -t yaffs2 /dev/block/mtdblock2 /efs
 
 	# verify the md5sum of efs.tar before restore
 	cd /sdcard/backup/
