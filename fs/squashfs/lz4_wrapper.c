@@ -16,7 +16,6 @@
 #include "squashfs_fs_sb.h"
 #include "squashfs.h"
 #include "decompressor.h"
-#include "page_actor.h"
 
 #define LZ4_LEGACY	1
 
@@ -30,11 +29,12 @@ struct squashfs_lz4 {
 	void *output;
 };
 
-
-static void *lz4_comp_opts(struct squashfs_sb_info *msblk,
-	void *buff, int len)
+static void *lz4_init(struct squashfs_sb_info *msblk, void *buff, int len)
 {
 	struct lz4_comp_opts *comp_opts = buff;
+
+	int block_size = max_t(int, msblk->block_size, SQUASHFS_METADATA_SIZE);
+	struct squashfs_lz4 *stream;
 
 	/* LZ4 compressed filesystems always have compression options */
 	if (comp_opts == NULL || len < sizeof(*comp_opts))
@@ -46,15 +46,6 @@ static void *lz4_comp_opts(struct squashfs_sb_info *msblk,
 		ERROR("Unknown LZ4 version\n");
 		return ERR_PTR(-EINVAL);
 	}
-
-	return NULL;
-}
-
-
-static void *lz4_init(struct squashfs_sb_info *msblk, void *buff)
-{
-	int block_size = max_t(int, msblk->block_size, SQUASHFS_METADATA_SIZE);
-	struct squashfs_lz4 *stream;
 
 	stream = kzalloc(sizeof(*stream), GFP_KERNEL);
 	if (stream == NULL)
@@ -90,16 +81,22 @@ static void lz4_free(void *strm)
 }
 
 
-static int lz4_uncompress(struct squashfs_sb_info *msblk, void *strm,
-	struct buffer_head **bh, int b, int offset, int length,
-	struct squashfs_page_actor *output)
+static int lz4_uncompress(struct squashfs_sb_info *msblk, void **buffer,
+	struct buffer_head **bh, int b, int offset, int length, int srclength,
+	int pages)
 {
-	struct squashfs_lz4 *stream = strm;
-	void *buff = stream->input, *data;
+	struct squashfs_lz4 *stream = msblk->stream;
+	void *buff = stream->input;
 	int avail, i, bytes = length, res;
-	size_t dest_len = output->length;
+	size_t dest_len = srclength;
+
+	mutex_lock(&msblk->read_data_mutex);
 
 	for (i = 0; i < b; i++) {
+		wait_on_buffer(bh[i]);
+		if (!buffer_uptodate(bh[i]))
+			goto block_release;
+
 		avail = min(bytes, msblk->devblksize - offset);
 		memcpy(buff, bh[i]->b_data + offset, avail);
 		buff += avail;
@@ -111,29 +108,33 @@ static int lz4_uncompress(struct squashfs_sb_info *msblk, void *strm,
 	res = lz4_decompress_unknownoutputsize(stream->input, length,
 					stream->output, &dest_len);
 	if (res)
-		return -EIO;
+		goto failed;
 
 	bytes = dest_len;
-	data = squashfs_first_page(output);
-	buff = stream->output;
-	while (data) {
-		if (bytes <= PAGE_CACHE_SIZE) {
-			memcpy(data, buff, bytes);
-			break;
-		}
-		memcpy(data, buff, PAGE_CACHE_SIZE);
-		buff += PAGE_CACHE_SIZE;
-		bytes -= PAGE_CACHE_SIZE;
-		data = squashfs_next_page(output);
+	for (i = 0, buff = stream->output; bytes && i < pages; i++) {
+		avail = min_t(int, bytes, PAGE_CACHE_SIZE);
+		memcpy(buffer[i], buff, avail);
+		buff += avail;
+		bytes -= avail;
 	}
-	squashfs_finish_page(output);
+
+	mutex_unlock(&msblk->read_data_mutex);
 
 	return dest_len;
+
+block_release:
+	for (; i < b; i++)
+		put_bh(bh[i]);
+
+failed:
+	mutex_unlock(&msblk->read_data_mutex);
+
+	ERROR("lzo decompression failed, data probably corrupt\n");
+	return -EIO;
 }
 
 const struct squashfs_decompressor squashfs_lz4_comp_ops = {
 	.init = lz4_init,
-	.comp_opts = lz4_comp_opts,
 	.free = lz4_free,
 	.decompress = lz4_uncompress,
 	.id = LZ4_COMPRESSION,
