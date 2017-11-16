@@ -38,27 +38,57 @@ EXPORT_SYMBOL(mfc_cma_allocated);
 EXPORT_SYMBOL(fimc_cma_allocated);
 
 static int uacma_alloc_mfc(void) {
+        int ret;
+
         if (mfc_cma_allocated) {
                 printk(KERN_INFO "uacma: MFC already allocated \n");
                 return 0;
         }
         printk(KERN_INFO "uacma: preparing to allocate MFC memory \n");
-        s5p_alloc_media_memory_bank(S5P_MDEV_MFC, 0);
-        s5p_alloc_media_memory_bank(S5P_MDEV_MFC, 1);
-        mfc_cma_allocated=true;
+        ret = s5p_alloc_media_memory_bank(S5P_MDEV_MFC, 0);
+        if(ret < 0) {
+                printk(KERN_ERR "uacma: unable to allocate MFC0 memory \n");
+                return -ENOMEM;
+        }
+
+        ret = s5p_alloc_media_memory_bank(S5P_MDEV_MFC, 1);
+        if(ret < 0) {
+                printk(KERN_ERR "uacma: unable to allocate MFC1 memory \n");
+                goto err;
+        }
+
+        mfc_cma_allocated = true;
         return 0;
+
+err:
+        s5p_release_media_memory_bank(S5P_MDEV_MFC, 0);
+        return -ENOMEM;
 }
 
 static int uacma_alloc_fimc(void) {
+        int ret;
+
         if (fimc_cma_allocated) {
                 printk(KERN_INFO "uacma: FIMC already allocated \n");
                 return 0;
         }
         printk(KERN_INFO "uacma: preparing to allocate FIMC memory \n");
-        s5p_alloc_media_memory_bank(S5P_MDEV_FIMC2, 1);
-        s5p_alloc_media_memory_bank(S5P_MDEV_FIMC0, 1);
+        ret = s5p_alloc_media_memory_bank(S5P_MDEV_FIMC2, 1);
+        if(ret < 0) {
+                printk(KERN_ERR "uacma: unable to allocate FIMC2 memory \n");
+                return -ENOMEM;
+        }
+        ret = s5p_alloc_media_memory_bank(S5P_MDEV_FIMC0, 1);
+        if(ret < 0) {
+                printk(KERN_ERR "uacma: unable to allocate FIMC2 memory \n");
+                goto err;
+        }
         fimc_cma_allocated = true;
         return 0;
+
+err:
+        s5p_release_media_memory_bank(S5P_MDEV_FIMC2, 1);
+        return -ENOMEM;
 }
 
 static int uacma_release_mfc(void) {
@@ -69,7 +99,7 @@ static int uacma_release_mfc(void) {
         printk(KERN_INFO "uacma: preparing to release MFC memory \n");
         s5p_release_media_memory_bank(S5P_MDEV_MFC, 0);
         s5p_release_media_memory_bank(S5P_MDEV_MFC, 1);
-        mfc_cma_allocated=false;
+        mfc_cma_allocated = false;
         return 0;
 }
 
@@ -98,31 +128,81 @@ static ssize_t enable_store(struct kobject *kobj, struct kobj_attribute *attr,
                             const char *buf, size_t count)
 {
         int input;
+        int ret;
         sscanf(buf, "%du", &input);
-        uacma_ctrl = input;
         // 0 = disable both,
         // 1 = enable MFC, disable FIMC
         // 2 = enable FIMC,disable MFC
         // 3 = enable both
-        printk(KERN_INFO "uacma: userspace said: %d \n", uacma_ctrl);
-        switch (uacma_ctrl) {
+        printk(KERN_INFO "uacma: userspace said: %d \n", input);
+        switch (input) {
         case 0:
-                uacma_release_mfc();
-                uacma_release_fimc();
+                if(mfc_cma_allocated) {
+                        ret = uacma_release_mfc();
+                        if(ret < 0)
+                            goto err;
+                }
+                if(fimc_cma_allocated) {
+                        ret = uacma_release_fimc();
+                        if(ret < 0)
+                            goto err;
+                }
+                uacma_ctrl = input;
                 break;
         case 1:
-                uacma_release_fimc();
-                uacma_alloc_mfc();
+                if(fimc_cma_allocated) {
+                        ret = uacma_release_fimc();
+                        if(ret < 0)
+                            goto err;
+                }
+                if(!mfc_cma_allocated) {
+                        ret = uacma_alloc_mfc();
+                        if(ret < 0)
+                            goto err;
+                }
+                uacma_ctrl = input;
                 break;
         case 2:
-                uacma_release_mfc();
-                uacma_alloc_fimc();
+                if(mfc_cma_allocated) {
+                        ret = uacma_release_mfc();
+                        if(ret < 0)
+                            goto err;
+                }
+                if(!fimc_cma_allocated) {
+                        ret = uacma_alloc_fimc();
+                        if(ret < 0)
+                            goto err;
+                }
+                uacma_ctrl = input;
                 break;
         case 3:
-                uacma_alloc_mfc();
-                uacma_alloc_fimc();
+                if(!mfc_cma_allocated) {
+                        ret = uacma_alloc_mfc();
+                        if(ret < 0)
+                            goto err;
+                }
+                if(!fimc_cma_allocated) {
+                        ret = uacma_alloc_fimc();
+                        if(ret < 0)
+                            goto err;
+                }
+                uacma_ctrl = input;
                 break;
+        default:
+                printk(KERN_ERR "uacma: tried to set to unsupported value %d \n", input);
         }
+        return count;
+err:
+        // We ran into an error, manually check what the sysfs should show
+        printk(KERN_ERR "uacma: encountered an error allocating or deallocating memory \n");
+        if(!fimc_cma_allocated && !mfc_cma_allocated)
+                uacma_ctrl = 0;
+        else if(!fimc_cma_allocated && mfc_cma_allocated)
+                uacma_ctrl = 1;
+        else if(fimc_cma_allocated && !mfc_cma_allocated)
+                uacma_ctrl = 2;
+        else
+                uacma_ctrl = 3;
         return count;
 }
 
@@ -171,7 +251,7 @@ static int __init uacma_init(void)
 }
 
 MODULE_AUTHOR("Cswl Coldwind <cswl1337@gmail.com>");
-MODULE_DESCRIPTION("User Assited: CMA for Galaxy S devices.");
+MODULE_DESCRIPTION("User Assisted: CMA for Galaxy S devices.");
 MODULE_LICENSE("GPL");
 
 module_init(uacma_init);
