@@ -69,6 +69,8 @@ static struct clk *mfc_sclk;
 static struct regulator *mfc_pd_regulator;
 const struct firmware	*mfc_fw_info;
 
+extern bool mfc_cma_allocated;
+
 static int mfc_open(struct inode *inode, struct file *file)
 {
 	struct mfc_inst_ctx *mfc_ctx;
@@ -76,6 +78,12 @@ static int mfc_open(struct inode *inode, struct file *file)
 	int mfc_hw = 0;
 
 	mutex_lock(&mfc_mutex);
+
+	if (!mfc_cma_allocated) {
+		printk (KERN_ERR "mfc: open: WARNING: CMA not allocated exiting");
+		ret = -ENOMEM;
+		goto err_open;
+	}
 
 	if (!mfc_is_running()) {
 		/* Turn on mfc power domain regulator */
@@ -528,10 +536,14 @@ static void mfc_firmware_request_complete_handler(const struct firmware *fw,
 						  void *context)
 {
 	if (fw != NULL) {
+		if (!mfc_cma_allocated) {
+			printk (KERN_ERR "mfc: handler: CMA not allocated exiting");
+			return;
+		}
 		mfc_load_firmware(fw->data, fw->size);
 		mfc_fw_info = fw;
 	} else {
-		mfc_err("failed to load MFC F/W, MFC will not working\n");
+		printk(KERN_ERR "failed to load MFC F/W, MFC will not working\n");
 	}
 }
 

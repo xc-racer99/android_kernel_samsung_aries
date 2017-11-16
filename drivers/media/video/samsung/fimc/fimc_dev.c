@@ -43,6 +43,7 @@
 #endif
 
 struct fimc_global *fimc_dev;
+extern bool fimc_cma_allocated;
 
 int fimc_dma_alloc(struct fimc_control *ctrl, struct fimc_buf_set *bs,
 							int i, int align)
@@ -985,6 +986,12 @@ static int fimc_open(struct file *filp)
 	pdata = to_fimc_plat(ctrl->dev);
 
 	mutex_lock(&ctrl->lock);
+
+	if (!fimc_cma_allocated) {
+	  printk(KERN_ERR "fimc: open: WARNING: CMA not allocated exiting");
+		ret = -EBUSY;
+		goto resource_busy;
+		}
 
 	in_use = atomic_read(&ctrl->in_use);
 	if (in_use >= FIMC_MAX_CTXS || (in_use && 1 != ctrl->id)) {
