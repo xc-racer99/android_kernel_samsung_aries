@@ -103,8 +103,8 @@ int s5p_alloc_media_memory_bank(int dev_id, int bank)
 		return -EBUSY;
 	}
 
-	mdev->cmapages = dma_alloc_from_contiguous(
-			mdev->cmadev, mdev->memsize / PAGE_SIZE, 0);
+	mdev->cmapages = dma_alloc_from_contiguous_fixed_addr(
+			mdev->cmadev, mdev->paddr, mdev->memsize / PAGE_SIZE);
 	if (!mdev->cmapages) {
 		printk(KERN_ERR "s5p-cma: unable to alloc pages for %s\n", mdev->name);
 		return -ENOMEM;
