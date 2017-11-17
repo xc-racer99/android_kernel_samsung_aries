@@ -17,10 +17,6 @@
 //
 // And who knows better when they want their camera or be able to
 // play a 720p video better than the user right?
-//
-// TODO: Implement sysfs interface to allow userspace to signal when to
-// use camera, hw decoding or both.
-// TODO: Write probably and app or maybe a widget so the user can change it
 
 #include <linux/module.h>
 #include <linux/kobject.h>
@@ -31,11 +27,22 @@
 #include <mach/media.h>
 #include <plat/media.h>
 
-static int uacma_ctrl;
+static int uacma_status;
 bool mfc_cma_allocated = false;
 bool fimc_cma_allocated = false;
 EXPORT_SYMBOL(mfc_cma_allocated);
 EXPORT_SYMBOL(fimc_cma_allocated);
+
+static void uacma_status_handler(void) {
+        if(!fimc_cma_allocated && !mfc_cma_allocated)
+                uacma_status = 0;
+        else if(!fimc_cma_allocated && mfc_cma_allocated)
+                uacma_status = 1;
+        else if(fimc_cma_allocated && !mfc_cma_allocated)
+                uacma_status = 2;
+        else
+                uacma_status = 3;
+}
 
 static int uacma_alloc_mfc(void) {
         int ret;
@@ -80,7 +87,7 @@ static int uacma_alloc_fimc(void) {
         }
         ret = s5p_alloc_media_memory_bank(S5P_MDEV_FIMC0, 1);
         if(ret < 0) {
-                printk(KERN_ERR "uacma: unable to allocate FIMC2 memory \n");
+                printk(KERN_ERR "uacma: unable to allocate FIMC0 memory \n");
                 goto err;
         }
         fimc_cma_allocated = true;
@@ -121,7 +128,7 @@ static ssize_t enable_show(struct kobject *kobj,
                            struct kobj_attribute *attr, char *buf)
 {
         // TODO: show more info
-        return sprintf(buf, "%d\n", uacma_ctrl);
+        return sprintf(buf, "%d\n", uacma_status);
 }
 
 static ssize_t enable_store(struct kobject *kobj, struct kobj_attribute *attr,
@@ -147,7 +154,7 @@ static ssize_t enable_store(struct kobject *kobj, struct kobj_attribute *attr,
                         if(ret < 0)
                             goto err;
                 }
-                uacma_ctrl = input;
+                uacma_status = input;
                 break;
         case 1:
                 if(fimc_cma_allocated) {
@@ -160,7 +167,7 @@ static ssize_t enable_store(struct kobject *kobj, struct kobj_attribute *attr,
                         if(ret < 0)
                             goto err;
                 }
-                uacma_ctrl = input;
+                uacma_status = input;
                 break;
         case 2:
                 if(mfc_cma_allocated) {
@@ -173,7 +180,7 @@ static ssize_t enable_store(struct kobject *kobj, struct kobj_attribute *attr,
                         if(ret < 0)
                             goto err;
                 }
-                uacma_ctrl = input;
+                uacma_status = input;
                 break;
         case 3:
                 if(!mfc_cma_allocated) {
@@ -186,23 +193,16 @@ static ssize_t enable_store(struct kobject *kobj, struct kobj_attribute *attr,
                         if(ret < 0)
                             goto err;
                 }
-                uacma_ctrl = input;
+                uacma_status = input;
                 break;
         default:
                 printk(KERN_ERR "uacma: tried to set to unsupported value %d \n", input);
         }
         return count;
 err:
-        // We ran into an error, manually check what the sysfs should show
+        // We ran into an error, update what the sysfs should show
         printk(KERN_ERR "uacma: encountered an error allocating or deallocating memory \n");
-        if(!fimc_cma_allocated && !mfc_cma_allocated)
-                uacma_ctrl = 0;
-        else if(!fimc_cma_allocated && mfc_cma_allocated)
-                uacma_ctrl = 1;
-        else if(fimc_cma_allocated && !mfc_cma_allocated)
-                uacma_ctrl = 2;
-        else
-                uacma_ctrl = 3;
+        uacma_status_handler();
         return count;
 }
 
@@ -227,17 +227,17 @@ static int __init uacma_init(void)
         // Allocate at boot, since it is needed to setup devices
         // TODO: Boot time allocation should never fail
         //      probably should handle such cases and retry again
-        retval = s5p_alloc_media_memory_bank(S5P_MDEV_MFC, 0);
-        printk(KERN_INFO "uacma: boot time alloc for mfc0 returned: %d \n", retval);
-        retval = s5p_alloc_media_memory_bank(S5P_MDEV_MFC, 1);
-        printk(KERN_INFO "uacma: boot time alloc for mfc1 returned: %d \n", retval);
-        retval = s5p_alloc_media_memory_bank(S5P_MDEV_FIMC2, 1);
-        printk(KERN_INFO "uacma: boot time alloc for fimc2 returned: %d \n", retval);
-        retval = s5p_alloc_media_memory_bank(S5P_MDEV_FIMC0, 1);
-        printk(KERN_INFO "uacma: boot time alloc for fimc0 returned: %d \n", retval);
 
-        mfc_cma_allocated = true;
-        fimc_cma_allocated = true;
+        retval = uacma_alloc_mfc();
+        if(retval < 0)
+          printk(KERN_ERR "uacma: FATAL: boot time alloc for mfc failed: returned=%d \n", retval);
+
+        retval = uacma_alloc_fimc();
+        if(retval < 0)
+            printk(KERN_ERR "uacma: FATAL: boot time alloc for fimc failed: returned=%d \n", retval);
+
+        // update uacma_status for boot;
+        uacma_status_handler();
 
         // sysfs_interface
         enable_kobj = kobject_create_and_add("uacma", kernel_kobj);
