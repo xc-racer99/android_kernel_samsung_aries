@@ -1,21 +1,6 @@
 #!/stage1/busybox sh
-export _PATH="$PATH"
-export PATH=/stage1
 
-cd /
-busybox date >>/boot.txt
-busybox rm init
-busybox mount -t proc proc /proc
-busybox mount -t sysfs sysfs /sys
-busybox mount /dev/block/mmcblk0p1 /sdcard
-
-exec >> /boot.txt
-exec 2>&1
-
-if busybox test -e /sdcard/backup/efs.tar ; then
-	# boot from convert_ubi
-	busybox echo 'REPARTITION BOOT' >>/boot.txt
-
+create_ubi_partitions() {
 	# format as UBI
 	ubiformat /dev/mtd/mtd1 -y
 
@@ -33,6 +18,26 @@ if busybox test -e /sdcard/backup/efs.tar ; then
 	ubiblock -c /dev/ubi0_1
 	ubiblock -c /dev/ubi0_2
 	ubiblock -c /dev/ubi0_3
+}
+
+export _PATH="$PATH"
+export PATH=/stage1
+
+cd /
+busybox date >>/boot.txt
+busybox rm init
+busybox mount -t proc proc /proc
+busybox mount -t sysfs sysfs /sys
+busybox mount /dev/block/mmcblk0p1 /sdcard
+
+exec >> /boot.txt
+exec 2>&1
+
+if busybox test -e /sdcard/backup/efs.tar ; then
+	# upgrade from bml
+	busybox echo 'BML UPGRADE BOOT' >>/boot.txt
+
+	create_ubi_paritions
 
 	# copy efs to its own partition
 	busybox mount -t yaffs2 /dev/block/mtdblock2 /efs
@@ -101,19 +106,24 @@ EOF
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
 else
-	# android boot
-	busybox echo "REGULAR BOOT" >>boot.txt
-
-	# attach ubi
+	# try attaching ubi
 	ubiattach -m 1
 
-	# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
-	ubiblock -c /dev/ubi0_0
-	ubiblock -c /dev/ubi0_1
-	ubiblock -c /dev/ubi0_2
-	ubiblock -c /dev/ubi0_3
+	if busybox test -e /dev/ubi0_0 ; then
+		# regular recovery boot
+		busybox echo "REGULAR BOOT" >>boot.txt
 
-	busybox ls -l /dev/* /dev/block/* /
+		# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
+		ubiblock -c /dev/ubi0_0
+		ubiblock -c /dev/ubi0_1
+		ubiblock -c /dev/ubi0_2
+		ubiblock -c /dev/ubi0_3
+	else
+		# update from non-ubi mtd boot
+		busybox echo "MTD UPGRADE BOOT" >>boot.txt
+
+		create_ubi_paritions
+	fi
 fi
 
 busybox mount /dev/block/ubiblock0_2 /recovery -t squashfs -o ro
