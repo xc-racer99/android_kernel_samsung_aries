@@ -25,10 +25,10 @@ if busybox test -e /sdcard/backup/efs.tar ; then
 	# create ubi volumes
 	ubimkvol /dev/ubi0 -N ramdisk -s 10MiB -n 1
 	ubimkvol /dev/ubi0 -N ramdisk-recovery -s 10MiB -n 2
-	ubimkvol /dev/ubi0 -N radio -s 20MiB -n 3
+	ubimkvol /dev/ubi0 -N vendor -s 100MiB -n 3
 	ubimkvol /dev/ubi0 -N system -m -n 0
 
-	# create ubiblocks for system, ramdisk, ramdisk-recovery, radio
+	# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
 	ubiblock -c /dev/ubi0_0
 	ubiblock -c /dev/ubi0_1
 	ubiblock -c /dev/ubi0_2
@@ -107,7 +107,7 @@ else
 	# attach ubi
 	ubiattach -m 1
 
-	# create ubiblocks for system, ramdisk, ramdisk-recovery, radio
+	# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
 	ubiblock -c /dev/ubi0_0
 	ubiblock -c /dev/ubi0_1
 	ubiblock -c /dev/ubi0_2
