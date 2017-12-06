@@ -126,6 +126,16 @@ else
 	fi
 fi
 
+if busybox test -e /sdcard/ramdisk.cpio ; then
+	# untar ramdisk.cpio, create squashfs and write to recovery ubiblock
+	cd /temp
+	busybox cpio -ui < /sdcard/ramdisk.cpio
+	cd /
+	mksquashfs /temp /sdcard/recovery.squash -comp gzip
+	ubiupdatevol /dev/ubi0_2 /sdcard/recovery.squash
+	busybox rm /sdcard/ramdisk.cpio
+fi
+
 busybox mount /dev/block/ubiblock0_2 /recovery -t squashfs -o ro
 busybox cp -Rfp /recovery/* /
 busybox umount /recovery
