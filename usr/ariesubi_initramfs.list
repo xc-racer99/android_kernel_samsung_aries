@@ -30,6 +30,11 @@ slink /init /stage1/init 777 0 0
 dir /proc 755 0 0
 dir /stage1 755 0 0
 dir /ramdisk 755 0 0
+dir /lvm 755 0 0
+dir /lvm/etc 755 0 0
+dir /lvm/sbin 755 0 0
+file /lvm/etc/lvm.conf usr/ariesubi_initramfs_files/lvm.conf 755 0 0
+file /lvm/sbin/lvm usr/ariesubi_initramfs_files/lvm 755 0 0
 file /stage1/busybox usr/utilities/busybox 755 0 0
-file /stage1/init usr/galaxys4gmtd_initramfs_files/init 755 0 0
+file /stage1/init usr/ariesubi_initramfs_files/init 755 0 0
 dir /sys 755 0 0

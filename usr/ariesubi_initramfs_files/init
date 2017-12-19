@@ -3,13 +3,19 @@ export _PATH="$PATH"
 export PATH=/stage1
 
 cd /
-busybox date >>/boot.txt
+busybox date >>boot.txt
+exec >>boot.txt 2>&1
 busybox rm init
 busybox mount -t proc proc /proc
 busybox mount -t sysfs sysfs /sys
 
-exec >> /boot.txt
-exec 2>&1
+while ! busybox test -d /sys/dev/block/179:0 ; do
+	busybox echo "waiting for internal mmc" >>boot.txt
+	busybox sleep 1
+done
+
+/lvm/sbin/lvm vgscan --mknodes --ignorelockingfailure
+/lvm/sbin/lvm vgchange -aly --ignorelockingfailure
 
 if busybox grep -q bootmode=2 /proc/cmdline; then
 	busybox mount /dev/block/ubiblock0_2 /ramdisk -t squashfs -o ro
@@ -27,4 +33,3 @@ busybox rm -rf /stage1 /sdcard /file_contexts /efs /temp /ramdisk
 busybox find /dev/* ! -name '*ubi*' -delete
 export PATH="${_PATH}"
 exec /init
-
