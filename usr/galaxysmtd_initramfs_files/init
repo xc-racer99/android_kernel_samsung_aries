@@ -1,148 +1,147 @@
 #!/stage1/busybox sh
+
+create_ubi_partitions() {
+	# format as UBI
+	ubiformat /dev/mtd/mtd1 -y
+
+	# attach ubi
+	ubiattach -m 1
+
+	# create ubi volumes
+	ubimkvol /dev/ubi0 -N ramdisk -s 10MiB -n 1
+	ubimkvol /dev/ubi0 -N ramdisk-recovery -s 10MiB -n 2
+	ubimkvol /dev/ubi0 -N system -m -n 0
+
+	# create ubiblocks for system, ramdisk, recovery
+	ubiblock -c /dev/ubi0_0
+	ubiblock -c /dev/ubi0_1
+	ubiblock -c /dev/ubi0_2
+}
+
+create_lvm_partitions() {
+	while ! busybox test -d /sys/dev/block/179:0 ; do
+		busybox echo "waiting for internal mmc" >>boot.txt
+		busybox sleep 1
+	done
+
+	/lvm/sbin/lvm vgscan --mknodes --ignorelockingfailure
+	/lvm/sbin/lvm vgchange -aly --ignorelockingfailure
+
+	# remove any lvm reference
+	/lvm/sbin/lvm lvremove -f lvpool
+	/lvm/sbin/lvm vgremove -f lvpool
+	/lvm/sbin/lvm pvremove -ffy /dev/block/mmcblk0p2
+
+	# force clean up
+	busybox dd if=/dev/zero of=/dev/block/mmcblk0p2 bs=512 count=1
+
+	# create lvm phisical volumes and lvpool group
+	/lvm/sbin/lvm pvcreate /dev/block/mmcblk0p2
+	/lvm/sbin/lvm vgcreate lvpool /dev/block/mmcblk0p2
+
+	# create lvm partitions - 100MB cache, rest for /data
+	/lvm/sbin/lvm lvcreate -L 104857600B -n cache lvpool
+	/lvm/sbin/lvm lvcreate -l 100%FREE -n userdata lvpool
+
+	# format partitions
+	make_ext4fs -b 4096 -g 32768 -i 7680 -I 256 -a /cache /dev/lvpool/cache
+	make_ext4fs -b 4096 -g 32768 -i 8192 -I 256 -a /data /dev/lvpool/userdata
+}
+
 export _PATH="$PATH"
 export PATH=/stage1
 
-busybox cd /
-busybox date >>boot.txt
-exec >>boot.txt 2>&1
+cd /
+busybox date >>/boot.txt
 busybox rm init
 busybox mount -t proc proc /proc
 busybox mount -t sysfs sysfs /sys
+busybox mount /dev/block/mmcblk0p1 /sdcard
 
-while ! busybox test -d /sys/dev/block/179:0 ; do
-	busybox echo "waiting for internal mmc" >>boot.txt
-	busybox sleep 1
-done
+exec >> /boot.txt
+exec 2>&1
 
-/lvm/sbin/lvm vgscan --mknodes --ignorelockingfailure
-/lvm/sbin/lvm vgchange -aly --ignorelockingfailure
+if busybox test -e /sdcard/backup/efs.tar ; then
+	# upgrade from bml
+	busybox echo 'UPGRADE BOOT' >>/boot.txt
 
-busybox mount -t ext4 /dev/lvpool/system /system
-busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
-busybox mount -t yaffs2 -o ro /dev/block/mtdblock1 /ramdisk
-busybox mount -t yaffs2 -o ro /dev/block/mtdblock2 /ramdisk-recovery
+	create_ubi_paritions
 
-if busybox test -e /cache/.sd_as_data ; then
-	SD_AS_DATA=true
-elif busybox test -e /cache/.sd2_as_data ; then
-	SD2_AS_DATA=true
-fi
+	# copy efs to its own partition
+	busybox mount -t yaffs2 /dev/block/mtdblock2 /efs
 
-image=/ramdisk/ramdisk.img
+	# verify the md5sum of efs.tar before restore
+	cd /sdcard/backup/
+	busybox md5sum -c efs.tar.md5
 
-if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmdline ; then
-	# recovery boot
-	busybox echo 'RECOVERY BOOT' >>boot.txt
-	busybox rm -fr /cache/.startrecovery
-	image=/ramdisk-recovery/ramdisk-recovery.img
-	busybox echo "loading ramdisk-recovery.img" >>boot.txt
-
-	# disable lpm
-	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
-
-elif ! busybox test -e /system/build.prop ; then
-
-	# emergency boot
-	busybox echo "EMERGENCY BOOT" >>boot.txt
-	busybox umount /cache
-	erase_image cache
-	busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
-
-	if ! busybox test -e /cache/recovery ; then
-		busybox mkdir /cache/recovery
-	fi
-
-	busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
-	busybox sleep 1
-
-	if busybox test -e /sdcard/aries.cfg ; then
-		busybox echo "installing: `busybox cat /sdcard/aries.cfg`" >>boot.txt
-		busybox echo "creating recovery command" >>boot.txt
-		busybox touch /cache/recovery/command
-		busybox echo "--update_package=`busybox cat /sdcard/aries.cfg`" > /cache/recovery/command
-
-		busybox umount /ramdisk-recovery
-		erase_image ramdisk-recovery
-		busybox mount -t yaffs2 /dev/block/mtdblock2 /ramdisk-recovery
-
-		busybox cp /sdcard/ramdisk-recovery.img /ramdisk-recovery/ramdisk-recovery.img
-
-		busybox mount -t yaffs2 -o remount,ro /dev/block/mtdblock2 /ramdisk-recovery
+	# save the exit status of md5sum
+	MD5RESULT=$?
+	if ! busybox test $MD5RESULT; then
+		busybox echo "efs.tar could not be verified." >>/boot.txt
 	else
-		busybox echo "aries.cfg not found" >>boot.txt
+		# extract the tar file in the /efs partition
+		cd /efs
+		busybox tar xf /sdcard/backup/efs.tar
+		busybox echo "efs restored"
 	fi
+	cd /
+	busybox sync
+	busybox umount /efs
 
-	busybox echo "loading ramdisk-recovery.img" >>boot.txt
-	image=/ramdisk-recovery/ramdisk-recovery.img
+	# untar ramdisk.cpio, create squashfs and write to recovery ubiblock
+	cd /temp
+	busybox cpio -ui < /sdcard/ramdisk.cpio
+	cd /
+	mksquashfs /temp /sdcard/recovery.squash -comp gzip
+	ubiupdatevol /dev/ubi0_2 /sdcard/recovery.squash
+
+	create_lvm_partitions
+
+	# Rename efs.tar to prevent this from looping
+	busybox mv /sdcard/backup/efs.tar /sdcard/backup/efs.used.tar
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
-
-	# umount sdcard
-	busybox umount /sdcard
-
 else
-	# android boot
-	busybox echo "ANDROID BOOT" >>boot.txt
-	busybox echo "loading ramdisk.img" >>boot.txt
-fi
+	# try attaching ubi
+	ubiattach -m 1
 
-busybox umount /cache
-busybox umount /system
-busybox rmdir /sdcard
+	if busybox test -e /dev/ubi0_0 ; then
+		# regular recovery boot
+		busybox echo "REGULAR BOOT" >>boot.txt
 
-busybox gzip -d < $image > /stage1/ramdisk.cpio
+		# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
+		ubiblock -c /dev/ubi0_0
+		ubiblock -c /dev/ubi0_1
+		ubiblock -c /dev/ubi0_2
+	else
+		# update from non-ubi mtd boot
+		busybox echo "MTD UPGRADE BOOT" >>boot.txt
 
-busybox umount /ramdisk
-busybox umount /ramdisk-recovery
-
-busybox cpio -ui < /stage1/ramdisk.cpio
-
-if [ "$SD_AS_DATA" = "true" ] ; then
-	# modify fstab.aries for the right paths
-	busybox printf "/dev/lvpool/system   /system ext4 ro,discard wait\n" > /fstab.aries
-	busybox printf "/dev/block/mmcblk1p1 /data   ext4 noatime,discard,nodev,nosuid,nomblk_io_submit,errors=panic wait,encryptable=footer,length=-16384\n" >> /fstab.aries
-	busybox printf "/dev/block/mmcblk1p1 /data   f2fs rw,noatime,discard,nosuid,nodev,nodiratime,inline_xattr wait,encryptable=footer,length=-16384\n" >> /fstab.aries
-	busybox printf "/devices/platform/s3c-sdhci.0/mmc_host/mmc0/*/mmcblk0 auto auto defaults voldmanaged=sdcard0:1,noemulatedsd" >> /fstab.aries
-
-	# if /etc/twrp.fstab exists, modify it as well
-	if busybox test -e /etc/twrp.fstab ; then
-		busybox printf "# mount point        fstype    device                  options (length for cryptfs encryption footer)\n" > /etc/fstab.aries
-		busybox printf "/boot                mtd       boot\n" >> /etc/fstab.aries
-		busybox printf "/ramdisk             yaffs2    ramdisk                                  flags=backup=1,subpartitionof=/boot\n" >> /etc/fstab.aries
-		busybox printf "/ramdisk-recovery    yaffs2    ramdisk-recovery                         flags=backup=1,subpartitionof=/boot\n" >> /etc/fstab.aries
-		busybox printf "/radio               mtd       radio\n" >> /etc/fstab.aries
-		busybox printf "/cache               yaffs2    cache                                    flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n" >> /etc/fstab.aries
-		busybox printf "/system              ext4      /dev/lvpool/system                       flags=backup=1;canbewiped;wipeingui\n" >> /etc/fstab.aries
-		busybox printf "/data                auto      /dev/block/mmcblk1p1    length=-16384    flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n" >> /etc/fstab.aries
-		busybox printf "/sdcard              vfat      /dev/block/mmcblk0p1                     flags=display="Internal SD Card";storage;wipeingui;settingsstorage" >> /etc/fstab.aries
-	fi
-elif [ "$SD2_AS_DATA" = "true" ] ; then
-	# modify fstab.aries for the right paths
-	busybox printf "/dev/lvpool/system   /system ext4 ro,discard wait\n" > /fstab.aries
-	busybox printf "/dev/block/mmcblk1p2 /data   ext4 noatime,discard,nodev,nosuid,nomblk_io_submit,errors=panic wait,encryptable=footer,length=-16384\n" >> /fstab.aries
-	busybox printf "/dev/block/mmcblk1p2 /data   f2fs rw,noatime,discard,nosuid,nodev,nodiratime,inline_xattr wait,encryptable=footer,length=-16384\n" >> /fstab.aries
-	busybox printf "/devices/platform/s3c-sdhci.0/mmc_host/mmc0/*/mmcblk0 auto auto defaults voldmanaged=sdcard0:1,noemulatedsd\n" >> /fstab.aries
-	busybox printf "/devices/platform/s3c-sdhci.2/mmc_host/mmc2* auto auto defaults voldmanaged=sdcard1:auto,encryptable=userdata" >> /fstab.aries
-
-	# if /etc/twrp.fstab exists, modify it as well
-	if busybox test -e /etc/twrp.fstab ; then
-		busybox printf "# mount point        fstype    device                  options (length for cryptfs encryption footer)\n" > /etc/fstab.aries
-		busybox printf "/boot                mtd       boot\n" >> /etc/fstab.aries
-		busybox printf "/ramdisk             yaffs2    ramdisk                                  flags=backup=1,subpartitionof=/boot\n" >> /etc/fstab.aries
-		busybox printf "/ramdisk-recovery    yaffs2    ramdisk-recovery                         flags=backup=1,subpartitionof=/boot\n" >> /etc/fstab.aries
-		busybox printf "/radio               mtd       radio\n" >> /etc/fstab.aries
-		busybox printf "/cache               yaffs2    cache                                    flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n" >> /etc/fstab.aries
-		busybox printf "/system              ext4      /dev/lvpool/system                       flags=backup=1;canbewiped;wipeingui\n" >> /etc/fstab.aries
-		busybox printf "/data                auto      /dev/block/mmcblk1p2    length=-16384    flags=backup=1;canbewiped;wipeingui;wipeduringfactoryreset\n" >> /etc/fstab.aries
-		busybox printf "/sdcard              vfat      /dev/block/mmcblk0p1                     flags=display="Internal SD Card";storage;wipeingui;settingsstorage\n" >> /etc/fstab.aries
-		busybox printf "/external_sd         vfat      /dev/block/mmcblk1p1                     flags=display="External SD Card";storage;wipeingui;removable" >> /etc/fstab.aries
+		create_ubi_paritions
 	fi
 fi
+
+if busybox test -e /sdcard/ramdisk.cpio ; then
+	# untar ramdisk.cpio, create squashfs and write to recovery ubiblock
+	cd /temp
+	busybox cpio -ui < /sdcard/ramdisk.cpio
+	cd /
+	mksquashfs /temp /sdcard/recovery.squash -comp gzip
+	ubiupdatevol /dev/ubi0_2 /sdcard/recovery.squash
+	busybox rm /sdcard/ramdisk.cpio
+fi
+
+busybox mount /dev/block/ubiblock0_2 /recovery -t squashfs -o ro
+busybox cp -Rfp /recovery/* /
+busybox umount /recovery
+busybox cp /boot.txt /sdcard
+busybox umount /sdcard
 
 busybox umount /sys
 busybox umount /proc
 busybox date >>boot.txt
-busybox rm -rf /stage1 /ramdisk* /dev/*
+busybox rm -rf /stage1 /sdcard /file_contexts /efs /temp /recovery
+busybox find /dev/* ! -name '*ubi*' -delete
 export PATH="${_PATH}"
 exec /init
