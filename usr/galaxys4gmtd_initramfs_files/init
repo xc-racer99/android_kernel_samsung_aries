@@ -64,7 +64,7 @@ if busybox test -e /sdcard/backup/efs.tar ; then
 	cd /temp
 	busybox cpio -ui < /sdcard/ramdisk.cpio
 	cd /
-	mksquashfs /temp /sdcard/recovery.squash -comp gzip
+	mksquashfs /temp /sdcard/recovery.squash -comp gzip -noappend
 	ubiupdatevol /dev/ubi0_2 /sdcard/recovery.squash
 
 	busybox umount /sdcard
@@ -131,7 +131,7 @@ if busybox test -e /sdcard/ramdisk.cpio ; then
 	cd /temp
 	busybox cpio -ui < /sdcard/ramdisk.cpio
 	cd /
-	mksquashfs /temp /sdcard/recovery.squash -comp gzip
+	mksquashfs /temp /sdcard/recovery.squash -comp gzip -noappend
 	ubiupdatevol /dev/ubi0_2 /sdcard/recovery.squash
 	busybox rm /sdcard/ramdisk.cpio
 fi
