@@ -33,11 +33,11 @@ busybox mount /dev/block/mmcblk0p1 /sdcard
 exec >> /boot.txt
 exec 2>&1
 
-if busybox test -e /sdcard/backup/efs.tar ; then
+if busybox test -e /sdcard/ramdisk.cpio ; then
 	# upgrade from bml
-	busybox echo 'BML UPGRADE BOOT' >>/boot.txt
+	busybox echo 'UPGRADE BOOT' >>/boot.txt
 
-	create_ubi_paritions
+	create_ubi_partitions
 
 	# copy efs to its own partition
 	busybox mount -t yaffs2 /dev/block/mtdblock2 /efs
@@ -109,31 +109,14 @@ else
 	# try attaching ubi
 	ubiattach -m 1
 
-	if busybox test -e /dev/ubi0_0 ; then
-		# regular recovery boot
-		busybox echo "REGULAR BOOT" >>boot.txt
+	# regular recovery boot
+	busybox echo "REGULAR BOOT" >>boot.txt
 
-		# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
-		ubiblock -c /dev/ubi0_0
-		ubiblock -c /dev/ubi0_1
-		ubiblock -c /dev/ubi0_2
-		ubiblock -c /dev/ubi0_3
-	else
-		# update from non-ubi mtd boot
-		busybox echo "MTD UPGRADE BOOT" >>boot.txt
-
-		create_ubi_paritions
-	fi
-fi
-
-if busybox test -e /sdcard/ramdisk.cpio ; then
-	# untar ramdisk.cpio, create squashfs and write to recovery ubiblock
-	cd /temp
-	busybox cpio -ui < /sdcard/ramdisk.cpio
-	cd /
-	mksquashfs /temp /sdcard/recovery.squash -comp gzip -noappend
-	ubiupdatevol /dev/ubi0_2 /sdcard/recovery.squash
-	busybox rm /sdcard/ramdisk.cpio
+	# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
+	ubiblock -c /dev/ubi0_0
+	ubiblock -c /dev/ubi0_1
+	ubiblock -c /dev/ubi0_2
+	ubiblock -c /dev/ubi0_3
 fi
 
 busybox mount /dev/block/ubiblock0_2 /recovery -t squashfs -o ro
