@@ -1,35 +1,42 @@
 #!/stage1/busybox sh
+
 export _PATH="$PATH"
 export PATH=/stage1
 
 cd /
-busybox date >>boot.txt
-exec >>boot.txt 2>&1
+busybox date >>/boot.txt
 busybox rm init
 busybox mount -t proc proc /proc
 busybox mount -t sysfs sysfs /sys
+busybox mount /dev/block/mmcblk0p1 /sdcard
 
-while ! busybox test -d /sys/dev/block/179:0 ; do
-	busybox echo "waiting for internal mmc" >>boot.txt
-	busybox sleep 1
-done
+exec >> /boot.txt
+exec 2>&1
 
-/lvm/sbin/lvm vgscan --mknodes --ignorelockingfailure
-/lvm/sbin/lvm vgchange -aly --ignorelockingfailure
+# try attaching ubi
+ubiattach -m 1
 
-if busybox grep -q bootmode=2 /proc/cmdline; then
-	busybox mount /dev/block/ubiblock0_2 /ramdisk -t squashfs -o ro
+# regular recovery boot
+busybox echo "REGULAR BOOT" >>boot.txt
+
+# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
+ubiblock -c /dev/ubi0_0
+ubiblock -c /dev/ubi0_1
+ubiblock -c /dev/ubi0_2
+
+if busybox grep -q bootmode=2 /proc/cmdline ; then
+	busybox mount /dev/block/ubiblock0_2 /recovery -t squashfs -o ro
 else
-	busybox mount /dev/block/ubiblock0_1 /ramdisk -t squashfs -o ro
+	busybox mount /dev/block/ubiblock0_1 /recovery -t squashfs -o ro
 fi
-
-busybox cp -Rfp /ramdisk/* /
-busybox umount /ramdisk
+busybox cp -Rfp /recovery/* /
+busybox umount /recovery
+busybox cp /boot.txt /sdcard
+busybox umount /sdcard
 
 busybox umount /sys
 busybox umount /proc
 busybox date >>boot.txt
-busybox rm -rf /stage1 /sdcard /file_contexts /efs /temp /ramdisk
-busybox find /dev/* ! -name '*ubi*' -delete
+busybox rm -rf /stage1 /sdcard /file_contexts /efs /temp /recovery
 export PATH="${_PATH}"
 exec /init

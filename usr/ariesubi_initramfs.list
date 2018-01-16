@@ -4,8 +4,12 @@
 
 dir /dev 755 0 0
 dir /dev/block 755 0 0
+nod /dev/block/mmcblk0 644 0 0 b 179 0
+nod /dev/block/mmcblk0p1 644 0 0 b 179 1
+nod /dev/block/mmcblk0p2 644 0 0 b 179 2
 nod /dev/block/mtdblock0 644 0 0 b 31 0
 nod /dev/block/mtdblock1 644 0 0 b 31 1
+nod /dev/block/mtdblock2 644 0 0 b 31 2
 dir /dev/mtd 755 0 0
 nod /dev/mtd/mtd0 644 0 0 c 90 0
 nod /dev/mtd/mtd1 644 0 0 c 90 2
@@ -14,27 +18,32 @@ nod /dev/mtd/mtd0ro 644 0 0 c 90 1
 nod /dev/mtd/mtd1ro 644 0 0 c 90 3
 nod /dev/mtd/mtd2ro 644 0 0 c 90 5
 nod /dev/null 644 0 0 c 1 3
+nod /dev/urandom 644 0 0 c 1 9
+nod /dev/zero 644 0 0 c 1 5
 nod /dev/ubi_ctrl 600 0 0 c 10 59
 nod /dev/ubi0 600 0 0 c 247 0
 nod /dev/ubi0_0 600 0 0 c 247 1
 nod /dev/ubi0_1 600 0 0 c 247 2
 nod /dev/ubi0_2 600 0 0 c 247 3
-nod /dev/ubi0_3 600 0 0 c 247 4
-nod /dev/ubi0_4 600 0 0 c 247 5
 nod /dev/block/ubiblock0_0 600 0 0 b 254 0
 nod /dev/block/ubiblock0_1 600 0 0 b 254 1
 nod /dev/block/ubiblock0_2 600 0 0 b 254 2
-nod /dev/block/ubiblock0_3 600 0 0 b 254 3
-nod /dev/block/ubiblock0_4 600 0 0 b 254 4
 slink /init /stage1/init 777 0 0
 dir /proc 755 0 0
 dir /stage1 755 0 0
-dir /ramdisk 755 0 0
+dir /system 755 0 0
+dir /cache 755 0 0
+dir /sdcard 755 0 0
+dir /efs 755 0 0
+dir /temp 755 0 0
+dir /recovery 755 0 0
 dir /lvm 755 0 0
 dir /lvm/etc 755 0 0
 dir /lvm/sbin 755 0 0
-file /lvm/etc/lvm.conf source/usr/ariesubi_initramfs_files/lvm.conf 755 0 0
-file /lvm/sbin/lvm source/usr/ariesubi_initramfs_files/lvm 755 0 0
-file /stage1/busybox source/usr/utilities/busybox 755 0 0
-file /stage1/init source/usr/ariesubi_initramfs_files/init 755 0 0
+file /lvm/etc/lvm.conf usr/ariesubi_initramfs_files/lvm.conf 755 0 0
+file /lvm/sbin/lvm usr/ariesubi_initramfs_files/lvm 755 0 0
+file /stage1/busybox usr/utilities/busybox 755 0 0
+file /stage1/init usr/ariesubi_initramfs_files/init 755 0 0
+file /stage1/ubiattach usr/utilities/ubiattach 755 0 0
+file /stage1/ubiblock usr/utilities/ubiblock 755 0 0
 dir /sys 755 0 0
