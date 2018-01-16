@@ -39,8 +39,8 @@ dir /efs 755 0 0
 dir /temp 755 0 0
 dir /recovery 755 0 0
 file /file_contexts usr/galaxys4gmtd_initramfs_files/file_contexts 644 0 0
-file /stage1/make_ext4fs usr/utilities/make_ext4fs 755 0 0
 file /stage1/busybox usr/utilities/busybox 755 0 0
+file /stage1/make_ext4fs usr/utilities/make_ext4fs 755 0 0
 file /stage1/init usr/galaxys4gmtd_initramfs_files/init 755 0 0
 file /stage1/erase_image usr/utilities/erase_image 755 0 0
 file /stage1/ubimkvol usr/utilities/ubimkvol 755 0 0
