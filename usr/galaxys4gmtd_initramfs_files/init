@@ -129,6 +129,5 @@ busybox umount /sys
 busybox umount /proc
 busybox date >>boot.txt
 busybox rm -rf /stage1 /sdcard /file_contexts /efs /temp /recovery
-busybox find /dev/* ! -name '*ubi*' -delete
 export PATH="${_PATH}"
 exec /init
