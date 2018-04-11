@@ -30,19 +30,24 @@ struct mtd_partition s3c_partition_info[] = {
    #########################################################################################*/
 
 	{
-		.name		= "boot",
+		.name		= "u-boot",
 		.offset		= (72*SZ_256K),
 		.size		= (30*SZ_256K), //101
 	},
 	{
-		.name		= "recovery",
+		.name		= "boot",
 		.offset		= (102*SZ_256K),
-		.size		= (30*SZ_256K), //131
+		.size		= (40*SZ_256K), //141
+	},
+	{
+		.name		= "recovery",
+		.offset		= (142*SZ_256K),
+		.size		= (40*SZ_256K), //181
 	},
 	{
 		.name		= "system",
-		.offset		= (132*SZ_256K),
-		.size		= (1940*SZ_256K), //1871
+		.offset		= (182*SZ_256K),
+		.size		= (1890*SZ_256K), //1871
 	},
 	{
 		.name		= "datadata",

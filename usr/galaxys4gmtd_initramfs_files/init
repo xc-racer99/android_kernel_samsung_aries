@@ -8,8 +8,8 @@ exec >>boot.txt 2>&1
 busybox rm init
 busybox mount -t proc proc /proc
 busybox mount -t sysfs sysfs /sys
-busybox mount -t yaffs2 /dev/block/mtdblock2 /system
-busybox mount -t yaffs2 /dev/block/mtdblock5 /cache
+busybox mount -t yaffs2 /dev/block/mtdblock3 /system
+busybox mount -t yaffs2 /dev/block/mtdblock6 /cache
 
 image=/stage1/ramdisk.img
 
@@ -24,7 +24,7 @@ elif ! busybox test -e /system/build.prop ; then
 	# emergency boot
 	busybox umount /cache
 	erase_image cache
-	busybox mount -t yaffs2 /dev/block/mtdblock5 /cache
+	busybox mount -t yaffs2 /dev/block/mtdblock6 /cache
 	busybox mkdir /cache/recovery
 
 	busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard	
