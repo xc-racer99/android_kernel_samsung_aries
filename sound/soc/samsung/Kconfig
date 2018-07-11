@@ -40,9 +40,6 @@ config SND_SAMSUNG_I2S
 config S5P_INTERNAL_DMA
 	tristate
 
-config SND_S5P_WM8994_MASTER
-	bool
-
 config SND_SOC_SAMSUNG_NEO1973_WM8753
 	tristate "Audio support for Openmoko Neo1973 Smartphones (GTA01/GTA02)"
 	depends on SND_SOC_SAMSUNG && (MACH_NEO1973_GTA01 || MACH_NEO1973_GTA02)
@@ -140,7 +137,6 @@ config SND_SOC_SAMSUNG_HERRING_WM8994
 	select SND_S5PC1XX_I2S
 	select SND_SOC_WM8994_SAMSUNG
 	select S5P_INTERNAL_DMA
-	select SND_S5P_WM8994_MASTER
 	help
 	  Say Y if you want to add support for SoC audio on herring
 	  with the WM8994.

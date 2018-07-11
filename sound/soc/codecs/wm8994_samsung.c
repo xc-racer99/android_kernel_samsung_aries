@@ -50,7 +50,7 @@
 #define WM8994_VERSION "0.1"
 #define SUBJECT "wm8994_samsung.c"
 
-#if defined(CONFIG_VIDEO_TV20) && defined(CONFIG_SND_S5P_WM8994_MASTER)
+#if defined(CONFIG_VIDEO_TV20)
 #define HDMI_USE_AUDIO
 #endif
 
