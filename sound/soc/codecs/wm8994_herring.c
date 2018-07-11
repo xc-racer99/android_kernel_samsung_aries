@@ -1223,6 +1223,8 @@ static void wait_for_dc_servo(struct snd_soc_codec *codec, unsigned int op)
 /* S5P_SLEEP_CONFIG must be controlled by codec if codec use XUSBTI */
 int wm8994_configure_clock(struct snd_soc_codec *codec, int en)
 {
+
+#if 0
 	struct wm8994_priv *wm8994 = snd_soc_codec_get_drvdata(codec);
 
 	if (en) {
@@ -1232,6 +1234,7 @@ int wm8994_configure_clock(struct snd_soc_codec *codec, int en)
 		clk_disable(wm8994->codec_clk);
 		DEBUG_LOG("USBOSC disable in Sleep Mode\n");
 	}
+#endif
 
 	return 0;
 }
