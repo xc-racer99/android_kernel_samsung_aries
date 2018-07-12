@@ -661,7 +661,6 @@ static int s5p_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
 			return -EINVAL;
 		}
 		break;
-#ifdef USE_CLKAUDIO
 		/* IIS-IP is Master and derives its clocks from I2SCLKD2 */
 	case S3C_CLKSRC_CLKAUDIO:
 		if (!i2s->master)
@@ -695,7 +694,6 @@ static int s5p_i2s_set_sysclk(struct snd_soc_dai *cpu_dai,
 		clk_enable(clk);
 		clk_put(clk);
 		break;
-#endif
 		/* IIS-IP is Slave and derives its clocks from the Codec Chip */
 	case S3C64XX_CLKSRC_I2SEXT:
 		iismod &= ~S3C64XX_IISMOD_IMSMASK;

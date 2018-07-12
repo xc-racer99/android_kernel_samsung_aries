@@ -96,8 +96,6 @@ extern void s5p_idma_init(void *);
 
 //==
 
-#define USE_CLKAUDIO 1
-
 #define S3C64XX_DIV_BCLK	S3C_I2SV2_DIV_BCLK
 #define S3C64XX_DIV_RCLK	S3C_I2SV2_DIV_RCLK
 #define S3C64XX_DIV_PRESCALER	S3C_I2SV2_DIV_PRESCALER
