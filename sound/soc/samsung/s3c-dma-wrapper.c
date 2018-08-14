@@ -12,19 +12,13 @@
 
 #include <sound/soc.h>
 #include "dma.h"
-#include "s3c-idma.h"
 
 static int s3c_wrpdma_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->hw_params)
 		return platform->ops->hw_params(substream, params);
@@ -36,12 +30,7 @@ static int s3c_wrpdma_hw_free(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->hw_free)
 		return platform->ops->hw_free(substream);
@@ -53,12 +42,7 @@ static int s3c_wrpdma_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->prepare)
 		return platform->ops->prepare(substream);
@@ -70,12 +54,7 @@ static int s3c_wrpdma_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->trigger)
 		return platform->ops->trigger(substream, cmd);
@@ -87,12 +66,7 @@ static snd_pcm_uframes_t s3c_wrpdma_pointer(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->pointer)
 		return platform->ops->pointer(substream);
@@ -104,12 +78,7 @@ static int s3c_wrpdma_open(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->open)
 		return platform->ops->open(substream);
@@ -121,12 +90,7 @@ static int s3c_wrpdma_close(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->close)
 		return platform->ops->close(substream);
@@ -139,12 +103,7 @@ static int s3c_wrpdma_ioctl(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->ioctl)
 		return platform->ops->ioctl(substream, cmd, arg);
@@ -157,12 +116,7 @@ static int s3c_wrpdma_mmap(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_platform_driver *platform;
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		platform = &idma_soc_platform;
-	else
-#endif
-		platform = &samsung_asoc_platform;
+	platform = &samsung_asoc_platform;
 
 	if (platform->ops->mmap)
 		return platform->ops->mmap(substream, vma);
@@ -185,15 +139,7 @@ static struct snd_pcm_ops s3c_wrpdma_ops = {
 static void s3c_wrpdma_pcm_free(struct snd_pcm *pcm)
 {
 	struct snd_soc_platform_driver *gdma_platform;
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	struct snd_soc_platform_driver *idma_platform;
-#endif
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	idma_platform = &idma_soc_platform;
-	if (idma_platform->pcm_free)
-		idma_platform->pcm_free(pcm);
-#endif
 	gdma_platform = &samsung_asoc_platform;
 	if (gdma_platform->pcm_free)
 		gdma_platform->pcm_free(pcm);
@@ -203,18 +149,7 @@ static int s3c_wrpdma_pcm_new(struct snd_card *card,
 		struct snd_soc_dai *dai, struct snd_pcm *pcm)
 {
 	struct snd_soc_platform_driver *gdma_platform;
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	struct snd_soc_platform_driver *idma_platform;
-#endif
 
-	/* sec_fifo i/f always use internal h/w buffers
-	 * irrespective of the xfer method (iDMA or SysDMA) */
-
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	idma_platform = &idma_soc_platform;
-	if (idma_platform->pcm_new)
-		idma_platform->pcm_new(card, dai, pcm);
-#endif
 	gdma_platform  = &samsung_asoc_platform;
 	if (gdma_platform->pcm_new)
 		gdma_platform->pcm_new(card, dai, pcm);

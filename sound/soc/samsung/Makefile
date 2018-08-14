@@ -18,7 +18,6 @@ obj-$(CONFIG_SND_S5PC1XX_I2S) += snd-soc-s5pc1xx-i2s.o
 obj-$(CONFIG_SND_SAMSUNG_SPDIF) += snd-soc-samsung-spdif.o
 obj-$(CONFIG_SND_SAMSUNG_PCM) += snd-soc-pcm.o
 obj-$(CONFIG_SND_SAMSUNG_I2S) += snd-soc-i2s.o
-obj-$(CONFIG_S5P_INTERNAL_DMA) += s3c-idma.o s5p-i2s_sec.o
 
 # S3C24XX Machine Support
 snd-soc-jive-wm8750-objs := jive_wm8750.o

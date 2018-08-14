@@ -199,15 +199,7 @@ static int s5p_i2s_wr_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params,
 		struct snd_soc_dai *dai)
 {
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		s5p_i2s_hw_params(substream, params, dai);
-	else
-		s3c2412_i2s_hw_params(substream, params, dai);
-
-#else
 	s3c2412_i2s_hw_params(substream, params, dai);
-#endif
 	return 0;
 }
 
@@ -471,15 +463,8 @@ exit_err:
 static int s5p_i2s_wr_trigger(struct snd_pcm_substream *substream,
 		int cmd, struct snd_soc_dai *dai)
 {
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		s5p_i2s_trigger(substream, cmd, dai);
-	else
-		s3c2412_i2s_trigger(substream, cmd, dai);
-
-#else
 	s3c2412_i2s_trigger(substream, cmd, dai);
-#endif
+
 	return 0;
 }
 
@@ -777,10 +762,6 @@ static int s5p_i2s_wr_startup(struct snd_pcm_substream *substream,
 		writel(iisfic, i2s->regs + S3C2412_IISFIC);
 	}
 
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		s5p_i2s_startup(dai);
-#endif
 	dump_reg(i2s);
 	return 0;
 }
@@ -1084,10 +1065,6 @@ static __devinit int s3c64xx_iis_dev_probe(struct platform_device *pdev)
 	iismod = readl(i2s->regs + S3C2412_IISMOD);
 	iismod |= S3C2412_IISMOD_MODE_TXRX;
 	writel(iismod, i2s->regs + S3C2412_IISMOD);
-
-#ifdef CONFIG_S5P_INTERNAL_DMA
-	s5p_i2s_sec_init(i2s->regs, base);
-#endif
 
 	ret = s5p_i2sv5_register_dai(&pdev->dev, dai);
 	if (ret != 0)
