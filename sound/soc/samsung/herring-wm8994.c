@@ -63,17 +63,6 @@ int smdkc110_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
-	/* Select the AP Sysclk */
-	ret = snd_soc_dai_set_sysclk(cpu_dai, SAMSUNG_I2S_CDCLK,
-					0, SND_SOC_CLOCK_IN);
-
-	if (ret < 0) {
-		printk(KERN_ERR
-			"smdkc110_wm8994_hw_params :\
-			AP sys clock INT setting error!\n");
-		return ret;
-	}
-
 	switch (params_rate(params)) {
 
 	case 8000:
