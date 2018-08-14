@@ -954,7 +954,6 @@ static int i2s_resume(struct snd_soc_dai *dai)
 
 static int samsung_i2s_dai_probe(struct snd_soc_dai *dai)
 {
-	struct clk *mout_audss;
 	struct clk *iis_clk, *iis_busclk; /* these belong shomewhere else */
 	struct i2s_dai *i2s = to_info(dai);
 	struct i2s_dai *other = i2s->pri_dai ? : i2s->sec_dai;
