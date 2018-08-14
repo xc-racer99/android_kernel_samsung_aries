@@ -73,6 +73,7 @@ snd-soc-wm8988-objs := wm8988.o
 snd-soc-wm8990-objs := wm8990.o
 snd-soc-wm8991-objs := wm8991.o
 snd-soc-wm8993-objs := wm8993.o
+snd-soc-wm8994-objs := wm8994.o wm8994-tables.o wm8958-dsp2.o
 
 ifdef CONFIG_MACH_ARIES
 ifeq ($(CONFIG_SND_WM8994_EXTENSIONS),y)

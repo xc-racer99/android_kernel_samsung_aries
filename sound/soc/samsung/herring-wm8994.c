@@ -18,7 +18,7 @@
 #include <sound/soc-dapm.h>
 #include <mach/regs-clock.h>
 #include <plat/regs-iis.h>
-#include "../codecs/wm8994.h"
+#include "../codecs/wm8994_samsung.h"
 
 #include "i2s.h"
 
