@@ -42,9 +42,9 @@ static const struct snd_pcm_hardware dma_hardware = {
 				    SNDRV_PCM_FMTBIT_S8,
 	.channels_min		= 2,
 	.channels_max		= 2,
-	.buffer_bytes_max	= 128 * 1024,
-	.period_bytes_min	= 128,
-	.period_bytes_max	= 32 * 1024,
+	.buffer_bytes_max	= 128*1024,
+	.period_bytes_min	= PAGE_SIZE,
+	.period_bytes_max	= PAGE_SIZE*2,
 	.periods_min		= 2,
 	.periods_max		= 128,
 	.fifo_size		= 32,
@@ -191,11 +191,6 @@ static int dma_hw_params(struct snd_pcm_substream *substream,
 	prtd->dma_start = runtime->dma_addr;
 	prtd->dma_pos = prtd->dma_start;
 	prtd->dma_end = prtd->dma_start + totbytes;
-
-	pr_debug("DmaAddr=@%x Total=%lubytes PrdSz=%u #Prds=%u dma_area=0x%x\n",
-			prtd->dma_start, totbytes, params_period_bytes(params),
-			params_periods(params), (unsigned int)runtime->dma_area);
-
 	spin_unlock_irq(&prtd->lock);
 
 	return 0;
@@ -441,12 +436,14 @@ static int dma_new(struct snd_card *card,
 		card->dev->dma_mask = &dma_mask;
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = 0xffffffff;
+
 	if (dai->driver->playback.channels_min) {
 		ret = preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_PLAYBACK);
 		if (ret)
 			goto out;
 	}
+
 	if (dai->driver->capture.channels_min) {
 		ret = preallocate_dma_buffer(pcm,
 			SNDRV_PCM_STREAM_CAPTURE);
@@ -457,12 +454,11 @@ out:
 	return ret;
 }
 
-struct snd_soc_platform_driver samsung_asoc_platform = {
+static struct snd_soc_platform_driver samsung_asoc_platform = {
 	.ops		= &dma_ops,
 	.pcm_new	= dma_new,
 	.pcm_free	= dma_free_dma_buffers,
 };
-EXPORT_SYMBOL_GPL(samsung_asoc_platform);
 
 static int __devinit samsung_asoc_platform_probe(struct platform_device *pdev)
 {
