@@ -19,14 +19,9 @@
 #include <mach/regs-clock.h>
 #include <plat/regs-iis.h>
 #include "../codecs/wm8994.h"
-#include "s3c-dma.h"
 #include "s5pc1xx-i2s.h"
-//#include "s3c-i2s-v2.h"
 
 #include <linux/io.h>
-
-#define I2S_NUM 0
-#define SRC_CLK 66738000
 
 /* #define CONFIG_SND_DEBUG */
 #ifdef CONFIG_SND_DEBUG
@@ -35,45 +30,16 @@
 #define debug_msg(x...)
 #endif
 
-/*  BLC(bits-per-channel) --> BFS(bit clock shud be >= FS*(Bit-per-channel)*2)*/
-/*  BFS --> RFS(must be a multiple of BFS)                                  */
-/*  RFS & SRC_CLK --> Prescalar Value(SRC_CLK / RFS_VAL / fs - 1)           */
 int smdkc110_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	int bfs, rfs, ret;
+	int ret;
 	u32 ap_codec_clk;
 
 	debug_msg("%s\n", __func__);
-
-	/* Choose BFS and RFS values combination that is supported by
-	 * both the WM8994 codec as well as the S5P AP
-	 *
-	 */
-	switch (params_format(params)) {
-	case SNDRV_PCM_FORMAT_S8:
-	/* Can take any RFS value for AP */
-			bfs = 16;
-			rfs = 256;
-			break;
-	case SNDRV_PCM_FORMAT_S16_LE:
-	/* Can take any RFS value for AP */
-			bfs = 32;
-			rfs = 256;
-			break;
-	case SNDRV_PCM_FORMAT_S20_3LE:
-	case SNDRV_PCM_FORMAT_S24_LE:
-			bfs = 48;
-			rfs = 512;
-			break;
-	/* Impossible, as the AP doesn't support 64fs or more BFS */
-	case SNDRV_PCM_FORMAT_S32_LE:
-	default:
-			return -EINVAL;
-	}
 
 	/* Set the Codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S |
@@ -179,24 +145,6 @@ static struct snd_soc_card smdkc100 = {
 	.dai_link = &smdkc1xx_dai,
 	.num_links = 1,
 };
-
-#if 0
-static struct wm8994_setup_data smdkc110_wm8994_setup = {
-	/*
-		The I2C address of the WM89940 is 0x34. To the I2C driver
-		the address is a 7-bit number hence the right shift .
-	*/
-	.i2c_address = 0x34,
-	.i2c_bus = 4,
-};
-
-/* audio subsystem */
-static struct snd_soc_device smdkc1xx_snd_devdata = {
-	.card = &smdkc100,
-	.codec_dev = &soc_codec_dev_wm8994,
-	.codec_data = &smdkc110_wm8994_setup,
-};
-#endif
 
 static struct platform_device *smdkc1xx_snd_device;
 static int __init smdkc110_audio_init(void)
