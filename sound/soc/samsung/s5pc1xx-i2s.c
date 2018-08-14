@@ -32,7 +32,7 @@
 #include <mach/regs-audss.h>
 #include <mach/regs-clock.h>
 #include <linux/wakelock.h>
-#include "s3c-dma.h"
+#include "dma.h"
 #include "s5pc1xx-i2s.h"
 
 /*
