@@ -20,9 +20,6 @@ config SND_S3C2412_SOC_I2S
 	select SND_S3C_I2SV2_SOC
 	select S3C2410_DMA
 
-config SND_S5PC1XX_I2S
-	tristate
-
 config SND_SAMSUNG_PCM
 	tristate
 
@@ -131,7 +128,7 @@ config SND_SOC_SAMSUNG_H1940_UDA1380
 config SND_SOC_SAMSUNG_HERRING_WM8994
 	tristate "SoC I2S Audio support for HERRING - WM8994"
 	depends on SND_SOC_SAMSUNG && (MACH_HERRING || MACH_ARIES)
-	select SND_S5PC1XX_I2S
+	select SND_SAMSUNG_I2S
 	select SND_SOC_WM8994_SAMSUNG
 	help
 	  Say Y if you want to add support for SoC audio on herring
