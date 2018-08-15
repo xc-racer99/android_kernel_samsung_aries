@@ -32,7 +32,7 @@
   */
 
 /* SMDK has a 16.934MHZ crystal attached to WM8994 */
-#define SMDK_WM8994_FREQ 16934000
+#define SMDK_WM8994_FREQ 24000000
 
 static int smdk_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
@@ -129,6 +129,7 @@ static struct snd_soc_dai_link smdk_dai[] = {
 		.codec_name = "wm8994-codec",
 		.init = smdk_wm8994_init_paiftx,
 		.ops = &smdk_ops,
+#if 0
 	}, { /* Sec_Fifo Playback i/f */
 		.name = "Sec_FIFO TX",
 		.stream_name = "Sec_Dai",
@@ -137,6 +138,7 @@ static struct snd_soc_dai_link smdk_dai[] = {
 		.platform_name = "samsung-audio",
 		.codec_name = "wm8994-codec",
 		.ops = &smdk_ops,
+#endif
 	},
 };
 
