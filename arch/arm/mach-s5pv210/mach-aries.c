@@ -18,7 +18,9 @@
 #include <linux/i2c.h>
 #include <linux/i2c-gpio.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/fixed.h>
 #include <linux/mfd/max8998.h>
+#include <linux/mfd/wm8994/pdata.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/usb/ch9.h>
@@ -1560,11 +1562,115 @@ static void sec_jack_set_micbias_state(bool on)
     spin_unlock_irqrestore(&mic_bias_lock, flags);
 }
 
+#ifdef CONFIG_MFD_WM8994
+static struct regulator_consumer_supply wm8994_fixed_voltage0_supplies[] = {
+	REGULATOR_SUPPLY("DBVDD", NULL),
+	REGULATOR_SUPPLY("AVDD2", NULL),
+	REGULATOR_SUPPLY("CPVDD", NULL),
+};
+
+static struct regulator_consumer_supply wm8994_fixed_voltage1_supplies[] = {
+	REGULATOR_SUPPLY("SPKVDD1", NULL),
+	REGULATOR_SUPPLY("SPKVDD2", NULL),
+};
+
+static struct regulator_init_data wm8994_fixed_voltage0_init_data = {
+	.constraints	= {
+		.always_on	= 1,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(wm8994_fixed_voltage0_supplies),
+	.consumer_supplies	= wm8994_fixed_voltage0_supplies,
+};
+
+static struct regulator_init_data wm8994_fixed_voltage1_init_data = {
+	.constraints	= {
+		.always_on	= 1,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(wm8994_fixed_voltage1_supplies),
+	.consumer_supplies	= wm8994_fixed_voltage1_supplies,
+};
+
+static struct fixed_voltage_config wm8994_fixed_voltage0_config = {
+	.supply_name	= "VCC_1.8V_PDA",
+	.microvolts	= 1800000,
+	.gpio		= -EINVAL,
+	.init_data	= &wm8994_fixed_voltage0_init_data,
+};
+
+static struct fixed_voltage_config wm8994_fixed_voltage1_config = {
+	.supply_name	= "V_BAT",
+	.microvolts	= 3700000,
+	.gpio		= -EINVAL,
+	.init_data	= &wm8994_fixed_voltage1_init_data,
+};
+
+static struct platform_device wm8994_fixed_voltage0 = {
+	.name		= "reg-fixed-voltage",
+	.id		= 0,
+	.dev		= {
+		.platform_data	= &wm8994_fixed_voltage0_config,
+	},
+};
+
+static struct platform_device wm8994_fixed_voltage1 = {
+	.name		= "reg-fixed-voltage",
+	.id		= 1,
+	.dev		= {
+		.platform_data	= &wm8994_fixed_voltage1_config,
+	},
+};
+
+static struct regulator_consumer_supply wm8994_avdd1_supply =
+	REGULATOR_SUPPLY("AVDD1", NULL);
+
+static struct regulator_consumer_supply wm8994_dcvdd_supply =
+	REGULATOR_SUPPLY("DCVDD", NULL);
+
+static struct regulator_init_data wm8994_ldo1_data = {
+	.constraints	= {
+		.name		= "AVDD1_3.0V",
+		.valid_ops_mask	= REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= 1,
+	.consumer_supplies	= &wm8994_avdd1_supply,
+};
+
+static struct regulator_init_data wm8994_ldo2_data = {
+	.constraints	= {
+		.name		= "DCVDD_1.0V",
+	},
+	.num_consumer_supplies	= 1,
+	.consumer_supplies	= &wm8994_dcvdd_supply,
+};
+
+static struct wm8994_pdata wm8994_pdata = {
+	/* configure gpio1 function: 0x0001(Logic level input/output) */
+	.gpio_defaults[0]	= 0x0001,
+	/* configure gpio3/4/5/7 function for AIF2 voice */
+	.gpio_defaults[2]	= 0x8100,
+	.gpio_defaults[3]	= 0x8100,
+	.gpio_defaults[4]	= 0x8100,
+	.gpio_defaults[6]	= 0x0100,
+	/* configure gpio8/9/10/11 function for AIF3 BT */
+	.gpio_defaults[7]	= 0x8100,
+	.gpio_defaults[8]	= 0x0100,
+	.gpio_defaults[9]	= 0x0100,
+	.gpio_defaults[10]	= 0x0100,
+#if 0
+	.gpio_base		= WM8994_GPIO_BASE,
+	.irq_base		= WM8994_EINT_BASE,
+	.set_bias_level		= wm8994_set_bias_level,
+#endif
+	.ldo[0]	= { GPIO_CODEC_LDO_EN,	NULL,	&wm8994_ldo1_data },	/* XM0FRNB_2 */
+	.ldo[1]	= { 0,			NULL,	&wm8994_ldo2_data },
+};
+#else
 static struct wm8994_platform_data wm8994_pdata = {
 	.ldo = GPIO_CODEC_LDO_EN,
 	.ear_sel = -1,
 	.set_mic_bias = wm8994_set_mic_bias,
 };
+#endif
 
 #ifdef CONFIG_VIDEO_CE147
 /*
@@ -2444,7 +2550,11 @@ static struct i2c_board_info i2c_devs0[] __initdata = {
 
 static struct i2c_board_info i2c_devs4[] __initdata = {
 	{
+#ifdef CONFIG_MFD_WM8994
+		I2C_BOARD_INFO("wm8994", (0x34>>1)),
+#else
 		I2C_BOARD_INFO("wm8994-samsung", (0x34>>1)),
+#endif
 		.platform_data = &wm8994_pdata,
 	},
 };
@@ -5454,6 +5564,11 @@ static struct platform_device *aries_devices[] __initdata = {
 	&ram_console_device,
 	&sec_device_wifi,
 	&samsung_asoc_dma,
+
+#ifdef CONFIG_MFD_WM8994
+	&wm8994_fixed_voltage0,
+	&wm8994_fixed_voltage1,
+#endif
 };
 
 static void __init aries_map_io(void)
@@ -5571,6 +5686,13 @@ static void __init setup_ram_console_mem(void)
 
 static void __init sound_init(void)
 {
+#ifdef CONFIG_MFD_WM8994
+	/* Ths main clock of WM8994 codec uses the output of CLKOUT pin.
+	 * The CLKOUT[9:8] set to 0x3(XUSBXTI) of 0xE010E000(OTHERS)
+	 * because it needs 24MHz clock to operate WM8994 codec.
+	 */
+	__raw_writel(__raw_readl(S5P_OTHERS) | (0x3 << 8), S5P_OTHERS);
+#else
 	u32 reg;
 
 	reg = __raw_readl(S5P_OTHERS);
@@ -5587,6 +5709,7 @@ static void __init sound_init(void)
 	reg &= ~0x1;
 	reg |= 0x1;
 	__raw_writel(reg, S5P_CLK_OUT);
+#endif
 
 #if defined(CONFIG_SAMSUNG_VIBRANT)
     if((HWREV == 0x0A) || (HWREV == 0x0C) || (HWREV == 0x0D) || (HWREV == 0x0E) ) //0x0A:00, 0x0C:00, 0x0D:01, 0x0E:05
