@@ -98,11 +98,15 @@ static int smdk_wm8994_init_paiftx(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_enable_pin(dapm, "IN2LN");
 	snd_soc_dapm_enable_pin(dapm, "IN2RN");
 
-	/* Other pins NC */
+	/* Speaker */
+	snd_soc_dapm_enable_pin(dapm, "SPKOUTLN");
+	snd_soc_dapm_enable_pin(dapm, "SPKOUTLP");
+
+	/* Earpiece */
 	snd_soc_dapm_nc_pin(dapm, "HPOUT2P");
 	snd_soc_dapm_nc_pin(dapm, "HPOUT2N");
-	snd_soc_dapm_nc_pin(dapm, "SPKOUTLN");
-	snd_soc_dapm_nc_pin(dapm, "SPKOUTLP");
+
+	/* Other pins NC */
 	snd_soc_dapm_nc_pin(dapm, "SPKOUTRP");
 	snd_soc_dapm_nc_pin(dapm, "SPKOUTRN");
 	snd_soc_dapm_nc_pin(dapm, "LINEOUT1N");
