@@ -1,25 +1,5 @@
 #!/stage1/busybox sh
 
-create_ubi_partitions() {
-	# format as UBI
-	ubiformat /dev/mtd/mtd1 -y
-
-	# attach ubi
-	ubiattach -m 1
-
-	# create ubi volumes
-	ubimkvol /dev/ubi0 -N ramdisk -s 10MiB -n 1
-	ubimkvol /dev/ubi0 -N ramdisk-recovery -s 10MiB -n 2
-	ubimkvol /dev/ubi0 -N vendor -s 100MiB -n 3
-	ubimkvol /dev/ubi0 -N system -m -n 0
-
-	# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
-	ubiblock -c /dev/ubi0_0
-	ubiblock -c /dev/ubi0_1
-	ubiblock -c /dev/ubi0_2
-	ubiblock -c /dev/ubi0_3
-}
-
 export _PATH="$PATH"
 export PATH=/stage1
 
@@ -33,101 +13,51 @@ busybox mount /dev/block/mmcblk0p1 /sdcard
 exec >> /boot.txt
 exec 2>&1
 
-if busybox test -e /sdcard/ramdisk.cpio ; then
-	# upgrade from bml
-	busybox echo 'UPGRADE BOOT' >>/boot.txt
+busybox echo 'UPGRADE BOOT' >>/boot.txt
 
-	create_ubi_partitions
+# Write u-boot.bin and recovery.img to both boot and recovery
+flash_image boot /sdcard/backup/recovery.img
+flash_image recovery /sdcard/backup/recovery.img
+flash_image u-boot /sdcard/backup/u-boot.bin
 
-	# copy efs to its own partition
-	busybox mount -t yaffs2 /dev/block/mtdblock2 /efs
+# UBI format
+ubiformat /dev/mtd/mtd4 -y
 
-	# verify the md5sum of efs.tar before restore
-	cd /sdcard/backup/
-	busybox md5sum -c efs.tar.md5
+# UBI attach
+ubiattach -p /dev/mtd/mtd4
 
-	# save the exit status of md5sum
-	MD5RESULT=$?
-	if ! busybox test $MD5RESULT; then
-		busybox echo "efs.tar could not be verified." >>/boot.txt
-	else
-		# extract the tar file in the /efs partition
-		cd /efs
-		busybox tar xf /sdcard/backup/efs.tar
-		busybox echo "efs restored"
-	fi
-	cd /
-	busybox sync
-	busybox umount /efs
+# Create UBI volumes for radio, efs, cache, system, datadata
+ubimkvol /dev/ubi0 -s 19712KiB -N radio
+ubimkvol /dev/ubi0 -s 5888KiB -N efs
+ubimkvol /dev/ubi0 -s 40960KiB -N cache
+ubimkvol /dev/ubi0 -s 600MiB -N system
+ubimkvol /dev/ubi0 -m -N datadata
 
-	# untar ramdisk.cpio, create squashfs and write to recovery ubiblock
-	cd /temp
-	busybox cpio -ui < /sdcard/ramdisk.cpio
-	cd /
-	mksquashfs /temp /sdcard/recovery.squash -comp gzip -noappend
-	ubiupdatevol /dev/ubi0_2 /sdcard/recovery.squash
+# copy efs to its own partition
+busybox mount -t ubifs ubi0:efs /efs
 
-	busybox umount /sdcard
-	# purge all partitions and create one new primary one
-	# benign errors if only one partition is present
-	# commands in order are:
-		# delete both partitions
-		# create new partition
-		# make it primary
-		# make it partition number 1
-		# start at default address
-		# size 100M
-		# create new partition
-		# make it primary
-		# make it partition number 2
-		# start at default address
-		# max size
-		# write to disk
-	busybox fdisk /dev/block/mmcblk0 <<EOF
-o
-n
-p
-1
+# verify the md5sum of efs.tar before restore
+cd /sdcard/backup/
+busybox md5sum -c efs.tar.md5
 
-+100M
-n
-p
-2
-
-
-w
-EOF
-
-	make_ext4fs -l -16384 -a /data /dev/block/mmcblk0p2
-	make_ext4fs -a /cache /dev/block/mmcblk0p1
-
-	busybox mount /dev/block/mmcblk0p1 /sdcard
-
-	# disable lpm
-	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
+# save the exit status of md5sum
+MD5RESULT=$?
+if ! busybox test $MD5RESULT; then
+	busybox echo "efs.tar could not be verified." >>/boot.txt
 else
-	# try attaching ubi
-	ubiattach -m 1
-
-	# regular recovery boot
-	busybox echo "REGULAR BOOT" >>boot.txt
-
-	# create ubiblocks for system, ramdisk, ramdisk-recovery, vendor
-	ubiblock -c /dev/ubi0_0
-	ubiblock -c /dev/ubi0_1
-	ubiblock -c /dev/ubi0_2
-	ubiblock -c /dev/ubi0_3
+	# extract the tar file in the /efs partition
+	cd /efs
+	busybox tar xf /sdcard/backup/efs.tar
+	busybox echo "efs restored"
 fi
+cd /
+busybox sync
+busybox umount /efs
 
-busybox mount /dev/block/ubiblock0_2 /recovery -t squashfs -o ro
-busybox cp -Rfp /recovery/* /
-busybox umount /recovery
 busybox cp /boot.txt /sdcard
 busybox umount /sdcard
 
 busybox umount /sys
 busybox umount /proc
-busybox date >>boot.txt
-busybox rm -rf /stage1 /sdcard /file_contexts /efs /temp /recovery
-export PATH="${_PATH}"
-exec /init
+
+busybox reboot
