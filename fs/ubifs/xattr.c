@@ -618,40 +618,30 @@ const struct xattr_handler *ubifs_xattr_handlers[] = {
 	NULL,
 };
 
-static int init_xattrs(struct inode *inode, const struct xattr *xattr_array,
-		      void *fs_info)
-{
-	const struct xattr *xattr;
-	char *name;
-	int err = 0;
-
-	for (xattr = xattr_array; xattr->name != NULL; xattr++) {
-		name = kmalloc(XATTR_SECURITY_PREFIX_LEN +
-			       strlen(xattr->name) + 1, GFP_NOFS);
-		if (!name) {
-			err = -ENOMEM;
-			break;
-		}
-		strcpy(name, XATTR_SECURITY_PREFIX);
-		strcpy(name + XATTR_SECURITY_PREFIX_LEN, xattr->name);
-		err = setxattr(inode, name, xattr->value, xattr->value_len, 0);
-		kfree(name);
-		if (err < 0)
-			break;
-	}
-
-	return err;
-}
-
-int ubifs_init_security(struct inode *dentry, struct inode *inode,
+int ubifs_init_security(struct inode *dir, struct inode *inode,
 			const struct qstr *qstr)
 {
 	int err;
+	size_t len;
+	void *value;
+	char *suffix;
+	char name[XATTR_NAME_MAX];
 
 	mutex_lock(&inode->i_mutex);
-	err = security_inode_init_security(inode, dentry, qstr,
-					   &init_xattrs, 0);
+	err = security_inode_init_security(inode, dir, qstr, &suffix, &value, &len);
+	if (err) {
+		if (err == -EOPNOTSUPP)
+			return 0;
+		return err;
+	}
+
+	snprintf(name, sizeof name, "%s%s", XATTR_SECURITY_PREFIX, suffix);
+
+	err = setxattr(inode, name, value, len, 0);
+
 	mutex_unlock(&inode->i_mutex);
 
+	kfree(suffix);
+	kfree(value);
 	return err;
 }
