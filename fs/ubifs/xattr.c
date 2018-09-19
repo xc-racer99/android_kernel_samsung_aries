@@ -59,6 +59,7 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/xattr.h>
+#include <linux/security.h>
 #include <linux/posix_acl_xattr.h>
 
 /*
@@ -575,5 +576,31 @@ int ubifs_removexattr(struct dentry *dentry, const char *name)
 
 out_free:
 	kfree(xent);
+	return err;
+}
+
+int ubifs_init_security(struct inode *dir, struct dentry *dentry,
+			       struct inode *inode)
+{
+	int err;
+	size_t size;
+	void *value;
+	char *suffix;
+	char name[XATTR_NAME_MAX];
+
+	err = security_inode_init_security(inode, dir, &dentry->d_name,
+					   &suffix, &value, &size);
+	if (err) {
+		if (err == -EOPNOTSUPP)
+			return 0;
+		return err;
+	}
+	snprintf(name, sizeof name, "%s%s", XATTR_SECURITY_PREFIX, suffix);
+
+	/* inlined setxattr: no instantiated dentry yet */
+	err = setxattr(inode, name, value, size, 0);
+
+	kfree(value);
+	kfree(suffix);
 	return err;
 }
