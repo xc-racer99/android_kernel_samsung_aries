@@ -724,7 +724,7 @@ static int __devinit fsa9480_probe(struct i2c_client *client,
 	/* device detection */
 	fsa9480_detect_dev(usbsw);
 
-#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_FASCINATE)
+#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_FASCINATE) || defined(CONFIG_SAMSUNG_GALAXYS4G)
 	if (misc_register(&dockaudio_device))
 		printk("%s misc_register(%s) failed\n", __FUNCTION__, dockaudio_device.name);
 	else {
@@ -748,7 +748,7 @@ static int __devexit fsa9480_remove(struct i2c_client *client)
 {
 	struct fsa9480_usbsw *usbsw = i2c_get_clientdata(client);
 
-#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_FASCINATE)
+#if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_FASCINATE) || defined(CONFIG_SAMSUNG_GALAXYS4G)
 	misc_deregister(&dockaudio_device);
 #endif
 
