@@ -44,9 +44,6 @@
 #include <linux/regulator/consumer.h>
 static struct regulator *cp_rtc_regulator; /*LDO 6*/
 extern int max8998_clk_ctrl(int power);
-
-static struct wake_lock modemctl_wake_lock_int_resout;
-static struct wake_lock modemctl_wake_lock_cp_pwr_rst;
 #endif
 
 #define DRVNAME "modemctl"
@@ -71,10 +68,6 @@ struct modemctl_info {
 struct modemctl {
 	int irq_phone_active;
 	int irq_sim_ndetect;
-#if defined(CONFIG_PHONE_ARIES_STE)
-	int irq_int_resout;
-	int irq_cp_pwr_rst;
-#endif
 
 	unsigned gpio_phone_on;
 	unsigned gpio_phone_active;
@@ -95,7 +88,7 @@ struct modemctl {
 
 #ifdef CONFIG_HAS_WAKELOCK
 	struct wake_lock mc_wlock;
-	long	 waketime;
+	long     waketime;
 #endif
 
 	struct modemctl_ops *ops;
@@ -105,10 +98,6 @@ struct modemctl {
 	const struct attribute_group *group;
 
 	struct work_struct work;
-#if defined(CONFIG_PHONE_ARIES_STE)
-	struct work_struct work_int_resout;
-	struct work_struct work_cp_pwr_rst;
-#endif
 };
 
 enum {
@@ -152,10 +141,11 @@ static inline long _wake_lock_gettime(struct modemctl *mc)
 #  define _wake_lock_gettime(mc) (0)
 #endif
 
+#ifndef CONFIG_PHONE_ARIES_STE
 static int sim_check_status(struct modemctl *);
 static int sim_get_reference_status(struct modemctl *);
 static void sim_irq_debounce_timer_func(unsigned);
-
+#endif
 
 #if defined(CONFIG_PHONE_ARIES_STE)
 static void m5720_on(struct modemctl *);
@@ -727,6 +717,7 @@ static ssize_t show_debug(struct device *d,
 	return 0;
 }
 
+#ifndef CONFIG_PHONE_ARIES_STE
 static void mc_work(struct work_struct *work)
 {
 	struct modemctl *mc = container_of(work, struct modemctl, work);
@@ -763,67 +754,6 @@ static irqreturn_t modemctl_irq_handler(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
-
-#if defined(CONFIG_PHONE_ARIES_STE)
-static void mc_int_resout_work(struct work_struct *work)
-{
-	struct modemctl *mc = container_of(work, struct modemctl, work_int_resout);
-
-	dev_dbg(mc->dev, "%s\n", __func__);
-
-	if(gpio_get_value(mc->gpio_int_resout))
-		return;
-
-	if (mc->gpio_phone_on && gpio_get_value(mc->gpio_phone_on)) {
-		wake_lock(&modemctl_wake_lock_int_resout);
-		dev_dbg(mc->dev, "[STE][%s] INT_RESOUT goes to low. Set PHONE_ON to low. = [%d] \n", __func__, mc->gpio_phone_on);
-		kobject_uevent(&mc->dev->kobj, KOBJ_OFFLINE);
-		wake_lock_timeout(&modemctl_wake_lock_int_resout, 600 * HZ);
-	}
-}
-
-static irqreturn_t modemctl_irq_handler_int_resout(int irq, void *dev_id)
-{
-	struct modemctl *mc = (struct modemctl *)dev_id;
-
-	if(gpio_get_value(mc->gpio_int_resout))
-		return IRQ_HANDLED;
-
-	if (!work_pending(&mc->work_int_resout))
-		schedule_work(&mc->work_int_resout);
-
-	return IRQ_HANDLED;
-}
-
-static void mc_cp_pwr_rst_work(struct work_struct *work)
-{
-	struct modemctl *mc = container_of(work, struct modemctl, work_cp_pwr_rst);
-
-	dev_dbg(mc->dev, "%s\n", __func__);
-
-	if(gpio_get_value(mc->gpio_cp_pwr_rst))
-		return;
-
-	if (mc->gpio_phone_on && gpio_get_value(mc->gpio_phone_on)) {
-		wake_lock(&modemctl_wake_lock_cp_pwr_rst);
-		dev_dbg(mc->dev, "[STE][%s] INT_CP_PWR_RST goes to Low \n", __func__);
-		wake_lock_timeout(&modemctl_wake_lock_cp_pwr_rst, 600 * HZ);
-	}
-}
-
-static irqreturn_t modemctl_irq_handler_cp_pwr_rst(int irq, void *dev_id)
-{
-	struct modemctl *mc = (struct modemctl *)dev_id;
-
-	if(gpio_get_value(mc->gpio_cp_pwr_rst))
-		return IRQ_HANDLED;
-
-	if (!work_pending(&mc->work_cp_pwr_rst))
-		schedule_work(&mc->work_cp_pwr_rst);
-
-	return IRQ_HANDLED;
-}
-#endif /* defined(CONFIG_PHONE_ARIES_STE) */
 
 static int sim_get_reference_status(struct modemctl* mc)
 {
@@ -895,6 +825,7 @@ static irqreturn_t simctl_irq_handler(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static struct modemctl_ops* _find_ops(const char *name)
 {
@@ -942,9 +873,9 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 	struct modemctl_platform_data *pdata;
 	struct resource *res;
 	int r = 0;
-	int irq_phone_active, irq_sim_ndetect;
-#if defined(CONFIG_PHONE_ARIES_STE)
-	int irq_int_resout, irq_cp_pwr_rst;
+	int irq_phone_active;
+#ifndef CONFIG_PHONE_ARIES_STE
+	int irq_sim_ndetect;
 #endif
 
 	printk("[%s]\n",__func__);
@@ -963,7 +894,7 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 		goto err;
 	}
 	irq_phone_active = res->start;
-#if !defined(CONFIG_PHONE_ARIES_STE)
+#ifndef CONFIG_PHONE_ARIES_STE
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 1);
 	if(!res)  {
 		dev_err(&pdev->dev, "failed to get irq number\n");
@@ -971,21 +902,6 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 		goto err;
 	}
 	irq_sim_ndetect = res->start;
-#else
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 1);
-	if(!res)  {
-		dev_err(&pdev->dev, "failed to get irq number\n");
-		r = -EINVAL;
-		goto err;
-	}
-	irq_int_resout = res->start;
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 2);
-	if(!res)  {
-		dev_err(&pdev->dev, "failed to get irq number\n");
-		r = -EINVAL;
-		goto err;
-	}
-	irq_cp_pwr_rst = res->start;
 #endif
 
 	mc = kzalloc(sizeof(struct modemctl), GFP_KERNEL);
@@ -1005,7 +921,7 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 	mc->gpio_sim_ndetect = pdata->gpio_sim_ndetect;
 	mc->sim_change_reset = SIM_LEVEL_NONE;
 	mc->sim_reference_level = SIM_LEVEL_NONE;
-#if defined(CONFIG_PHONE_ARIES_STE)
+#ifdef CONFIG_PHONE_ARIES_STE
 	mc->gpio_int_resout = pdata->gpio_int_resout;
 	mc->gpio_cp_pwr_rst = pdata->gpio_cp_pwr_rst;
 #endif
@@ -1041,44 +957,7 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 	}
 	mc->group = &modemctl_group;
 
-#if defined(CONFIG_PHONE_ARIES_STE)
-	INIT_WORK(&mc->work_int_resout, mc_int_resout_work);
-
-	r = request_irq(irq_int_resout, modemctl_irq_handler_int_resout,
-			IRQF_TRIGGER_FALLING, "int_resout", mc);
-	if(r) {
-		dev_err(&pdev->dev, "failed to allocate an interrupt(%d)\n",
-				irq_int_resout);
-		goto err;
-	}
-
-	r = enable_irq_wake(irq_int_resout);
-	if(r) {
-		dev_err(&pdev->dev, "failed to set wakeup source(%d)\n",
-				irq_int_resout);
-		goto err;
-	}
-
-	mc->irq_int_resout = irq_int_resout;
-	INIT_WORK(&mc->work_cp_pwr_rst, mc_cp_pwr_rst_work);
-
-	r = request_irq(irq_cp_pwr_rst, modemctl_irq_handler_cp_pwr_rst,
-			IRQF_TRIGGER_FALLING, "CP_PWR_RST", mc);
-	if(r) {
-		dev_err(&pdev->dev, "failed to allocate an interrupt(%d)\n",
-				irq_cp_pwr_rst);
-		goto err;
-	}
-
-	r = enable_irq_wake(irq_cp_pwr_rst);
-	if(r) {
-		dev_err(&pdev->dev, "failed to set wakeup source(%d)\n",
-				irq_cp_pwr_rst);
-		goto err;
-	}
-
-	mc->irq_cp_pwr_rst = irq_cp_pwr_rst;
-#else
+#ifndef CONFIG_PHONE_ARIES_STE
 	INIT_WORK(&mc->work, mc_work);
 
 	r = request_irq(irq_phone_active, modemctl_irq_handler,
@@ -1097,9 +976,7 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 	}
 
 	mc->irq_phone_active = irq_phone_active;
-#endif
 
-#if !defined(CONFIG_PHONE_ARIES_STE)
 	setup_timer(&mc->sim_irq_debounce_timer, (void*)sim_irq_debounce_timer_func,(unsigned long)mc);
 
 	r = request_irq(irq_sim_ndetect, simctl_irq_handler,
@@ -1125,6 +1002,7 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, mc);
 
+#ifdef CONFIG_PHONE_ARIES_STE
 	if(IS_ERR_OR_NULL(cp_rtc_regulator)) {
 		cp_rtc_regulator = regulator_get(NULL, "cp_rtc");
 		if(IS_ERR_OR_NULL(cp_rtc_regulator)) {
@@ -1132,6 +1010,7 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 			return -1;
 		}
 	}
+#endif
 
 	return 0;
 
@@ -1186,11 +1065,6 @@ static struct platform_driver modemctl_driver = {
 static int __init modemctl_init(void)
 {
 	printk("[%s]\n",__func__);
-
-#if defined(CONFIG_PHONE_ARIES_STE)
-	wake_lock_init(&modemctl_wake_lock_int_resout, WAKE_LOCK_SUSPEND, "modemctl_wakelock");
-	wake_lock_init(&modemctl_wake_lock_cp_pwr_rst, WAKE_LOCK_SUSPEND, "modemctl_wakelock");
-#endif
 
 	return platform_driver_register(&modemctl_driver);
 }

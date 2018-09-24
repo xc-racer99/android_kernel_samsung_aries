@@ -133,7 +133,7 @@ static inline void _wake_lock_timeout(struct svnet *sn)
 		wake_lock_timeout(&sn->wlock, sn->wake_time);
 }
 
-void _non_fmt_wakelock_timeout() {
+void _non_fmt_wakelock_timeout(void) {
 	if (svnet_dev)
 		_wake_lock_timeout(svnet_dev);
 }
@@ -145,7 +145,7 @@ static inline void _wake_process_lock_timeout(struct svnet *sn)
 		wake_lock_timeout(&sn->wlock, sn->wake_process_time);
 }
 
-void _fmt_wakelock_timeout() {
+void _fmt_wakelock_timeout(void) {
 	if (svnet_dev)
 		_wake_process_lock_timeout(svnet_dev);
 }
@@ -588,10 +588,6 @@ static void svnet_setup(struct net_device *ndev)
 //	ndev->destructor = free_netdev;
 }
 
-#if defined(CONFIG_PHONE_ARIES_STE)
-extern int onedram_rel_sem();
-#endif
-
 static void svnet_read_wq(struct work_struct *work)
 {
 	struct svnet *sn = container_of(work,
@@ -600,9 +596,6 @@ static void svnet_read_wq(struct work_struct *work)
 	int r = 0;
 	int contd = 0;
 	unsigned long long t, d;
-#if defined(CONFIG_PHONE_ARIES_STE)
-	int retry = 0;
-#endif
 
 	t = cpu_clock(smp_processor_id());
 	if (tmp_itor) {
@@ -631,27 +624,11 @@ static void svnet_read_wq(struct work_struct *work)
 				break;
 			}
 		} else {
-#if defined(CONFIG_PHONE_ARIES_STE)
-			if(retry < 5) {
-				dev_err(&sn->ndev->dev,
-					"IPC not work, retry %d (event %x)\n", retry, event);
-				retry++;
-				mdelay(50);
-				continue;
-			} else {
-				dev_err(&sn->ndev->dev,
-					"IPC not work, skip event %x\n", event);
-			}
-#else
 			dev_err(&sn->ndev->dev,
 					"IPC not work, skip event %x\n", event);
-#endif
 		}
 		event = _dequeue_evt(&sn->rxq);
 	}
-#if defined(CONFIG_PHONE_ARIES_STE)
-	onedram_rel_sem();
-#endif
 
 	if (contd > 0)
 		queue_delayed_work(sn->wq, &sn->work_rx, 0);
