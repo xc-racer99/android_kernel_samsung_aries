@@ -43,7 +43,7 @@
 #if defined(CONFIG_PHONE_ARIES_STE)
 #include <linux/regulator/consumer.h>
 static struct regulator *cp_rtc_regulator; /*LDO 6*/
-extern int max8998_clk_ctrl(int power);
+static struct regulator *cp_32khz_regulator; /*LDO 6*/
 #endif
 
 #define DRVNAME "modemctl"
@@ -240,11 +240,6 @@ static void m5720_on(struct modemctl *mc)
 
 	msleep(18);
 
-	if(IS_ERR_OR_NULL(cp_rtc_regulator)) {
-		pr_err("Error: cp_rtc_regulator not initialized\n");
-		return;
-	}
-
 	regulator_set_voltage(cp_rtc_regulator, 1800000, 1800000);
 
 	if (!regulator_is_enabled(cp_rtc_regulator)) {
@@ -256,7 +251,15 @@ static void m5720_on(struct modemctl *mc)
 			return;
 		}
 	}
-	max8998_clk_ctrl(1);
+
+	if (!regulator_is_enabled(cp_32khz_regulator)) {
+		int err = 0;
+		err = regulator_enable(cp_32khz_regulator);
+		if (err) {
+			pr_err("Failed to enable CP_32KHz regulator.\n");
+			return;
+		}
+	}
 
 	gpio_set_value(mc->gpio_pda_active, 1);
 
@@ -276,7 +279,14 @@ static void m5720_off(struct modemctl *mc)
 		gpio_direction_output(mc->gpio_cp_reset, 0);
 
 	if(!gpio_get_value(mc->gpio_int_resout) && !gpio_get_value(mc->gpio_cp_pwr_rst)) {
-		max8998_clk_ctrl(0);
+		if (regulator_is_enabled(cp_32khz_regulator)) {
+			int err = 0;
+			err = regulator_disable(cp_32khz_regulator);
+			if (err) {
+				pr_err("Failed to disable CP_32KHz regulator.\n");
+				return;
+			}
+		}
 		return;
 	}
 
@@ -292,7 +302,14 @@ static void m5720_off(struct modemctl *mc)
 	else
 		dev_dbg(mc->dev, "%s, GPIO_CP_PWR_RST is already low\n", __func__);
 
-	max8998_clk_ctrl(0);
+	if (regulator_is_enabled(cp_32khz_regulator)) {
+		int err = 0;
+		err = regulator_disable(cp_32khz_regulator);
+		if (err) {
+			pr_err("Failed to disable CP_32KHz regulator.\n");
+			return;
+		}
+	}
 
 	gpio_set_value(mc->gpio_cp_reset, 0);
 }
@@ -1007,6 +1024,14 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 		cp_rtc_regulator = regulator_get(NULL, "cp_rtc");
 		if(IS_ERR_OR_NULL(cp_rtc_regulator)) {
 			pr_err("Failed to get CP_RTC_1.8V regulator\n");
+			return -1;
+		}
+	}
+
+	if(IS_ERR_OR_NULL(cp_32khz_regulator)) {
+		cp_32khz_regulator = regulator_get(NULL, "cp_32khz");
+		if(IS_ERR_OR_NULL(cp_32khz_regulator)) {
+			pr_err("Failed to get CP_32KHz regulator\n");
 			return -1;
 		}
 	}

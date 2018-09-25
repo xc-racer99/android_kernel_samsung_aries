@@ -541,6 +541,10 @@ static struct regulator_consumer_supply buck4_consumer[] = {
 	{	.supply	= "cam_isp_core", },
 };
 
+static struct regulator_consumer_supply en32khz_cp_consumer[] = {
+	{	.supply	= "cp_32khz", },
+};
+
 static struct regulator_init_data aries_ldo2_data = {
 	.constraints	= {
 		.name		= "VALIVE_1.2V",
@@ -825,6 +829,15 @@ static struct regulator_init_data aries_buck4_data = {
 	.consumer_supplies	= buck4_consumer,
 };
 
+static struct regulator_init_data aries_en32khz_cp_data = {
+	.constraints	= {
+		.name		= "32KHz CP",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(en32khz_cp_consumer),
+	.consumer_supplies	= en32khz_cp_consumer,
+};
+
 static struct max8998_regulator_data aries_regulators[] = {
 	{ MAX8998_LDO2,  &aries_ldo2_data },
 	{ MAX8998_LDO3,  &aries_ldo3_data },
@@ -849,6 +862,7 @@ static struct max8998_regulator_data aries_regulators[] = {
 	{ MAX8998_BUCK2, &aries_buck2_data },
 	{ MAX8998_BUCK3, &aries_buck3_data },
 	{ MAX8998_BUCK4, &aries_buck4_data },
+	{ MAX8998_EN32KHZ_CP, &aries_en32khz_cp_data },
 };
 
 static struct max8998_adc_table_data temper_table[] =  {
