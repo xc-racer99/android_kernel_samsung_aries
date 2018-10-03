@@ -1661,7 +1661,7 @@ static struct wm8994_pdata wm8994_pdata = {
 	.irq_base		= WM8994_EINT_BASE,
 	.set_bias_level		= wm8994_set_bias_level,
 #endif
-	.ldo[0]	= { GPIO_CODEC_LDO_EN,	NULL,	&wm8994_ldo1_data },	/* XM0FRNB_2 */
+	.ldo[0]	= { 0,			NULL,	&wm8994_ldo1_data },	/* XM0FRNB_2 */
 	.ldo[1]	= { 0,			NULL,	&wm8994_ldo2_data },
 };
 #else
@@ -5692,6 +5692,9 @@ static void __init sound_init(void)
 	 * because it needs 24MHz clock to operate WM8994 codec.
 	 */
 	__raw_writel(__raw_readl(S5P_OTHERS) | (0x3 << 8), S5P_OTHERS);
+
+	/* Hack - CODEC_LDO */
+	gpio_set_value(GPIO_CODEC_LDO_EN, 1);
 #else
 	u32 reg;
 
