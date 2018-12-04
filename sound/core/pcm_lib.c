@@ -304,18 +304,33 @@ int snd_pcm_update_state(struct snd_pcm_substream *substream,
 static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 				  unsigned int in_interrupt)
 {
+	pr_err("pcm: got here -3");
+
 	struct snd_pcm_runtime *runtime = substream->runtime;
+
+	pr_err("pcm: got here -2");
+
+
 	snd_pcm_uframes_t pos;
 	snd_pcm_uframes_t old_hw_ptr, new_hw_ptr, hw_base;
 	snd_pcm_sframes_t hdelta, delta;
 	unsigned long jdelta;
 
 	old_hw_ptr = runtime->status->hw_ptr;
+
+	pr_err("pcm: got here -1");
+
 	pos = substream->ops->pointer(substream);
+
+	pr_err("pcm: got here 0");
+
 	if (pos == SNDRV_PCM_POS_XRUN) {
 		xrun(substream);
 		return -EPIPE;
 	}
+
+	pr_err("pcm: got here 1");
+
 	if (pos >= runtime->buffer_size) {
 		if (printk_ratelimit()) {
 			char name[16];
@@ -328,6 +343,9 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 		}
 		pos = 0;
 	}
+
+	pr_err("pcm: got here 2");
+
 	pos -= pos % runtime->min_align;
 	if (xrun_debug(substream, XRUN_DEBUG_LOG))
 		xrun_log(substream, pos, in_interrupt);
@@ -349,6 +367,9 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 			}
 		}
 	}
+
+	pr_err("pcm: got here 3");
+
 	/* new_hw_ptr might be lower than old_hw_ptr in case when */
 	/* pointer crosses the end of the ring buffer */
 	if (new_hw_ptr < old_hw_ptr) {
@@ -378,6 +399,8 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 			   (unsigned long)runtime->hw_ptr_base);
 	}
 
+	pr_err("pcm: got here 4");
+
 	if (runtime->no_period_wakeup) {
 		snd_pcm_sframes_t xrun_threshold;
 		/*
@@ -399,6 +422,8 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 		}
 		goto no_delta_check;
 	}
+
+	pr_err("pcm: got here 5");
 
 	/* something must be really wrong */
 	if (delta >= runtime->buffer_size + runtime->period_size) {
@@ -477,6 +502,8 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 	    runtime->silence_size > 0)
 		snd_pcm_playback_silence(substream, new_hw_ptr);
 
+	pr_err("pcm: got here 6");
+
 	if (in_interrupt) {
 		delta = new_hw_ptr - runtime->hw_ptr_interrupt;
 		if (delta < 0)
@@ -491,6 +518,8 @@ static int snd_pcm_update_hw_ptr0(struct snd_pcm_substream *substream,
 	runtime->hw_ptr_jiffies = jiffies;
 	if (runtime->tstamp_mode == SNDRV_PCM_TSTAMP_ENABLE)
 		snd_pcm_gettime(runtime, (struct timespec *)&runtime->status->tstamp);
+
+	pr_err("pcm: got here 7");
 
 	return snd_pcm_update_state(substream, runtime);
 }
