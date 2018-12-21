@@ -23,6 +23,7 @@
 #include <linux/mman.h>
 #include <plat/media.h>
 #include <linux/clk.h>
+#include <linux/ion.h>
 
 #include "fimc.h"
 
@@ -2161,6 +2162,45 @@ static int fimc_update_in_queue_addr(struct fimc_control *ctrl,
 	ctx->src[idx].base[FIMC_ADDR_Y] = addr[FIMC_ADDR_Y];
 	ctx->src[idx].base[FIMC_ADDR_CB] = addr[FIMC_ADDR_CB];
 	ctx->src[idx].base[FIMC_ADDR_CR] = addr[FIMC_ADDR_CR];
+
+	/* This is just a hack to show how the FIMC could work with ion */
+	{
+		extern struct ion_device *s5p_ion_device;
+		struct ion_client *client;
+		struct ion_handle *y, *cb;
+		ion_phys_addr_t physAddr;
+		size_t len;
+
+		client = ion_client_create(s5p_ion_device, "ion_fimc");
+		if(!client)
+			goto err_skip;
+
+		y = ion_import_dma_buf(client, (int)addr[FIMC_ADDR_Y]);
+		if(!y)
+			goto err_free_client;
+
+		cb = ion_import_dma_buf(client, (int)addr[FIMC_ADDR_CB]);
+		if(!cb)
+			goto err_free_y_handle;
+
+		if(ion_phys(client, y, &physAddr, &len))
+			goto err_free_cb_handle;
+
+		ctx->src[idx].base[FIMC_ADDR_Y] = physAddr;
+		if(ion_phys(client, cb, &physAddr, &len))
+			goto err_free_cb_handle;
+
+		ctx->src[idx].base[FIMC_ADDR_CB] = physAddr;
+err_free_cb_handle:
+		ion_free(client, cb);
+err_free_y_handle:
+		ion_free(client, y);
+err_free_client:
+		ion_client_destroy(client);
+err_skip:
+		;
+	}
+
 
 	return 0;
 }
