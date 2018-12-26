@@ -776,9 +776,6 @@ static int modem_reset(struct modemctl *mc)
 {
 	pr_info("[MODEM] modem_reset()\n");
 
-	/* ensure phone active pin irq type */
-	set_irq_type(mc->gpio_phone_active, IRQ_TYPE_EDGE_BOTH);
-
 	/* ensure pda active pin set to low */
 	gpio_set_value(mc->gpio_pda_active, 0);
 
