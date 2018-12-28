@@ -72,7 +72,6 @@ static void onedram_cfg_gpio(void)
 {
 	s3c_gpio_cfgpin(GPIO_nINT_ONEDRAM_AP, S3C_GPIO_SFN(GPIO_nINT_ONEDRAM_AP_AF));
 	s3c_gpio_setpull(GPIO_nINT_ONEDRAM_AP, S3C_GPIO_PULL_UP);
-	irq_set_irq_type(GPIO_nINT_ONEDRAM_AP, IRQ_TYPE_LEVEL_LOW);
 }
 
 static void modemctl_cfg_gpio(void)
@@ -91,54 +90,37 @@ static void modemctl_cfg_gpio(void)
 	err = gpio_request(gpio_phone_on, "PHONE_ON");
 	if (err) {
 		printk("fail to request gpio %s\n","PHONE_ON");
-	} else {
-		gpio_direction_output(gpio_phone_on, GPIO_LEVEL_LOW);
-		s3c_gpio_setpull(gpio_phone_on, S3C_GPIO_PULL_NONE);
 	}
 #endif
 	err = gpio_request(gpio_cp_rst, "CP_RST");
 	if (err) {
 		printk("fail to request gpio %s\n","CP_RST");
-	} else {
-		gpio_direction_output(gpio_cp_rst, GPIO_LEVEL_LOW);
-		s3c_gpio_setpull(gpio_cp_rst, S3C_GPIO_PULL_NONE);
 	}
 	err = gpio_request(gpio_pda_active, "PDA_ACTIVE");
 	if (err) {
 		printk("fail to request gpio %s\n","PDA_ACTIVE");
-	} else {
-		gpio_direction_output(gpio_pda_active, GPIO_LEVEL_HIGH);
-		s3c_gpio_setpull(gpio_pda_active, S3C_GPIO_PULL_NONE);
 	}
 
 #if defined(CONFIG_SAMSUNG_GALAXYS4G)
 	err = gpio_request(gpio_int_resout, "INT_RESOUT");
 	if (err) {
 		printk("fail to request gpio %s\n","INT_RESOUT");
-	} else {
-		gpio_direction_output(gpio_int_resout, GPIO_LEVEL_LOW);
-		s3c_gpio_setpull(gpio_int_resout, S3C_GPIO_PULL_NONE);
 	}
 
 	s3c_gpio_cfgpin(gpio_int_resout, S3C_GPIO_SFN(0xF));
 	s3c_gpio_setpull(gpio_int_resout, S3C_GPIO_PULL_NONE);
-	irq_set_irq_type(gpio_int_resout, IRQ_TYPE_EDGE_BOTH);
+
 	err = gpio_request(gpio_cp_pwr_rst, "CP_PWR_RST");
 	if (err) {
 		printk("fail to request gpio %s\n","CP_PWR_RST");
-	} else {
-		gpio_direction_output(gpio_cp_pwr_rst, GPIO_LEVEL_LOW);
-		s3c_gpio_setpull(gpio_cp_pwr_rst, S3C_GPIO_PULL_NONE);
 	}
 
 	s3c_gpio_cfgpin(gpio_cp_pwr_rst, S3C_GPIO_SFN(0xF));
 	s3c_gpio_setpull(gpio_cp_pwr_rst, S3C_GPIO_PULL_NONE);
-	irq_set_irq_type(gpio_cp_pwr_rst, IRQ_TYPE_EDGE_BOTH);
 #endif
 
 	s3c_gpio_cfgpin(gpio_phone_active, S3C_GPIO_SFN(0xF));
 	s3c_gpio_setpull(gpio_phone_active, S3C_GPIO_PULL_NONE);
-	irq_set_irq_type(gpio_phone_active, IRQ_TYPE_EDGE_BOTH);
 }
 
 static int __init aries_init_phone_interface(void)
