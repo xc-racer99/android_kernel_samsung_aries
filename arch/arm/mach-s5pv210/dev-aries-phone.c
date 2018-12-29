@@ -90,15 +90,22 @@ static void modemctl_cfg_gpio(void)
 	err = gpio_request(gpio_phone_on, "PHONE_ON");
 	if (err) {
 		printk("fail to request gpio %s\n","PHONE_ON");
+	} else {
+		gpio_direction_output(gpio_phone_on, GPIO_LEVEL_LOW);
+		s3c_gpio_setpull(gpio_phone_on, S3C_GPIO_PULL_NONE);
 	}
 #endif
 	err = gpio_request(gpio_cp_rst, "CP_RST");
 	if (err) {
 		printk("fail to request gpio %s\n","CP_RST");
+	} else {
+		s3c_gpio_setpull(gpio_cp_rst, S3C_GPIO_PULL_NONE);
 	}
 	err = gpio_request(gpio_pda_active, "PDA_ACTIVE");
 	if (err) {
 		printk("fail to request gpio %s\n","PDA_ACTIVE");
+	} else {
+		s3c_gpio_setpull(gpio_pda_active, S3C_GPIO_PULL_NONE);
 	}
 
 #if defined(CONFIG_SAMSUNG_GALAXYS4G)
@@ -109,7 +116,6 @@ static void modemctl_cfg_gpio(void)
 
 	s3c_gpio_cfgpin(gpio_int_resout, S3C_GPIO_SFN(0xF));
 	s3c_gpio_setpull(gpio_int_resout, S3C_GPIO_PULL_NONE);
-
 	err = gpio_request(gpio_cp_pwr_rst, "CP_PWR_RST");
 	if (err) {
 		printk("fail to request gpio %s\n","CP_PWR_RST");
