@@ -1185,6 +1185,32 @@ void modem_force_crash(struct modemctl *mc)
 	spin_unlock_irqrestore(&mc->lock, flags);
 }
 
+static ssize_t modemctl_show_type(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+	struct modemctl *mc = dev_get_drvdata(dev);
+	int len;
+
+	if (mc->is_ste_modem) {
+		len = sprintf(buf, "%s\n", "ste");
+	} else {
+		len = sprintf(buf, "%s\n", "xmm");
+	}
+
+    return len;
+}
+
+static DEVICE_ATTR(type, S_IRUGO, modemctl_show_type, NULL);
+
+static struct attribute *modemctl_attrs[] = {
+	&dev_attr_type.attr,
+	NULL
+};
+
+static const struct attribute_group modemctl_group = {
+	.attrs = modemctl_attrs,
+};
+
 static int __devinit modemctl_probe(struct platform_device *pdev)
 {
 	int r = -ENOMEM;
@@ -1245,6 +1271,12 @@ static int __devinit modemctl_probe(struct platform_device *pdev)
 	r = misc_register(&mc->dev);
 	if (r)
 		goto err_ioremap;
+
+	r = sysfs_create_group(&mc->dev.this_device->kobj, &modemctl_group);
+	if(r) {
+		dev_err(&pdev->dev, "failed to create sysfs files\n");
+		goto err_ioremap;
+	}
 
 	/* hide control registers from userspace */
 	mc->mmsize -= 0x800;
