@@ -1131,12 +1131,6 @@ static irqreturn_t modemctl_mbox_irq_handler(int irq, void *_mc)
 		case MBC_RESUME:
 			break;
 		}
-	} else if (mc->is_ste_modem && mmio_sem(mc) == 0) {
-		/* STE modems don't automatically release the semaphore
-		 * we need to request it when we don't have it
-		 */
-		modem_request_sem(mc);
-		goto done;
 	}
 
 	/* On *any* interrupt from the modem it may have given
@@ -1169,6 +1163,11 @@ static irqreturn_t modemctl_mbox_irq_handler(int irq, void *_mc)
 			       mc->mmio + OFF_MBOX_AP);
 			mc->mmio_signal_bits = 0;
 		}
+	} else if (mc->is_ste_modem && mmio_sem(mc) == 0) {
+		/* STE modems don't automatically release the semaphore
+		 * we need to request it when we don't have it
+		 */
+		modem_request_sem(mc);
 	}
 done:
 	spin_unlock_irqrestore(&mc->lock, flags);
