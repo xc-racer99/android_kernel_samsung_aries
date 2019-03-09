@@ -1248,6 +1248,12 @@ static int __devinit s3cfb_probe(struct platform_device *pdev)
 		s3cfb_start_progress(fbdev->fb[pdata->default_win]);
 #endif
 
+	/* So display works after u-boot initializes it
+	 * differently than the SBL
+	 */
+	s3cfb_early_suspend(&fbdev->early_suspend);
+	s3cfb_late_resume(&fbdev->early_suspend);
+
 	return 0;
 
 err_irq:
