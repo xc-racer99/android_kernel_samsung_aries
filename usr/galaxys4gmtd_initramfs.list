@@ -1,0 +1,15 @@
+dir /cache 755 0 0
+dir /data 755 0 0
+dir /dev 755 0 0
+dir /efs 755 0 0
+dir /proc 755 0 0
+dir /sbin 755 0 0
+dir /sys 755 0 0
+
+file /file_contexts usr/galaxysmtd_initramfs_files/file_contexts 644 0 0
+file /init usr/galaxysmtd_initramfs_files/init 755 0 0
+file /sbin/busybox usr/utilities/busybox 755 0 0
+file /sbin/flash_image usr/utilities/flash_image 755 0 0
+file /sbin/ubiattach usr/utilities/ubiattach 755 0 0
+file /sbin/ubiformat usr/utilities/ubiformat 755 0 0
+file /sbin/ubimkvol usr/utilities/ubimkvol 755 0 0
